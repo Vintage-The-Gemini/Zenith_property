@@ -1,3 +1,4 @@
+// frontend/src/pages/Properties.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Building2, Loader2, AlertTriangle } from "lucide-react";
@@ -293,7 +294,7 @@ const Properties = () => {
                     <div>
                       <p className="text-xs text-gray-500">Monthly Revenue</p>
                       <p className="text-sm font-semibold">
-                        ${stats.totalRent.toLocaleString()}
+                        KES {stats.totalRent.toLocaleString()}
                       </p>
                     </div>
                     <div>

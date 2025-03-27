@@ -12,6 +12,7 @@ import PropertyDetail from "./pages/PropertyDetail";
 import Tenants from "./pages/Tenants";
 import Payments from "./pages/Payments";
 import Maintenance from "./pages/Maintenance";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { AuthProvider } from "./context/AuthContext";
@@ -94,6 +95,31 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Maintenance />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <div className="p-6">
+                    <h1 className="text-2xl font-bold mb-4">Reports</h1>
+                    <p>Reporting functionality will be implemented soon.</p>
+                  </div>
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Settings />
                 </MainLayout>
               </ProtectedRoute>
             }
