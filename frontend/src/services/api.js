@@ -41,7 +41,13 @@ api.interceptors.response.use(
     if (DEV_MODE && error.response && error.response.status === 401) {
       // In development mode, log but don't redirect or throw on auth errors
       console.warn("Authentication error (ignored in development mode)");
-      return Promise.resolve({ data: { data: [] } }); // Return empty data
+      // Return mock data for development
+      return Promise.resolve({
+        data: {
+          // Empty array as fallback data
+          data: [],
+        },
+      });
     }
 
     if (error.response) {
@@ -69,128 +75,8 @@ api.interceptors.response.use(
       console.error("Error:", error.message);
     }
 
-    if (DEV_MODE) {
-      // In development mode, for other errors, return mock data
-      return Promise.resolve({
-        data: {
-          message: "Error handled in development mode",
-          data: [],
-        },
-      });
-    }
-
     return Promise.reject(error);
   }
 );
-
-// Keep your existing API endpoints
-// Property endpoints
-export const fetchProperties = async () => {
-  if (DEV_MODE) {
-    // Return mock data in development mode
-    return {
-      data: [
-        {
-          _id: "1",
-          name: "Sunset Apartments",
-          address: "123 Main St, City, State",
-          propertyType: "apartment",
-          floors: [
-            {
-              floorNumber: 1,
-              units: [
-                { unitNumber: "101", monthlyRent: 1200, isOccupied: true },
-                { unitNumber: "102", monthlyRent: 1100, isOccupied: false },
-              ],
-            },
-          ],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "2",
-          name: "Ocean View Condos",
-          address: "456 Beach Rd, City, State",
-          propertyType: "condo",
-          floors: [
-            {
-              floorNumber: 1,
-              units: [
-                { unitNumber: "101", monthlyRent: 1500, isOccupied: true },
-                { unitNumber: "102", monthlyRent: 1550, isOccupied: true },
-              ],
-            },
-          ],
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    };
-  }
-
-  try {
-    const response = await api.get("/properties");
-    return response;
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error;
-  }
-};
-
-export const getProperty = async (id) => {
-  if (DEV_MODE) {
-    // Return mock property data in development mode
-    return {
-      data: {
-        _id: id,
-        name: "Sunset Apartments",
-        address: "123 Main St, City, State",
-        description: "A beautiful apartment complex near downtown.",
-        propertyType: "apartment",
-        floors: [
-          {
-            floorNumber: 1,
-            units: [
-              { unitNumber: "101", monthlyRent: 1200, isOccupied: true },
-              { unitNumber: "102", monthlyRent: 1100, isOccupied: false },
-            ],
-          },
-          {
-            floorNumber: 2,
-            units: [
-              { unitNumber: "201", monthlyRent: 1300, isOccupied: true },
-              { unitNumber: "202", monthlyRent: 1250, isOccupied: true },
-            ],
-          },
-        ],
-        createdAt: new Date().toISOString(),
-      },
-    };
-  }
-
-  try {
-    const response = await api.get(`/properties/${id}`);
-    return response;
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error;
-  }
-};
-
-export const createProperty = async (data) => {
-  if (DEV_MODE) {
-    // Mock creating a property
-    return {
-      data: {
-        _id: "new-property-id",
-        ...data,
-        createdAt: new Date().toISOString(),
-      },
-    };
-  }
-
-  const response = await api.post("/properties", data);
-  return response;
-};
-
-// Keep the rest of your API functions intact...
 
 export default api;

@@ -1,3 +1,4 @@
+// frontend/src/services/dashboardService.js
 import api from "./api";
 
 /**
@@ -6,11 +7,72 @@ import api from "./api";
  */
 const getDashboardStats = async () => {
   try {
-    const response = await api.get("/dashboard/stats");
-    return response.data.data || response.data;
+    // In development mode, return mock data
+    if (process.env.NODE_ENV === "development") {
+      return {
+        totalProperties: 15,
+        totalUnits: 120,
+        occupiedUnits: 102,
+        occupancyRate: 85,
+        totalTenants: 98,
+        monthlyRevenue: 52500,
+        pendingMaintenance: 8,
+      };
+    }
+
+    const propertiesResponse = await api.get("/properties");
+    const properties = Array.isArray(propertiesResponse.data)
+      ? propertiesResponse.data
+      : propertiesResponse.data.data || [];
+
+    const tenantsResponse = await api.get("/tenants");
+    const tenants = Array.isArray(tenantsResponse.data)
+      ? tenantsResponse.data
+      : tenantsResponse.data.data || [];
+
+    // Calculate stats
+    let totalUnits = 0;
+    let occupiedUnits = 0;
+    let monthlyRevenue = 0;
+
+    if (Array.isArray(properties)) {
+      properties.forEach((property) => {
+        if (property.units && Array.isArray(property.units)) {
+          totalUnits += property.units.length;
+
+          property.units.forEach((unit) => {
+            if (unit.status === "occupied") {
+              occupiedUnits++;
+              monthlyRevenue += unit.monthlyRent || 0;
+            }
+          });
+        }
+      });
+    }
+
+    return {
+      totalProperties: Array.isArray(properties) ? properties.length : 0,
+      totalUnits,
+      occupiedUnits,
+      occupancyRate:
+        totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0,
+      totalTenants: Array.isArray(tenants) ? tenants.length : 0,
+      monthlyRevenue,
+      pendingMaintenance: 0,
+    };
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
-    throw error;
+
+    // Return fallback data in case of error
+    return {
+      totalProperties: 0,
+      totalUnits: 0,
+      occupiedUnits: 0,
+      occupancyRate: 0,
+      totalTenants: 0,
+      monthlyRevenue: 0,
+      pendingMaintenance: 0,
+    };
   }
 };
 
@@ -21,71 +83,8 @@ const getDashboardStats = async () => {
  */
 const getRecentActivities = async (limit = 5) => {
   try {
-    const response = await api.get("/dashboard/activities", {
-      params: { limit },
-    });
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Error fetching recent activities:", error);
-    throw error;
-  }
-};
-
-/**
- * Get rent collection summary
- * @returns {Promise<Object>} Rent collection stats
- */
-const getRentCollectionStats = async () => {
-  try {
-    const response = await api.get("/dashboard/rent-collection");
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Error fetching rent collection stats:", error);
-    throw error;
-  }
-};
-
-/**
- * Get occupancy rate stats
- * @returns {Promise<Object>} Occupancy stats
- */
-const getOccupancyStats = async () => {
-  try {
-    const response = await api.get("/dashboard/occupancy");
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Error fetching occupancy stats:", error);
-    throw error;
-  }
-};
-
-/**
- * Get maintenance request summary
- * @returns {Promise<Object>} Maintenance stats
- */
-const getMaintenanceStats = async () => {
-  try {
-    const response = await api.get("/dashboard/maintenance");
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Error fetching maintenance stats:", error);
-    throw error;
-  }
-};
-
-// Mock data for development/testing
-const getMockDashboardData = () => {
-  return {
-    stats: {
-      totalProperties: 15,
-      totalUnits: 120,
-      occupiedUnits: 102,
-      occupancyRate: 85,
-      totalTenants: 98,
-      monthlyRevenue: 52500,
-      pendingMaintenance: 8,
-    },
-    recentActivities: [
+    // Return mock data for development
+    return [
       {
         id: 1,
         type: "payment",
@@ -107,43 +106,14 @@ const getMockDashboardData = () => {
         description: "New tenant for Unit 305",
         date: new Date(Date.now() - 172800000),
       },
-      {
-        id: 4,
-        type: "property",
-        title: "Property Added",
-        description: 'New property "River View Apartments" added',
-        date: new Date(Date.now() - 259200000),
-      },
-      {
-        id: 5,
-        type: "tenant",
-        title: "Tenant Notice",
-        description: "Tenant in Unit 402 gave move-out notice",
-        date: new Date(Date.now() - 345600000),
-      },
-    ],
-    rentCollection: {
-      collected: 42000,
-      outstanding: 10500,
-      collectionRate: 80,
-      overduePayments: 5,
-    },
-    occupancyTrend: [
-      { month: "Jan", rate: 78 },
-      { month: "Feb", rate: 80 },
-      { month: "Mar", rate: 82 },
-      { month: "Apr", rate: 79 },
-      { month: "May", rate: 83 },
-      { month: "Jun", rate: 85 },
-    ],
-  };
+    ];
+  } catch (error) {
+    console.error("Error fetching recent activities:", error);
+    return [];
+  }
 };
 
 export default {
   getDashboardStats,
   getRecentActivities,
-  getRentCollectionStats,
-  getOccupancyStats,
-  getMaintenanceStats,
-  getMockDashboardData,
 };
