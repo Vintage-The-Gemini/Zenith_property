@@ -1,3 +1,4 @@
+// frontend/src/pages/PropertyDetail.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -71,7 +72,7 @@ const PropertyDetail = () => {
 
   // Calculate property statistics
   const calculateStats = () => {
-    if (!property || !property.floors) {
+    if (!property) {
       return {
         totalUnits: 0,
         occupiedUnits: 0,
@@ -81,32 +82,16 @@ const PropertyDetail = () => {
       };
     }
 
-    const totalUnits = property.floors.reduce(
-      (acc, floor) => acc + (floor.units?.length || 0),
-      0
-    );
-
-    const occupiedUnits = property.floors.reduce(
-      (acc, floor) =>
-        acc + (floor.units?.filter((unit) => unit.isOccupied)?.length || 0),
-      0
-    );
-
+    const totalUnits = property.units?.length || 0;
+    const occupiedUnits =
+      property.units?.filter((unit) => unit.status === "occupied").length || 0;
     const vacantUnits = totalUnits - occupiedUnits;
-
     const occupancyRate =
       totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
-
-    const totalRent = property.floors.reduce(
-      (acc, floor) =>
-        acc +
-        (floor.units?.reduce(
-          (sum, unit) =>
-            unit.isOccupied ? sum + (unit.monthlyRent || 0) : sum,
-          0
-        ) || 0),
-      0
-    );
+    const totalRent =
+      property.units?.reduce((acc, unit) => {
+        return unit.status === "occupied" ? acc + (unit.monthlyRent || 0) : acc;
+      }, 0) || 0;
 
     return {
       totalUnits,
@@ -189,7 +174,10 @@ const PropertyDetail = () => {
             <h1 className="text-2xl font-bold text-gray-900">
               {property.name}
             </h1>
-            <p className="text-gray-500">{property.address}</p>
+            <p className="text-gray-500">
+              {property.address?.street}, {property.address?.city},{" "}
+              {property.address?.state}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -259,7 +247,7 @@ const PropertyDetail = () => {
             <div>
               <p className="text-sm text-gray-500">Monthly Revenue</p>
               <p className="text-xl font-semibold">
-                kes{stats.totalRent.toLocaleString()}
+                KES {stats.totalRent.toLocaleString()}
               </p>
             </div>
           </div>
@@ -271,7 +259,7 @@ const PropertyDetail = () => {
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
               activeTab === "overview"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -281,7 +269,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("units")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
               activeTab === "units"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -291,7 +279,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("tenants")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
               activeTab === "tenants"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -301,7 +289,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("payments")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
               activeTab === "payments"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -309,33 +297,69 @@ const PropertyDetail = () => {
           >
             Payments
           </button>
-          <button
-            onClick={() => setActiveTab("maintenance")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
-              activeTab === "maintenance"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            Maintenance
-          </button>
         </nav>
       </div>
 
       {/* Tab Content */}
       <div className="py-4">
-        {activeTab === "overview" && (
-          <PropertyOverview property={property} stats={stats} />
-        )}
+        {activeTab === "overview" && <PropertyOverview property={property} />}
 
         {activeTab === "units" && (
-          <PropertyUnits property={property} onPropertyUpdate={loadProperty} />
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Units</h3>
+              <button className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Unit
+              </button>
+            </div>
+
+            {property.units && property.units.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {property.units.map((unit) => (
+                  <Card key={unit._id} className="p-4">
+                    <div className="flex justify-between">
+                      <h5 className="font-medium">Unit {unit.unitNumber}</h5>
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded-full ${
+                          unit.status === "occupied"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {unit.status === "occupied" ? "Occupied" : "Vacant"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Rent: KES{unit.monthlyRent?.toLocaleString() || 0}/month
+                    </p>
+                    {unit.status === "occupied" && unit.currentTenant && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-sm">
+                          Tenant: {unit.currentTenant.firstName}{" "}
+                          {unit.currentTenant.lastName}
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-center">
+                <p className="text-gray-500">No units added yet.</p>
+                <button className="mt-4 inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Unit
+                </button>
+              </Card>
+            )}
+          </div>
         )}
 
         {activeTab === "tenants" && (
           <div className="text-center py-8">
             <p className="text-gray-500">
-              Tenant management will be implemented in the next phase.
+              Tenant management will be implemented soon.
             </p>
           </div>
         )}
@@ -343,27 +367,21 @@ const PropertyDetail = () => {
         {activeTab === "payments" && (
           <div className="text-center py-8">
             <p className="text-gray-500">
-              Payment tracking will be implemented in the next phase.
-            </p>
-          </div>
-        )}
-
-        {activeTab === "maintenance" && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
-              Maintenance requests will be implemented in the next phase.
+              Payment tracking will be implemented soon.
             </p>
           </div>
         )}
       </div>
 
       {/* Property Form Modal */}
-      <PropertyFormModal
-        isOpen={isFormModalOpen}
-        onClose={() => setIsFormModalOpen(false)}
-        onSubmit={handleUpdateProperty}
-        initialData={property}
-      />
+      {isFormModalOpen && (
+        <PropertyFormModal
+          isOpen={isFormModalOpen}
+          onClose={() => setIsFormModalOpen(false)}
+          onSubmit={handleUpdateProperty}
+          initialData={property}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
@@ -400,7 +418,7 @@ const PropertyDetail = () => {
 };
 
 // PropertyOverview Component
-const PropertyOverview = ({ property, stats }) => {
+const PropertyOverview = ({ property }) => {
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -411,36 +429,39 @@ const PropertyOverview = ({ property, stats }) => {
           <div>
             <h4 className="text-sm font-medium text-gray-500">Property Type</h4>
             <p className="mt-1">
-              {property.type?.charAt(0).toUpperCase() +
-                property.type?.slice(1) || "Residential"}
+              {property.propertyType?.charAt(0).toUpperCase() +
+                property.propertyType?.slice(1) || "Residential"}
             </p>
           </div>
           <div>
             <h4 className="text-sm font-medium text-gray-500">Address</h4>
-            <p className="mt-1">{property.address}</p>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Total Units</h4>
-            <p className="mt-1">{stats.totalUnits}</p>
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">
-              Occupied Units
-            </h4>
             <p className="mt-1">
-              {stats.occupiedUnits} ({stats.occupancyRate}% Occupancy)
+              {property.address?.street}, {property.address?.city},{" "}
+              {property.address?.state}, {property.address?.zipCode}
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">
-              Monthly Revenue
-            </h4>
-            <p className="mt-1">kes{stats.totalRent.toLocaleString()}</p>
+            <h4 className="text-sm font-medium text-gray-500">Status</h4>
+            <p className="mt-1">
+              <span
+                className={`inline-block h-2 w-2 rounded-full mr-1.5 align-middle ${
+                  property.status === "active"
+                    ? "bg-green-500"
+                    : property.status === "maintenance"
+                    ? "bg-yellow-500"
+                    : "bg-gray-500"
+                }`}
+              ></span>
+              {property.status?.charAt(0).toUpperCase() +
+                property.status?.slice(1) || "Active"}
+            </p>
           </div>
           <div>
             <h4 className="text-sm font-medium text-gray-500">Date Added</h4>
             <p className="mt-1">
-              {new Date(property.createdAt).toLocaleDateString()}
+              {property.createdAt
+                ? new Date(property.createdAt).toLocaleDateString()
+                : "-"}
             </p>
           </div>
         </div>
@@ -453,95 +474,13 @@ const PropertyOverview = ({ property, stats }) => {
       </Card>
 
       <Card className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-        </div>
-        <div className="text-center py-6 text-gray-500">
-          <p>Recent activity will appear here</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Recent Activity
+        </h3>
+        <div className="text-center py-4">
+          <p className="text-gray-500">No recent activity found.</p>
         </div>
       </Card>
-    </div>
-  );
-};
-
-// PropertyUnits Component (Placeholder - will be implemented in a separate file)
-const PropertyUnits = ({ property, onPropertyUpdate }) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Units</h3>
-        <button className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-          <Plus className="h-4 w-4 mr-1.5" />
-          Add Unit
-        </button>
-      </div>
-
-      {property.floors?.length > 0 ? (
-        property.floors.map((floor, floorIndex) => (
-          <Card key={floorIndex} className="p-6">
-            <h4 className="text-md font-medium text-gray-900 mb-4">
-              Floor {floor.floorNumber}
-            </h4>
-            {floor.units?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {floor.units.map((unit, unitIndex) => (
-                  <div
-                    key={unitIndex}
-                    className={`p-4 border rounded-lg kes{
-                      unit.isOccupied
-                        ? "border-green-200 bg-green-50"
-                        : "border-gray-200"
-                    }`}
-                  >
-                    <div className="flex justify-between">
-                      <h5 className="font-medium">Unit {unit.unitNumber}</h5>
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded-full kes{
-                          unit.isOccupied
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {unit.isOccupied ? "Occupied" : "Vacant"}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Rent: kes{unit.monthlyRent.toLocaleString()}/month
-                    </p>
-                    {unit.isOccupied && unit.tenant && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-sm">Tenant: {unit.tenant.name}</p>
-                      </div>
-                    )}
-                    <div className="mt-3 flex justify-end gap-2">
-                      <button className="text-xs text-blue-600 hover:text-blue-800">
-                        Edit
-                      </button>
-                      {!unit.isOccupied && (
-                        <button className="text-xs text-green-600 hover:text-green-800">
-                          Add Tenant
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">
-                No units found on this floor.
-              </p>
-            )}
-          </Card>
-        ))
-      ) : (
-        <Card className="p-6 text-center">
-          <p className="text-gray-500">No floors or units added yet.</p>
-          <button className="mt-4 inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Floor & Units
-          </button>
-        </Card>
-      )}
     </div>
   );
 };

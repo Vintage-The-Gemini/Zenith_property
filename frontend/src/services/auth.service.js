@@ -1,86 +1,152 @@
-// frontend/src/services/auth.service.js
+// frontend/src/services/propertyService.js
 import api from "./api";
 
-// Development mode flag
-const DEV_MODE = true;
-
-// Mock user for development
-const DEV_USER = {
-  id: "dev-user-id",
-  email: "dev@example.com",
-  firstName: "Dev",
-  lastName: "User",
-  role: "admin",
-  token:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiZGV2LXVzZXItaWQiLCJyb2xlIjoiYWRtaW4ifSwiaWF0IjoxNjE2NDExMjMxLCJleHAiOjE2MTY0OTc2MzF9.mock-signature",
-};
-
-// Login user
-const login = async (credentials) => {
+/**
+ * Get all properties
+ * @returns {Promise<Array>} Array of properties
+ */
+export const getAllProperties = async () => {
   try {
-    if (DEV_MODE) {
-      // In development mode, always succeed and return the mock user
-      localStorage.setItem("token", DEV_USER.token);
-      localStorage.setItem("user", JSON.stringify(DEV_USER));
-      return DEV_USER;
-    }
-
-    // Original implementation for production
-    const response = await api.post("/auth/login", credentials);
-    if (response.data.token) {
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-    }
+    const response = await api.get("/properties");
     return response.data;
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Error fetching properties:", error);
     throw error;
   }
 };
 
-// Register user
-const register = async (userData) => {
+/**
+ * Get property by ID
+ * @param {string} id - Property ID
+ * @returns {Promise<Object>} Property data
+ */
+export const getPropertyById = async (id) => {
   try {
-    if (DEV_MODE) {
-      // In development mode, always succeed
-      return { success: true, message: "Registration successful (DEV MODE)" };
-    }
-
-    // Original implementation for production
-    const response = await api.post("/auth/register", userData);
+    const response = await api.get(`/properties/${id}`);
     return response.data;
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("Error fetching property details:", error);
     throw error;
   }
 };
 
-// Logout user
-const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+/**
+ * Create a new property
+ * @param {Object} propertyData - Property data
+ * @returns {Promise<Object>} Created property
+ */
+export const createProperty = async (propertyData) => {
+  try {
+    const response = await api.post("/properties", propertyData);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating property:", error);
+    throw error;
+  }
 };
 
-// Get current user
-const getCurrentUser = () => {
-  if (DEV_MODE) return DEV_USER;
-
-  const userStr = localStorage.getItem("user");
-  return userStr ? JSON.parse(userStr) : null;
+/**
+ * Update property
+ * @param {string} id - Property ID
+ * @param {Object} propertyData - Updated property data
+ * @returns {Promise<Object>} Updated property
+ */
+export const updateProperty = async (id, propertyData) => {
+  try {
+    const response = await api.put(`/properties/${id}`, propertyData);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating property:", error);
+    throw error;
+  }
 };
 
-// Check if user is authenticated
-const isAuthenticated = () => {
-  if (DEV_MODE) return true;
-  return !!localStorage.getItem("token");
+/**
+ * Delete property
+ * @param {string} id - Property ID
+ * @returns {Promise<Object>} Response data
+ */
+export const deleteProperty = async (id) => {
+  try {
+    const response = await api.delete(`/properties/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting property:", error);
+    throw error;
+  }
 };
 
-const authService = {
-  login,
-  register,
-  logout,
-  getCurrentUser,
-  isAuthenticated,
+/**
+ * Get units for a property
+ * @param {string} propertyId - Property ID
+ * @returns {Promise<Array>} Array of units
+ */
+export const getPropertyUnits = async (propertyId) => {
+  try {
+    const response = await api.get(`/units?propertyId=${propertyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching property units:", error);
+    throw error;
+  }
 };
 
-export default authService;
+/**
+ * Add a unit to a property
+ * @param {string} propertyId - Property ID
+ * @param {Object} unitData - Unit data
+ * @returns {Promise<Object>} Created unit
+ */
+export const addUnitToProperty = async (propertyId, unitData) => {
+  try {
+    const unitWithPropertyId = { ...unitData, propertyId };
+    const response = await api.post("/units", unitWithPropertyId);
+    return response.data;
+  } catch (error) {
+    console.error("Error adding unit to property:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update a unit
+ * @param {string} unitId - Unit ID
+ * @param {Object} unitData - Updated unit data
+ * @returns {Promise<Object>} Updated unit
+ */
+export const updateUnit = async (unitId, unitData) => {
+  try {
+    const response = await api.put(`/units/${unitId}`, unitData);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating unit:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a unit
+ * @param {string} unitId - Unit ID
+ * @returns {Promise<Object>} Response data
+ */
+export const deleteUnit = async (unitId) => {
+  try {
+    const response = await api.delete(`/units/${unitId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting unit:", error);
+    throw error;
+  }
+};
+
+export default {
+  getAllProperties,
+  getPropertyById,
+  createProperty,
+  updateProperty,
+  deleteProperty,
+  getPropertyUnits,
+  addUnitToProperty,
+  updateUnit,
+  deleteUnit,
+};
