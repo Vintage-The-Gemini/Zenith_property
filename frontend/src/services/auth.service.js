@@ -15,33 +15,43 @@ const DEV_USER = {
 };
 
 // Login user
-const login = async (email, password) => {
-  if (DEV_MODE) {
-    // In development mode, always succeed and return the mock user
-    localStorage.setItem("token", DEV_USER.token);
-    localStorage.setItem("user", JSON.stringify(DEV_USER));
-    return DEV_USER;
-  }
+const login = async (credentials) => {
+  try {
+    if (DEV_MODE) {
+      // In development mode, always succeed and return the mock user
+      localStorage.setItem("token", DEV_USER.token);
+      localStorage.setItem("user", JSON.stringify(DEV_USER));
+      return DEV_USER;
+    }
 
-  // Original implementation for production
-  const response = await api.post("/auth/login", { email, password });
-  if (response.data.token) {
-    localStorage.setItem("token", response.data.token);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
+    // Original implementation for production
+    const response = await api.post("/auth/login", credentials);
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    }
+    return response.data;
+  } catch (error) {
+    console.error("Login error:", error);
+    throw error;
   }
-  return response.data;
 };
 
 // Register user
 const register = async (userData) => {
-  if (DEV_MODE) {
-    // In development mode, always succeed
-    return { success: true, message: "Registration successful (DEV MODE)" };
-  }
+  try {
+    if (DEV_MODE) {
+      // In development mode, always succeed
+      return { success: true, message: "Registration successful (DEV MODE)" };
+    }
 
-  // Original implementation for production
-  const response = await api.post("/auth/register", userData);
-  return response.data;
+    // Original implementation for production
+    const response = await api.post("/auth/register", userData);
+    return response.data;
+  } catch (error) {
+    console.error("Registration error:", error);
+    throw error;
+  }
 };
 
 // Logout user

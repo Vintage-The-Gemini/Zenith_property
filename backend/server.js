@@ -1,4 +1,4 @@
-// server.js
+// backend/server.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -19,6 +19,7 @@ import unitRoutes from "./routes/units.js";
 import expenseRoutes from "./routes/expenses.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import paymentRoutes from "./routes/payments.js";
+import maintenanceRoutes from "./routes/maintenance.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,10 +44,13 @@ app.get("/", (req, res) => {
     version: "1.0",
     endpoints: {
       auth: "/api/auth",
+      dashboard: "/api/dashboard",
       properties: "/api/properties",
       units: "/api/units",
       tenants: "/api/tenants",
       expenses: "/api/expenses",
+      payments: "/api/payments",
+      maintenance: "/api/maintenance",
     },
   });
 });
@@ -56,12 +60,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/tenants", tenantRoutes);
 app.use("/api/units", unitRoutes);
 app.use("/api/expenses", expenseRoutes);
-app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
 
 // Error handling
 app.use(errorHandler);

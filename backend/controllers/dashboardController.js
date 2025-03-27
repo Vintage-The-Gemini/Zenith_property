@@ -3,6 +3,8 @@ import Property from "../models/Property.js";
 import Tenant from "../models/Tenant.js";
 import Unit from "../models/Unit.js";
 import Payment from "../models/Payment.js";
+import Maintenance from "../models/Maintenance.js"; // Using the same spelling as the file
+import logger from "../utils/logger.js";
 
 export const getDashboardStats = async (req, res) => {
   try {
@@ -43,8 +45,33 @@ export const getDashboardStats = async (req, res) => {
       0
     );
 
-    // Count pending maintenance (placeholder for now)
-    const pendingMaintenance = 0;
+    // Year to date revenue
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const ytdPayments = await Payment.find({
+      status: "completed",
+      paymentDate: { $gte: startOfYear, $lte: now },
+    });
+
+    const yearToDateRevenue = ytdPayments.reduce(
+      (total, payment) => total + payment.amount,
+      0
+    );
+
+    // Count pending maintenance
+    const pendingMaintenance = await Maintenance.countDocuments({
+      status: { $in: ["pending", "in_progress"] },
+    });
+
+    // Count pending payments (overdue payments)
+    const pendingPayments = await Payment.find({
+      status: "pending",
+      dueDate: { $lt: now },
+    });
+
+    const pendingRevenue = pendingPayments.reduce(
+      (total, payment) => total + payment.amount,
+      0
+    );
 
     // Return dashboard stats
     res.json({
@@ -54,36 +81,66 @@ export const getDashboardStats = async (req, res) => {
       occupancyRate,
       totalTenants: tenantsCount,
       monthlyRevenue,
+      yearToDateRevenue,
       pendingMaintenance,
+      pendingRevenue,
     });
   } catch (error) {
+    logger.error(`Error in getDashboardStats: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
 export const getRecentActivities = async (req, res) => {
   try {
+    const limit = parseInt(req.query.limit) || 5;
+
     // Get recent payments as activities
     const recentPayments = await Payment.find()
       .populate("tenant", "firstName lastName")
       .populate("unit", "unitNumber")
       .populate("property", "name")
       .sort("-createdAt")
-      .limit(5);
+      .limit(limit);
 
-    // Transform payments into activities
-    const activities = recentPayments.map((payment) => ({
+    // Get recent maintenance requests
+    const recentMaintenance = await Maintenance.find()
+      .populate("property", "name")
+      .populate("unit", "unitNumber")
+      .sort("-createdAt")
+      .limit(limit);
+
+    // Combine and transform into activities
+    const paymentActivities = recentPayments.map((payment) => ({
       id: payment._id,
       type: "payment",
       title: `Payment ${
         payment.status === "completed" ? "Received" : "Recorded"
       }`,
-      description: `${payment.tenant.firstName} ${payment.tenant.lastName} - $${payment.amount} for ${payment.property.name} Unit ${payment.unit.unitNumber}`,
+      description: `${payment.tenant.firstName} ${
+        payment.tenant.lastName
+      } - KES ${payment.amount.toLocaleString()} for ${
+        payment.property.name
+      } Unit ${payment.unit.unitNumber}`,
       date: payment.createdAt,
     }));
 
-    res.json(activities);
+    const maintenanceActivities = recentMaintenance.map((maintenance) => ({
+      id: maintenance._id,
+      type: "maintenance",
+      title: `Maintenance Request ${maintenance.status}`,
+      description: `${maintenance.issue} - ${maintenance.property.name} Unit ${maintenance.unit.unitNumber}`,
+      date: maintenance.createdAt,
+    }));
+
+    // Combine, sort by date (newest first) and limit
+    const allActivities = [...paymentActivities, ...maintenanceActivities]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, limit);
+
+    res.json(allActivities);
   } catch (error) {
+    logger.error(`Error in getRecentActivities: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
