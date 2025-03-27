@@ -339,14 +339,16 @@ const PropertyFormModal = ({
                         </label>
                         <div className="mt-1 relative rounded-md shadow-sm">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span className="text-gray-500 sm:text-sm">$</span>
+                            <span className="text-gray-500 sm:text-sm">
+                              KES
+                            </span>
                           </div>
                           <input
                             type="number"
                             required
                             min="0"
                             step="0.01"
-                            className="block w-full pl-7 pr-12 border-gray-300 rounded-md focus:border-primary-500 focus:ring-primary-500"
+                            className="block w-full pl-12 pr-12 border-gray-300 rounded-md focus:border-primary-500 focus:ring-primary-500"
                             value={unit.monthlyRent}
                             onChange={(e) =>
                               updateUnit(
@@ -356,7 +358,7 @@ const PropertyFormModal = ({
                                 e.target.value
                               )
                             }
-                            placeholder="1000.00"
+                            placeholder="10000.00"
                           />
                         </div>
                       </div>

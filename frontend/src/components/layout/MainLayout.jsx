@@ -1,4 +1,4 @@
-//frontend/src/components/layout/MainLayout.jsx
+// frontend/src/components/layout/MainLayout.jsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -32,7 +32,7 @@ const MainLayout = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -102,7 +102,7 @@ const MainLayout = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
+      <div className="flex flex-col flex-1 w-0 overflow-hidden">
         {/* Top navbar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -147,8 +147,8 @@ const MainLayout = ({ children }) => {
         </div>
 
         {/* Page content */}
-        <main className="flex-1">
-          <div className="py-6">{children}</div>
+        <main className="flex-1 overflow-auto">
+          <div className="py-6 px-4 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
     </div>

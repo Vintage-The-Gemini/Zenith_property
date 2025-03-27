@@ -259,7 +259,7 @@ const PropertyDetail = () => {
             <div>
               <p className="text-sm text-gray-500">Monthly Revenue</p>
               <p className="text-xl font-semibold">
-                ${stats.totalRent.toLocaleString()}
+                kes{stats.totalRent.toLocaleString()}
               </p>
             </div>
           </div>
@@ -271,7 +271,7 @@ const PropertyDetail = () => {
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
               activeTab === "overview"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -281,7 +281,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("units")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
               activeTab === "units"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -291,7 +291,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("tenants")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
               activeTab === "tenants"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -301,7 +301,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("payments")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
               activeTab === "payments"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -311,7 +311,7 @@ const PropertyDetail = () => {
           </button>
           <button
             onClick={() => setActiveTab("maintenance")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm kes{
               activeTab === "maintenance"
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -435,7 +435,7 @@ const PropertyOverview = ({ property, stats }) => {
             <h4 className="text-sm font-medium text-gray-500">
               Monthly Revenue
             </h4>
-            <p className="mt-1">${stats.totalRent.toLocaleString()}</p>
+            <p className="mt-1">kes{stats.totalRent.toLocaleString()}</p>
           </div>
           <div>
             <h4 className="text-sm font-medium text-gray-500">Date Added</h4>
@@ -487,7 +487,7 @@ const PropertyUnits = ({ property, onPropertyUpdate }) => {
                 {floor.units.map((unit, unitIndex) => (
                   <div
                     key={unitIndex}
-                    className={`p-4 border rounded-lg ${
+                    className={`p-4 border rounded-lg kes{
                       unit.isOccupied
                         ? "border-green-200 bg-green-50"
                         : "border-gray-200"
@@ -496,7 +496,7 @@ const PropertyUnits = ({ property, onPropertyUpdate }) => {
                     <div className="flex justify-between">
                       <h5 className="font-medium">Unit {unit.unitNumber}</h5>
                       <span
-                        className={`px-2 py-0.5 text-xs rounded-full ${
+                        className={`px-2 py-0.5 text-xs rounded-full kes{
                           unit.isOccupied
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
@@ -506,7 +506,7 @@ const PropertyUnits = ({ property, onPropertyUpdate }) => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      Rent: ${unit.monthlyRent.toLocaleString()}/month
+                      Rent: kes{unit.monthlyRent.toLocaleString()}/month
                     </p>
                     {unit.isOccupied && unit.tenant && (
                       <div className="mt-2 pt-2 border-t border-gray-200">
