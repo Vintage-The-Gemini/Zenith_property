@@ -11,7 +11,8 @@ const DEV_USER = {
   firstName: "Dev",
   lastName: "User",
   role: "admin",
-  token: "dev-mock-token-12345",
+  token:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiZGV2LXVzZXItaWQiLCJyb2xlIjoiYWRtaW4ifSwiaWF0IjoxNjE2NDExMjMxLCJleHAiOjE2MTY0OTc2MzF9.mock-signature",
 };
 
 // Login user
