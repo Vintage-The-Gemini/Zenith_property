@@ -19,18 +19,17 @@ import Register from "./pages/Register";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import "./App.css";
 
-// Updated Protected Route component that works with AuthContext
+// Protected Route component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  // In development mode we bypass authentication checks for testing
-  if (process.env.NODE_ENV === "development") {
-    return children;
-  }
-
   // Show loading state if authentication is still being checked
   if (loading) {
-    return <div>Loading authentication...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   // Redirect to login if not authenticated

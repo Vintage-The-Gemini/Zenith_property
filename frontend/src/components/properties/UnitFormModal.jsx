@@ -69,7 +69,7 @@ const UnitFormModal = ({
     try {
       setIsLoading(true);
 
-      // Format data
+      // Format data for API
       const unitData = {
         ...formData,
         propertyId,

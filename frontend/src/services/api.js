@@ -18,11 +18,8 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Log request for debugging (remove in production)
-    console.log(
-      `Making ${config.method.toUpperCase()} request to: ${config.url}`
-    );
-
+    // For debugging
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {
@@ -34,45 +31,18 @@ api.interceptors.request.use(
 // Error handling interceptor
 api.interceptors.response.use(
   (response) => {
-    // Log successful response for debugging (remove in production)
-    console.log(`Response from ${response.config.url}:`, response.status);
     return response;
   },
   (error) => {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error(
-        "Response error:",
-        error.response.status,
-        error.response.data
-      );
-
-      switch (error.response.status) {
-        case 401:
-          console.error("Unauthorized access - redirecting to login");
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-          // Use window.location instead of navigate since this is outside React component
-          window.location.href = "/login";
-          break;
-        case 403:
-          console.error("Forbidden - insufficient permissions");
-          break;
-        case 404:
-          console.error("Resource not found");
-          break;
-        case 500:
-          console.error("Server error");
-          break;
-        default:
-          console.error("API Error:", error.response.data);
+      // Handle specific errors
+      if (error.response.status === 401) {
+        console.error("Unauthorized - Token may be invalid or expired");
+        // Don't redirect here to avoid loops
       }
     } else if (error.request) {
-      // The request was made but no response was received
-      console.error("Network Error - No response received:", error.request);
+      console.error("Network Error - No response received");
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.error("Request setup error:", error.message);
     }
 

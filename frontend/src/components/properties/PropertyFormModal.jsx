@@ -1,6 +1,6 @@
 // frontend/src/components/properties/PropertyFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, Building2 } from "lucide-react";
+import { X, Building2, Plus, Trash } from "lucide-react";
 import Card from "../ui/Card";
 
 const PropertyFormModal = ({
@@ -21,12 +21,22 @@ const PropertyFormModal = ({
     },
     propertyType: "apartment",
     description: "",
+    floors: [{ number: 1, name: "Ground Floor", units: [] }],
+    amenities: [],
   });
+
+  const [newAmenity, setNewAmenity] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (initialData) {
+      // If editing an existing property, use its data
+      const initialFloors =
+        initialData.floors && initialData.floors.length > 0
+          ? initialData.floors
+          : [{ number: 1, name: "Ground Floor", units: [] }];
+
       setFormData({
         name: initialData.name || "",
         address: initialData.address || {
@@ -38,6 +48,8 @@ const PropertyFormModal = ({
         },
         propertyType: initialData.propertyType || "apartment",
         description: initialData.description || "",
+        floors: initialFloors,
+        amenities: initialData.amenities || [],
       });
     }
   }, [initialData]);
@@ -46,6 +58,7 @@ const PropertyFormModal = ({
     e.preventDefault();
     setError("");
 
+    // Basic validation
     if (!formData.name.trim()) {
       setError("Property name is required");
       return;
@@ -59,6 +72,13 @@ const PropertyFormModal = ({
       !formData.address.country.trim()
     ) {
       setError("All address fields are required");
+      return;
+    }
+
+    // Make sure floor numbers are unique
+    const floorNumbers = formData.floors.map((floor) => floor.number);
+    if (new Set(floorNumbers).size !== floorNumbers.length) {
+      setError("Floor numbers must be unique");
       return;
     }
 
@@ -91,6 +111,65 @@ const PropertyFormModal = ({
         [name]: value,
       });
     }
+  };
+
+  const addFloor = () => {
+    // Find the highest floor number
+    const maxFloorNumber = Math.max(
+      ...formData.floors.map((floor) => floor.number),
+      0
+    );
+    setFormData({
+      ...formData,
+      floors: [
+        ...formData.floors,
+        {
+          number: maxFloorNumber + 1,
+          name: `Floor ${maxFloorNumber + 1}`,
+          units: [],
+        },
+      ],
+    });
+  };
+
+  const removeFloor = (index) => {
+    const updatedFloors = [...formData.floors];
+    updatedFloors.splice(index, 1);
+    setFormData({
+      ...formData,
+      floors: updatedFloors,
+    });
+  };
+
+  const handleFloorChange = (index, field, value) => {
+    const updatedFloors = [...formData.floors];
+    updatedFloors[index][field] = value;
+    setFormData({
+      ...formData,
+      floors: updatedFloors,
+    });
+  };
+
+  const addAmenity = () => {
+    if (newAmenity.trim()) {
+      setFormData({
+        ...formData,
+        amenities: [
+          ...formData.amenities,
+          { name: newAmenity.trim(), description: "" },
+        ],
+      });
+      setNewAmenity("");
+    }
+  };
+
+  const removeAmenity = (index) => {
+    const updatedAmenities = [...formData.amenities];
+    updatedAmenities.splice(index, 1);
+    setFormData({
+      ...formData,
+      amenities: updatedAmenities,
+    });
   };
 
   if (!isOpen) return null;
@@ -129,7 +208,7 @@ const PropertyFormModal = ({
             </h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Property Name
+                Property Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -144,7 +223,7 @@ const PropertyFormModal = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Property Type
+                Property Type <span className="text-red-500">*</span>
               </label>
               <select
                 name="propertyType"
@@ -182,7 +261,7 @@ const PropertyFormModal = ({
             </h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Street Address
+                Street Address <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -198,7 +277,7 @@ const PropertyFormModal = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  City
+                  City <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -212,7 +291,7 @@ const PropertyFormModal = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  State/Province
+                  State/Province <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -229,7 +308,7 @@ const PropertyFormModal = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Zip/Postal Code
+                  Zip/Postal Code <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -243,7 +322,7 @@ const PropertyFormModal = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Country
+                  Country <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -256,6 +335,124 @@ const PropertyFormModal = ({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Floors */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Floors
+              </h3>
+              <button
+                type="button"
+                onClick={addFloor}
+                className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Floor
+              </button>
+            </div>
+
+            {formData.floors.map((floor, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 dark:border-gray-700 rounded-md p-4 relative"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Floor Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={floor.number}
+                      onChange={(e) =>
+                        handleFloorChange(
+                          index,
+                          "number",
+                          parseInt(e.target.value)
+                        )
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                      min="1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Floor Name
+                    </label>
+                    <input
+                      type="text"
+                      value={floor.name}
+                      onChange={(e) =>
+                        handleFloorChange(index, "name", e.target.value)
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="e.g. Ground Floor, First Floor, etc."
+                    />
+                  </div>
+                </div>
+
+                {formData.floors.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeFloor(index)}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Amenities */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              Amenities
+            </h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newAmenity}
+                onChange={(e) => setNewAmenity(e.target.value)}
+                className="flex-1 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                placeholder="e.g. Swimming Pool, Gym, etc."
+              />
+              <button
+                type="button"
+                onClick={addAmenity}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Add
+              </button>
+            </div>
+
+            {formData.amenities.length > 0 ? (
+              <div className="mt-2 space-y-2">
+                {formData.amenities.map((amenity, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-md"
+                  >
+                    <span>{amenity.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAmenity(index)}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm mt-1">
+                No amenities added yet. Add amenities like gym, pool, parking,
+                etc.
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

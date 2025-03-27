@@ -1,6 +1,6 @@
 // frontend/src/pages/Login.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Building2, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -12,7 +12,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const { login, isAuthenticated } = useAuth();
 
   // Redirect to dashboard if already authenticated
@@ -21,13 +20,6 @@ const Login = () => {
       navigate("/");
     }
   }, [isAuthenticated, navigate]);
-
-  // Display message if coming from registration
-  useEffect(() => {
-    if (location.state?.message) {
-      setError(location.state.message);
-    }
-  }, [location]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,14 +38,16 @@ const Login = () => {
 
     try {
       setLoading(true);
-      // Call the login function from AuthContext
-      login(formData);
-      // Navigate is handled inside login function
+      const result = await login(formData);
+
+      if (result.success) {
+        navigate("/");
+      } else {
+        setError(result.message || "Invalid credentials. Please try again.");
+      }
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message || "Invalid credentials. Please try again."
-      );
+      setError("Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -128,32 +122,6 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                 />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-                >
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a
-                  href="#"
-                  className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
-                >
-                  Forgot your password?
-                </a>
               </div>
             </div>
 

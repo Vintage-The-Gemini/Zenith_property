@@ -1,68 +1,92 @@
 // frontend/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 const AuthContext = createContext(null);
 
-// Mock development user - always authenticated in development
-const DEV_USER = {
-  id: "dev-user-id",
-  firstName: "Development",
-  lastName: "User",
-  email: "dev@example.com",
-  role: "admin",
-};
-
-// Development mode flag - set to true to bypass auth
-const DEV_MODE = true;
-
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(DEV_MODE ? DEV_USER : null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // In production, check for user in localStorage on initial load
-    if (!DEV_MODE) {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    // Initialize authentication
+    const initAuth = async () => {
+      try {
+        // Check if we have a token
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        // Set token in localStorage to ensure it's used for API calls
+        localStorage.setItem("token", token);
+
+        // Get user info with token
+        try {
+          const response = await api.get("/auth/me");
+          setUser(response.data);
+        } catch (error) {
+          // If error, token might be invalid - clear it
+          console.error("Error fetching user data:", error);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   // Login function
-  const login = (userData) => {
-    if (DEV_MODE) {
-      setUser(DEV_USER);
-      localStorage.setItem("user", JSON.stringify(DEV_USER));
-      navigate("/");
-      return;
-    }
+  const login = async (credentials) => {
+    try {
+      const response = await api.post("/auth/login", credentials);
+      const { token, user: userData } = response.data;
 
-    // For production
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    navigate("/");
+      // Store token and user data
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      setUser(userData);
+      return { success: true };
+    } catch (error) {
+      console.error("Login error:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || "Login failed",
+      };
+    }
   };
 
   // Logout function
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
     navigate("/login");
   };
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    return DEV_MODE ? true : !!user;
+    return !!localStorage.getItem("token");
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isAuthenticated, loading }}
+      value={{
+        user,
+        login,
+        logout,
+        isAuthenticated,
+        loading,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -70,5 +94,9 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };

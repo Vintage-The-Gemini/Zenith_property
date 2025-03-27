@@ -1,5 +1,6 @@
 // frontend/src/services/propertyService.js
 import api from "./api";
+import { getErrorMessage } from "../utils/errorHandling";
 
 /**
  * Get all properties
@@ -11,7 +12,7 @@ export const getAllProperties = async () => {
     return response.data;
   } catch (error) {
     console.error("Error fetching properties:", error);
-    throw error;
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -26,7 +27,7 @@ export const getPropertyById = async (id) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching property details:", error);
-    throw error;
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -41,7 +42,7 @@ export const createProperty = async (propertyData) => {
     return response.data;
   } catch (error) {
     console.error("Error creating property:", error);
-    throw error;
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -57,7 +58,7 @@ export const updateProperty = async (id, propertyData) => {
     return response.data;
   } catch (error) {
     console.error("Error updating property:", error);
-    throw error;
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -72,7 +73,22 @@ export const deleteProperty = async (id) => {
     return response.data;
   } catch (error) {
     console.error("Error deleting property:", error);
-    throw error;
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+/**
+ * Get units for a property
+ * @param {string} propertyId - Property ID
+ * @returns {Promise<Array>} Array of units
+ */
+export const getPropertyUnits = async (propertyId) => {
+  try {
+    const response = await api.get(`/units?propertyId=${propertyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching property units:", error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -82,4 +98,5 @@ export default {
   createProperty,
   updateProperty,
   deleteProperty,
+  getPropertyUnits,
 };

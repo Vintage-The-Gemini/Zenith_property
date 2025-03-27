@@ -12,13 +12,22 @@ import {
   Loader2,
   Plus,
   AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import {
   getPropertyById,
   updateProperty,
   deleteProperty,
 } from "../services/propertyService";
+import {
+  addUnitToProperty,
+  updateUnit,
+  deleteUnit,
+} from "../services/unitService";
 import PropertyFormModal from "../components/properties/PropertyFormModal";
+import UnitFormModal from "../components/properties/UnitFormModal";
 import Card from "../components/ui/Card";
 
 const PropertyDetail = () => {
@@ -28,8 +37,14 @@ const PropertyDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [isPropertyFormModalOpen, setIsPropertyFormModalOpen] = useState(false);
+  const [isUnitFormModalOpen, setIsUnitFormModalOpen] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    show: false,
+    type: "",
+    id: null,
+  });
 
   useEffect(() => {
     loadProperty();
@@ -53,7 +68,7 @@ const PropertyDetail = () => {
     try {
       const updated = await updateProperty(id, updatedData);
       setProperty(updated);
-      setIsFormModalOpen(false);
+      setIsPropertyFormModalOpen(false);
     } catch (error) {
       console.error("Error updating property:", error);
       throw new Error("Failed to update property");
@@ -67,6 +82,77 @@ const PropertyDetail = () => {
     } catch (error) {
       console.error("Error deleting property:", error);
       setError("Failed to delete property. Please try again.");
+    }
+  };
+
+  const handleAddUnit = () => {
+    setSelectedUnit(null);
+    setIsUnitFormModalOpen(true);
+  };
+
+  const handleEditUnit = (unit) => {
+    setSelectedUnit(unit);
+    setIsUnitFormModalOpen(true);
+  };
+
+  const handleDeleteUnitClick = (unitId) => {
+    setDeleteConfirm({
+      show: true,
+      type: "unit",
+      id: unitId,
+    });
+  };
+
+  const handleSubmitUnit = async (unitData) => {
+    try {
+      if (selectedUnit) {
+        // Update existing unit
+        const updatedUnit = await updateUnit(selectedUnit._id, unitData);
+
+        // Update local state
+        const updatedUnits = property.units.map((unit) =>
+          unit._id === selectedUnit._id ? updatedUnit : unit
+        );
+
+        setProperty({
+          ...property,
+          units: updatedUnits,
+        });
+      } else {
+        // Add new unit
+        const newUnit = await addUnitToProperty(id, unitData);
+
+        // Update local state
+        setProperty({
+          ...property,
+          units: [...(property.units || []), newUnit],
+        });
+      }
+      setIsUnitFormModalOpen(false);
+    } catch (error) {
+      console.error("Error saving unit:", error);
+      throw new Error(error.message || "Failed to save unit");
+    }
+  };
+
+  const handleDeleteUnit = async () => {
+    try {
+      await deleteUnit(deleteConfirm.id);
+
+      // Update local state
+      const updatedUnits = property.units.filter(
+        (unit) => unit._id !== deleteConfirm.id
+      );
+
+      setProperty({
+        ...property,
+        units: updatedUnits,
+      });
+
+      setDeleteConfirm({ show: false, type: "", id: null });
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      setError("Failed to delete unit. Please try again.");
     }
   };
 
@@ -100,6 +186,42 @@ const PropertyDetail = () => {
       occupancyRate,
       totalRent,
     };
+  };
+
+  // Get badge for unit status
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "available":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Available
+          </span>
+        );
+      case "occupied":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+            <Users className="w-3 h-3 mr-1" />
+            Occupied
+          </span>
+        );
+      case "maintenance":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+            <Clock className="w-3 h-3 mr-1" />
+            Maintenance
+          </span>
+        );
+      case "reserved":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+            <Clock className="w-3 h-3 mr-1" />
+            Reserved
+          </span>
+        );
+      default:
+        return null;
+    }
   };
 
   if (loading) {
@@ -182,14 +304,20 @@ const PropertyDetail = () => {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsFormModalOpen(true)}
+            onClick={() => setIsPropertyFormModalOpen(true)}
             className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <Edit className="h-4 w-4 mr-1.5" />
             Edit
           </button>
           <button
-            onClick={() => setDeleteConfirm(true)}
+            onClick={() =>
+              setDeleteConfirm({
+                show: true,
+                type: "property",
+                id: property._id,
+              })
+            }
             className="inline-flex items-center px-3.5 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
           >
             <Trash className="h-4 w-4 mr-1.5" />
@@ -308,7 +436,10 @@ const PropertyDetail = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Units</h3>
-              <button className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <button
+                onClick={handleAddUnit}
+                className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Unit
               </button>
@@ -317,22 +448,24 @@ const PropertyDetail = () => {
             {property.units && property.units.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {property.units.map((unit) => (
-                  <Card key={unit._id} className="p-4">
+                  <Card
+                    key={unit._id}
+                    className="p-4 hover:shadow-md transition-shadow"
+                  >
                     <div className="flex justify-between">
                       <h5 className="font-medium">Unit {unit.unitNumber}</h5>
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded-full ${
-                          unit.status === "occupied"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {unit.status === "occupied" ? "Occupied" : "Vacant"}
-                      </span>
+                      {getStatusBadge(unit.status)}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      Rent: KES{unit.monthlyRent?.toLocaleString() || 0}/month
+                      Rent: KES {unit.monthlyRent?.toLocaleString() || 0}/month
                     </p>
+                    <p className="text-sm text-gray-500">
+                      {unit.bedrooms} bed, {unit.bathrooms} bath
+                      {unit.squareFootage
+                        ? `, ${unit.squareFootage} sq ft`
+                        : ""}
+                    </p>
+
                     {unit.status === "occupied" && unit.currentTenant && (
                       <div className="mt-2 pt-2 border-t border-gray-200">
                         <p className="text-sm">
@@ -341,13 +474,31 @@ const PropertyDetail = () => {
                         </p>
                       </div>
                     )}
+
+                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2">
+                      <button
+                        onClick={() => handleEditUnit(unit)}
+                        className="px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUnitClick(unit._id)}
+                        className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </Card>
                 ))}
               </div>
             ) : (
               <Card className="p-6 text-center">
                 <p className="text-gray-500">No units added yet.</p>
-                <button className="mt-4 inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <button
+                  onClick={handleAddUnit}
+                  className="mt-4 inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
                   <Plus className="h-4 w-4 mr-1.5" />
                   Add Unit
                 </button>
@@ -374,37 +525,56 @@ const PropertyDetail = () => {
       </div>
 
       {/* Property Form Modal */}
-      {isFormModalOpen && (
+      {isPropertyFormModalOpen && (
         <PropertyFormModal
-          isOpen={isFormModalOpen}
-          onClose={() => setIsFormModalOpen(false)}
+          isOpen={isPropertyFormModalOpen}
+          onClose={() => setIsPropertyFormModalOpen(false)}
           onSubmit={handleUpdateProperty}
           initialData={property}
         />
       )}
 
+      {/* Unit Form Modal */}
+      {isUnitFormModalOpen && (
+        <UnitFormModal
+          isOpen={isUnitFormModalOpen}
+          onClose={() => setIsUnitFormModalOpen(false)}
+          onSubmit={handleSubmitUnit}
+          initialData={selectedUnit}
+          propertyId={property._id}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
+      {deleteConfirm.show && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <Card className="max-w-md w-full p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Delete Property
+              Delete {deleteConfirm.type === "property" ? "Property" : "Unit"}
             </h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete{" "}
-              <span className="font-medium">{property.name}</span>? This action
-              cannot be undone and will remove all associated data including
-              units, tenants, and payment records.
+              Are you sure you want to delete this{" "}
+              {deleteConfirm.type === "property" ? "property" : "unit"}? This
+              action cannot be undone
+              {deleteConfirm.type === "property"
+                ? " and will remove all associated data including units, tenants, and payment records."
+                : "."}
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setDeleteConfirm(false)}
+                onClick={() =>
+                  setDeleteConfirm({ show: false, type: "", id: null })
+                }
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
-                onClick={handleDeleteProperty}
+                onClick={
+                  deleteConfirm.type === "property"
+                    ? handleDeleteProperty
+                    : handleDeleteUnit
+                }
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
               >
                 Delete
