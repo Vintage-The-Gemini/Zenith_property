@@ -17,22 +17,47 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log request for debugging (remove in production)
+    console.log(
+      `Making ${config.method.toUpperCase()} request to: ${config.url}`
+    );
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
 );
 
 // Error handling interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful response for debugging (remove in production)
+    console.log(`Response from ${response.config.url}:`, response.status);
+    return response;
+  },
   (error) => {
     if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error(
+        "Response error:",
+        error.response.status,
+        error.response.data
+      );
+
       switch (error.response.status) {
         case 401:
           console.error("Unauthorized access - redirecting to login");
           localStorage.removeItem("user");
           localStorage.removeItem("token");
+          // Use window.location instead of navigate since this is outside React component
           window.location.href = "/login";
+          break;
+        case 403:
+          console.error("Forbidden - insufficient permissions");
           break;
         case 404:
           console.error("Resource not found");
@@ -44,9 +69,11 @@ api.interceptors.response.use(
           console.error("API Error:", error.response.data);
       }
     } else if (error.request) {
-      console.error("Network Error:", error.request);
+      // The request was made but no response was received
+      console.error("Network Error - No response received:", error.request);
     } else {
-      console.error("Error:", error.message);
+      // Something happened in setting up the request that triggered an Error
+      console.error("Request setup error:", error.message);
     }
 
     return Promise.reject(error);

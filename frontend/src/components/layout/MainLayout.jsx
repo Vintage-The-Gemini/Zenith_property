@@ -13,12 +13,15 @@ import {
   X,
   Sun,
   Moon,
+  LogOut,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 
 const MainLayout = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigationItems = [
@@ -30,6 +33,13 @@ const MainLayout = ({ children }) => {
     { name: "Reports", path: "/reports", icon: BarChart2 },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
+
+  // Close sidebar on mobile when navigating
+  const closeSidebar = () => {
+    if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -68,6 +78,7 @@ const MainLayout = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.path}
+                onClick={closeSidebar}
                 className={`flex items-center px-2 py-2 rounded-md text-sm font-medium ${
                   location.pathname === item.path
                     ? "text-primary-600 bg-primary-50 dark:text-primary-400 dark:bg-gray-700"
@@ -80,7 +91,7 @@ const MainLayout = ({ children }) => {
             ))}
           </nav>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={toggleTheme}
               className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -96,6 +107,14 @@ const MainLayout = ({ children }) => {
                   Dark Mode
                 </>
               )}
+            </button>
+
+            <button
+              onClick={logout}
+              className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
             </button>
           </div>
         </div>

@@ -95,17 +95,17 @@ const UnitFormModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Home className="h-6 w-6 text-primary-600" />
-            <h2 className="text-xl font-semibold">
+            <Home className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {isEditMode ? "Edit Unit" : "Add New Unit"}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             disabled={isLoading}
           >
             <X className="h-6 w-6" />
@@ -114,21 +114,21 @@ const UnitFormModal = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm">
               {error}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Unit Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 name="unitNumber"
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={formData.unitNumber}
                 onChange={handleChange}
                 placeholder="e.g. 101, A1, etc."
@@ -137,12 +137,12 @@ const UnitFormModal = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Unit Type
                 </label>
                 <select
                   name="type"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   value={formData.type}
                   onChange={handleChange}
                 >
@@ -151,12 +151,12 @@ const UnitFormModal = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Status
                 </label>
                 <select
                   name="status"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   value={formData.status}
                   onChange={handleChange}
                 >
@@ -170,26 +170,26 @@ const UnitFormModal = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Bedrooms
                 </label>
                 <input
                   type="number"
                   name="bedrooms"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   value={formData.bedrooms}
                   onChange={handleChange}
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Bathrooms
                 </label>
                 <input
                   type="number"
                   name="bathrooms"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   value={formData.bathrooms}
                   onChange={handleChange}
                   min="0"
@@ -199,13 +199,13 @@ const UnitFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Square Footage
               </label>
               <input
                 type="number"
                 name="squareFootage"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={formData.squareFootage}
                 onChange={handleChange}
                 min="0"
@@ -215,7 +215,7 @@ const UnitFormModal = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Monthly Rent (KES) <span className="text-red-500">*</span>
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -226,7 +226,7 @@ const UnitFormModal = ({
                     type="number"
                     name="monthlyRent"
                     required
-                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     value={formData.monthlyRent}
                     onChange={handleChange}
                     min="0"
@@ -236,7 +236,7 @@ const UnitFormModal = ({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Security Deposit (KES)
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
@@ -246,7 +246,7 @@ const UnitFormModal = ({
                   <input
                     type="number"
                     name="securityDeposit"
-                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     value={formData.securityDeposit}
                     onChange={handleChange}
                     min="0"
@@ -262,25 +262,25 @@ const UnitFormModal = ({
                 type="checkbox"
                 name="furnished"
                 id="furnished"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
                 checked={formData.furnished}
                 onChange={handleChange}
               />
               <label
                 htmlFor="furnished"
-                className="ml-2 block text-sm text-gray-700"
+                className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
               >
                 This unit is furnished
               </label>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Description
               </label>
               <textarea
                 name="description"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={formData.description}
                 onChange={handleChange}
                 rows="3"
@@ -293,14 +293,14 @@ const UnitFormModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading

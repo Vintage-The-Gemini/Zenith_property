@@ -1,10 +1,10 @@
 // frontend/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
-// Mock development user
+// Mock development user - always authenticated in development
 const DEV_USER = {
   id: "dev-user-id",
   firstName: "Development",
@@ -13,14 +13,13 @@ const DEV_USER = {
   role: "admin",
 };
 
-// Development mode flag
+// Development mode flag - set to true to bypass auth
 const DEV_MODE = true;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(DEV_MODE ? DEV_USER : null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     // In production, check for user in localStorage on initial load
@@ -32,19 +31,6 @@ export const AuthProvider = ({ children }) => {
     }
     setLoading(false);
   }, []);
-
-  // Prevent redirect loops by checking current path
-  useEffect(() => {
-    // If we're not on the login page and user is not authenticated in production mode
-    if (
-      !DEV_MODE &&
-      !user &&
-      !location.pathname.includes("/login") &&
-      !location.pathname.includes("/register")
-    ) {
-      navigate("/login");
-    }
-  }, [user, location.pathname, navigate]);
 
   // Login function
   const login = (userData) => {
@@ -65,6 +51,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     navigate("/login");
   };
 

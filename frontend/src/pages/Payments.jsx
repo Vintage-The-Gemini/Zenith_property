@@ -12,7 +12,6 @@ import {
   XCircle,
 } from "lucide-react";
 import Card from "../components/ui/Card";
-import api from "../services/api";
 
 function Payments() {
   const [payments, setPayments] = useState([]);
@@ -22,6 +21,54 @@ function Payments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Demo data for development
+  const demoPayments = [
+    {
+      _id: "pay1",
+      tenant: { firstName: "John", lastName: "Doe" },
+      property: { name: "Sunset Apartments" },
+      unit: { unitNumber: "101" },
+      amount: 15000,
+      paymentDate: new Date(2025, 2, 15),
+      status: "completed",
+      reference: "REF-2025031501",
+      receiptNumber: "RCPT-202503-1234",
+    },
+    {
+      _id: "pay2",
+      tenant: { firstName: "Jane", lastName: "Smith" },
+      property: { name: "Ocean View Condos" },
+      unit: { unitNumber: "202" },
+      amount: 25000,
+      paymentDate: new Date(2025, 2, 10),
+      status: "completed",
+      reference: "REF-2025031002",
+      receiptNumber: "RCPT-202503-5678",
+    },
+    {
+      _id: "pay3",
+      tenant: { firstName: "Mike", lastName: "Johnson" },
+      property: { name: "Sunset Apartments" },
+      unit: { unitNumber: "305" },
+      amount: 18000,
+      paymentDate: new Date(2025, 3, 1),
+      status: "pending",
+      reference: "REF-2025040103",
+      receiptNumber: "RCPT-202504-9012",
+    },
+    {
+      _id: "pay4",
+      tenant: { firstName: "Sarah", lastName: "Williams" },
+      property: { name: "Downtown Commercial Plaza" },
+      unit: { unitNumber: "B12" },
+      amount: 45000,
+      paymentDate: new Date(2025, 2, 25),
+      status: "failed",
+      reference: "REF-2025032504",
+      receiptNumber: "RCPT-202503-3456",
+    },
+  ];
+
   useEffect(() => {
     fetchPayments();
   }, []);
@@ -29,8 +76,22 @@ function Payments() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/payments");
-      setPayments(response.data);
+      console.log("Loading payments...");
+
+      // For development, use demo data
+      if (process.env.NODE_ENV === "development") {
+        console.log("Using demo payments data");
+        setTimeout(() => {
+          setPayments(demoPayments);
+          setLoading(false);
+        }, 500);
+        return;
+      }
+
+      // For production, fetch from API
+      const response = await fetch("/api/payments");
+      const data = await response.json();
+      setPayments(data);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching payments:", err);
@@ -230,7 +291,7 @@ function Payments() {
                     {payment.unit?.unitNumber || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    ${payment.amount?.toLocaleString() || "0"}
+                    KES {payment.amount?.toLocaleString() || "0"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {formatDate(payment.paymentDate)}
@@ -252,11 +313,13 @@ function Payments() {
         </div>
       )}
 
-      {/* Payment Modal will be implemented later */}
+      {/* Payment Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full p-6">
-            <h2 className="text-xl font-semibold mb-6">Record Payment</h2>
+          <Card className="max-w-lg w-full p-6 dark:bg-gray-800">
+            <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">
+              Record Payment
+            </h2>
             <p className="text-center py-8 text-gray-500 dark:text-gray-400">
               Payment form will be implemented soon.
             </p>
@@ -268,7 +331,7 @@ function Payments() {
                 Close
               </button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

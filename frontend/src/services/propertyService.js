@@ -76,77 +76,10 @@ export const deleteProperty = async (id) => {
   }
 };
 
-/**
- * Get units for a property
- * @param {string} propertyId - Property ID
- * @returns {Promise<Array>} Array of units
- */
-export const getPropertyUnits = async (propertyId) => {
-  try {
-    const response = await api.get(`/units?propertyId=${propertyId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching property units:", error);
-    throw error;
-  }
-};
-
-/**
- * Add a unit to a property
- * @param {string} propertyId - Property ID
- * @param {Object} unitData - Unit data
- * @returns {Promise<Object>} Created unit
- */
-export const addUnitToProperty = async (propertyId, unitData) => {
-  try {
-    const unitWithPropertyId = { ...unitData, propertyId };
-    const response = await api.post("/units", unitWithPropertyId);
-    return response.data;
-  } catch (error) {
-    console.error("Error adding unit to property:", error);
-    throw error;
-  }
-};
-
-/**
- * Update a unit
- * @param {string} unitId - Unit ID
- * @param {Object} unitData - Updated unit data
- * @returns {Promise<Object>} Updated unit
- */
-export const updateUnit = async (unitId, unitData) => {
-  try {
-    const response = await api.put(`/units/${unitId}`, unitData);
-    return response.data;
-  } catch (error) {
-    console.error("Error updating unit:", error);
-    throw error;
-  }
-};
-
-/**
- * Delete a unit
- * @param {string} unitId - Unit ID
- * @returns {Promise<Object>} Response data
- */
-export const deleteUnit = async (unitId) => {
-  try {
-    const response = await api.delete(`/units/${unitId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error deleting unit:", error);
-    throw error;
-  }
-};
-
 export default {
   getAllProperties,
   getPropertyById,
   createProperty,
   updateProperty,
   deleteProperty,
-  getPropertyUnits,
-  addUnitToProperty,
-  updateUnit,
-  deleteUnit,
 };

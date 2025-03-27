@@ -1,3 +1,4 @@
+// frontend/src/context/ThemeContext.jsx
 import { createContext, useState, useContext, useEffect } from "react";
 
 // Create theme context
