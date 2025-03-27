@@ -1,0 +1,28 @@
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2024-12-16T14:26:37.268Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2024-12-16T14:28:47.316Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2024-12-16T14:28:47.614Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2024-12-16T14:28:47.628Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2024-12-16T14:31:56.945Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2024-12-16T14:31:56.947Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2024-12-16T14:31:56.970Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2024-12-16T18:07:44.891Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2024-12-17T08:23:16.699Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-01-24T19:15:57.110Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-11T06:59:30.487Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-11T06:59:30.495Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-11T07:09:32.601Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-11T07:09:32.616Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-11T07:10:51.680Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-11T07:10:51.686Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-26T18:19:59.955Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-26T18:19:59.966Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-26T18:21:08.939Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-26T18:21:08.949Z"}
+{"level":"warn","message":"Port 5000 is busy, trying 50001","timestamp":"2025-03-26T18:28:13.043Z"}
+{"level":"info","message":"Server started on port 50001","timestamp":"2025-03-26T18:28:13.052Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T18:29:42.723Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T18:36:38.239Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T18:45:03.695Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T18:47:16.835Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T19:13:51.243Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-26T20:37:57.230Z"}
