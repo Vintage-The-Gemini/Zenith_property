@@ -59,6 +59,13 @@ export const createTenant = async (req, res) => {
       return res.status(404).json({ error: "Unit not found" });
     }
 
+    // Verify that unit belongs to the specified property
+    if (unit.propertyId.toString() !== propertyId) {
+      return res.status(400).json({
+        error: "Unit does not belong to the specified property",
+      });
+    }
+
     if (unit.status !== "available" && unit.status !== "reserved") {
       return res
         .status(400)

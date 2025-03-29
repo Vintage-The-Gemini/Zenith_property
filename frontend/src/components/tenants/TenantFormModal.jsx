@@ -176,6 +176,11 @@ const TenantFormModal = ({
       return;
     }
 
+    if (!formData.propertyId) {
+      setError("Property ID is required");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -189,6 +194,8 @@ const TenantFormModal = ({
             parseFloat(formData.leaseDetails.securityDeposit) || 0,
         },
       };
+
+      console.log("Submitting tenant data:", tenantData);
 
       let result;
       if (isEditMode) {

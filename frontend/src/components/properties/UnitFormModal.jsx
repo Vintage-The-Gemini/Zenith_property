@@ -129,6 +129,7 @@ const UnitFormModal = ({
         delete unitData.commercialUnitType;
       }
 
+      console.log("Submitting unit data:", unitData);
       await onSubmit(unitData);
       onClose();
     } catch (error) {
@@ -242,6 +243,9 @@ const UnitFormModal = ({
                 >
                   <option value="rental">Rental</option>
                   <option value="bnb">BnB/Short Stay</option>
+                  {isCommercial && (
+                    <option value="commercial">Commercial</option>
+                  )}
                 </select>
               </div>
               <div>

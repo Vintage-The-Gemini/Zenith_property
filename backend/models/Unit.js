@@ -129,6 +129,15 @@ const unitSchema = new mongoose.Schema(
 // Create a compound index on propertyId and unitNumber to ensure uniqueness
 unitSchema.index({ propertyId: 1, unitNumber: 1 }, { unique: true });
 
+// Pre-validate hook to ensure floorId is provided
+unitSchema.pre("validate", function (next) {
+  if (!this.floorId) {
+    next(new Error("Floor ID is required for a unit"));
+  } else {
+    next();
+  }
+});
+
 // Middleware to handle unit status changes
 unitSchema.pre("save", async function (next) {
   // Track previous status for status change operations
@@ -164,5 +173,83 @@ unitSchema.pre("save", function (next) {
   this._original = this.toObject();
   next();
 });
+
+// Virtual for getting full property name
+unitSchema.virtual("fullPropertyName").get(function () {
+  return this.propertyId
+    ? `${this.propertyId.name} - Unit ${this.unitNumber}`
+    : `Unit ${this.unitNumber}`;
+});
+
+// Virtual for getting occupancy status with tenant info
+unitSchema.virtual("occupancyDetails").get(function () {
+  if (this.status !== "occupied" || !this.currentTenant) {
+    return { occupied: false };
+  }
+
+  return {
+    occupied: true,
+    tenantId: this.currentTenant._id || this.currentTenant,
+    tenantName:
+      this.currentTenant.firstName && this.currentTenant.lastName
+        ? `${this.currentTenant.firstName} ${this.currentTenant.lastName}`
+        : "Unknown tenant",
+  };
+});
+
+// Virtual for getting total maintenance costs
+unitSchema.virtual("totalMaintenanceCost").get(function () {
+  if (!this.maintenanceHistory || this.maintenanceHistory.length === 0) {
+    return 0;
+  }
+
+  return this.maintenanceHistory.reduce((total, record) => {
+    return total + (record.cost || 0);
+  }, 0);
+});
+
+// Virtual for getting active maintenance issues count
+unitSchema.virtual("activeMaintenanceIssuesCount").get(function () {
+  if (!this.maintenanceHistory) return 0;
+
+  // This is just a placeholder - in a real system, you'd track active vs. resolved issues
+  // For now, we'll consider issues from the last 30 days as "active"
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  return this.maintenanceHistory.filter((record) => {
+    const recordDate = new Date(record.date);
+    return recordDate >= thirtyDaysAgo;
+  }).length;
+});
+
+// Helper method to get formatted rent amount
+unitSchema.methods.getFormattedRent = function () {
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "KES",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
+  return formatter.format(this.monthlyRent || 0);
+};
+
+// Helper method to check if unit is suitable for a specific property type
+unitSchema.methods.isSuitableForPropertyType = function (propertyType) {
+  if (propertyType === "commercial" && this.type !== "commercial") {
+    return false;
+  }
+
+  if (
+    propertyType === "residential" &&
+    this.type !== "rental" &&
+    this.type !== "bnb"
+  ) {
+    return false;
+  }
+
+  return true;
+};
 
 export default mongoose.model("Unit", unitSchema);
