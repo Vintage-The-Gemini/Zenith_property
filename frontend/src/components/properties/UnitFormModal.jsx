@@ -9,11 +9,12 @@ const UnitFormModal = ({
   onSubmit,
   initialData = null,
   propertyId,
-  floors = [],
+  floorNumber = 1,
   propertyType = "apartment", // Default property type
 }) => {
   const isEditMode = !!initialData;
-  const isCommercial = propertyType === "commercial";
+  const isCommercial =
+    propertyType === "commercial" || propertyType === "mixed-use";
 
   const [formData, setFormData] = useState({
     unitNumber: "",
@@ -29,8 +30,7 @@ const UnitFormModal = ({
     // Commercial specific fields
     commercialUnitType: isCommercial ? "office" : "",
     // Floor relationship
-    floorId: floors.length > 0 ? floors[0]._id : "",
-    floorNumber: floors.length > 0 ? floors[0].number : 1,
+    floorNumber: floorNumber,
   });
 
   const [error, setError] = useState("");
@@ -51,8 +51,7 @@ const UnitFormModal = ({
         description: initialData.description || "",
         commercialUnitType:
           initialData.commercialUnitType || (isCommercial ? "office" : ""),
-        floorId: initialData.floorId || "",
-        floorNumber: initialData.floorNumber || 1,
+        floorNumber: initialData.floorNumber || floorNumber,
       });
     } else {
       // Reset for new unit
@@ -68,28 +67,13 @@ const UnitFormModal = ({
         furnished: false,
         description: "",
         commercialUnitType: isCommercial ? "office" : "",
-        floorId: floors.length > 0 ? floors[0]._id : "",
-        floorNumber: floors.length > 0 ? floors[0].number : 1,
+        floorNumber: floorNumber,
       });
     }
-  }, [initialData, isCommercial, floors]);
+  }, [initialData, isCommercial, floorNumber]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    if (name === "floorId" && value) {
-      // When floor is selected from dropdown, also update floorNumber
-      const selectedFloor = floors.find((floor) => floor._id === value);
-      if (selectedFloor) {
-        setFormData({
-          ...formData,
-          [name]: value,
-          floorNumber: selectedFloor.number,
-        });
-        return;
-      }
-    }
-
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
@@ -108,11 +92,6 @@ const UnitFormModal = ({
 
     if (!formData.monthlyRent) {
       setError("Monthly rent is required");
-      return;
-    }
-
-    if (!formData.floorId && !formData.floorNumber) {
-      setError("Floor information is required");
       return;
     }
 
@@ -209,39 +188,17 @@ const UnitFormModal = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Floor <span className="text-red-500">*</span>
+                  Floor Number <span className="text-red-500">*</span>
                 </label>
-                {floors.length > 0 ? (
-                  <select
-                    name="floorId"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={formData.floorId}
-                    onChange={handleChange}
-                    required
-                  >
-                    {floors.map((floor) => (
-                      <option key={floor._id} value={floor._id}>
-                        {floor.name || `Floor ${floor.number}`}
-                      </option>
-                    ))}
-                    <option value="">Add to New Floor</option>
-                  </select>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Floor Number
-                    </label>
-                    <input
-                      type="number"
-                      name="floorNumber"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      value={formData.floorNumber}
-                      onChange={handleChange}
-                      min="1"
-                      required
-                    />
-                  </div>
-                )}
+                <input
+                  type="number"
+                  name="floorNumber"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={formData.floorNumber}
+                  onChange={handleChange}
+                  min="1"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
