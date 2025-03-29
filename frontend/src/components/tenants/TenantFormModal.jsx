@@ -66,11 +66,18 @@ const TenantFormModal = ({
         },
       });
     } else if (units.length > 0) {
-      // Pre-select the first unit if no tenant data is provided
-      setFormData((prevData) => ({
-        ...prevData,
-        unitId: units[0]._id || "",
-      }));
+      // Pre-select the first available unit if no tenant data is provided
+      // Also pre-fill rent amount from unit data if available
+      const availableUnit =
+        units.find((unit) => unit.status === "available") || units[0];
+      if (availableUnit) {
+        setFormData((prevData) => ({
+          ...prevData,
+          unitId: availableUnit._id || "",
+          rentAmount: availableUnit.monthlyRent || "",
+          securityDeposit: availableUnit.securityDeposit || "",
+        }));
+      }
     }
   }, [initialData, units]);
 
@@ -87,6 +94,23 @@ const TenantFormModal = ({
           [field]: value,
         },
       });
+    } else if (name === "unitId") {
+      // When unit is changed, auto-populate rent amount if available
+      const selectedUnit = units.find((unit) => unit._id === value);
+      if (selectedUnit) {
+        setFormData({
+          ...formData,
+          unitId: value,
+          rentAmount: selectedUnit.monthlyRent || formData.rentAmount,
+          securityDeposit:
+            selectedUnit.securityDeposit || formData.securityDeposit,
+        });
+      } else {
+        setFormData({
+          ...formData,
+          unitId: value,
+        });
+      }
     } else {
       setFormData({
         ...formData,
