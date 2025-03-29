@@ -54,45 +54,6 @@ const PropertyFormModal = ({
     }
   }, [initialData]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    // Basic validation
-    if (!formData.name.trim()) {
-      setError("Property name is required");
-      return;
-    }
-
-    if (
-      !formData.address.street.trim() ||
-      !formData.address.city.trim() ||
-      !formData.address.state.trim() ||
-      !formData.address.zipCode.trim() ||
-      !formData.address.country.trim()
-    ) {
-      setError("All address fields are required");
-      return;
-    }
-
-    // Make sure floor numbers are unique
-    const floorNumbers = formData.floors.map((floor) => floor.number);
-    if (new Set(floorNumbers).size !== floorNumbers.length) {
-      setError("Floor numbers must be unique");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await onSubmit(formData);
-      onClose();
-    } catch (error) {
-      setError(error.message || "Failed to save property");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -170,6 +131,45 @@ const PropertyFormModal = ({
       ...formData,
       amenities: updatedAmenities,
     });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    // Basic validation
+    if (!formData.name.trim()) {
+      setError("Property name is required");
+      return;
+    }
+
+    if (
+      !formData.address.street.trim() ||
+      !formData.address.city.trim() ||
+      !formData.address.state.trim() ||
+      !formData.address.zipCode.trim() ||
+      !formData.address.country.trim()
+    ) {
+      setError("All address fields are required");
+      return;
+    }
+
+    // Make sure floor numbers are unique
+    const floorNumbers = formData.floors.map((floor) => floor.number);
+    if (new Set(floorNumbers).size !== floorNumbers.length) {
+      setError("Floor numbers must be unique");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await onSubmit(formData);
+      onClose();
+    } catch (error) {
+      setError(error.message || "Failed to save property");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;

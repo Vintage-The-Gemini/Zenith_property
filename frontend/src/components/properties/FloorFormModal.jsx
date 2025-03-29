@@ -15,6 +15,7 @@ const FloorFormModal = ({
     number: "",
     name: "",
     notes: "",
+    propertyId: propertyId,
   });
 
   const [error, setError] = useState("");
@@ -26,16 +27,18 @@ const FloorFormModal = ({
         number: initialData.number || "",
         name: initialData.name || "",
         notes: initialData.notes || "",
+        propertyId: propertyId,
       });
     } else {
-      // Reset for new floor
+      // Reset form for new floor
       setFormData({
         number: "",
         name: "",
         notes: "",
+        propertyId: propertyId,
       });
     }
-  }, [initialData]);
+  }, [initialData, propertyId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -84,35 +87,34 @@ const FloorFormModal = ({
       <Card className="max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <Building2 className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <Building2 className="h-6 w-6 text-primary-600" />
+            <h2 className="text-xl font-medium">
               {isEditMode ? "Edit Floor" : "Add New Floor"}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            disabled={isLoading}
+            className="text-gray-400 hover:text-gray-500"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm mb-4">
+          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Floor Number <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700">
+              Floor Number
             </label>
             <input
               type="number"
               name="number"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.number}
               onChange={handleChange}
               min="1"
@@ -121,33 +123,33 @@ const FloorFormModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Floor Name
             </label>
             <input
               type="text"
               name="name"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g. Ground Floor, First Floor, etc."
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               If left blank, "Floor {number}" will be used
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Notes
             </label>
             <textarea
               name="notes"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              rows="3"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.notes}
               onChange={handleChange}
-              rows="3"
-              placeholder="Any additional information about this floor"
+              placeholder="Additional information about this floor..."
             />
           </div>
 
@@ -155,14 +157,14 @@ const FloorFormModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
               disabled={isLoading}
             >
               {isLoading
