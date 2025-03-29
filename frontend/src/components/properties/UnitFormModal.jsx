@@ -9,7 +9,8 @@ const UnitFormModal = ({
   onSubmit,
   initialData = null,
   propertyId,
-  propertyType = "apartment", // Add this prop to receive property type
+  floors = [],
+  propertyType = "apartment", // Default property type
 }) => {
   const isEditMode = !!initialData;
   const isCommercial = propertyType === "commercial";
@@ -26,8 +27,10 @@ const UnitFormModal = ({
     furnished: false,
     description: "",
     // Commercial specific fields
-    commercialUnitType: "office", // office, retail, warehouse, etc.
-    floorNumber: 1,
+    commercialUnitType: isCommercial ? "office" : "",
+    // Floor relationship
+    floorId: floors.length > 0 ? floors[0]._id : "",
+    floorNumber: floors.length > 0 ? floors[0].number : 1,
   });
 
   const [error, setError] = useState("");
@@ -46,11 +49,13 @@ const UnitFormModal = ({
         securityDeposit: initialData.securityDeposit || "",
         furnished: initialData.furnished || false,
         description: initialData.description || "",
-        commercialUnitType: initialData.commercialUnitType || "office",
+        commercialUnitType:
+          initialData.commercialUnitType || (isCommercial ? "office" : ""),
+        floorId: initialData.floorId || "",
         floorNumber: initialData.floorNumber || 1,
       });
     } else {
-      // Reset form data for new unit
+      // Reset for new unit
       setFormData({
         unitNumber: "",
         type: "rental",
@@ -62,14 +67,29 @@ const UnitFormModal = ({
         securityDeposit: "",
         furnished: false,
         description: "",
-        commercialUnitType: "office",
-        floorNumber: 1,
+        commercialUnitType: isCommercial ? "office" : "",
+        floorId: floors.length > 0 ? floors[0]._id : "",
+        floorNumber: floors.length > 0 ? floors[0].number : 1,
       });
     }
-  }, [initialData, isCommercial]);
+  }, [initialData, isCommercial, floors]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === "floorId" && value) {
+      // When floor is selected from dropdown, also update floorNumber
+      const selectedFloor = floors.find((floor) => floor._id === value);
+      if (selectedFloor) {
+        setFormData({
+          ...formData,
+          [name]: value,
+          floorNumber: selectedFloor.number,
+        });
+        return;
+      }
+    }
+
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
@@ -91,6 +111,11 @@ const UnitFormModal = ({
       return;
     }
 
+    if (!formData.floorId && !formData.floorNumber) {
+      setError("Floor information is required");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -99,18 +124,32 @@ const UnitFormModal = ({
         ...formData,
         propertyId,
         monthlyRent: parseFloat(formData.monthlyRent),
-        securityDeposit: parseFloat(formData.securityDeposit) || 0,
-        bedrooms: parseInt(formData.bedrooms),
-        bathrooms: parseFloat(formData.bathrooms),
+        securityDeposit: formData.securityDeposit
+          ? parseFloat(formData.securityDeposit)
+          : 0,
+        bedrooms: parseInt(formData.bedrooms || 0),
+        bathrooms: parseFloat(formData.bathrooms || 0),
         squareFootage: formData.squareFootage
           ? parseInt(formData.squareFootage)
           : null,
         floorNumber: parseInt(formData.floorNumber),
       };
 
+      // Remove any fields that shouldn't be sent for the property type
+      if (isCommercial) {
+        // Commercial units don't need residential specifics
+        unitData.bedrooms = 0;
+        unitData.bathrooms = 0;
+        unitData.furnished = false;
+      } else {
+        // Residential units don't need commercial specifics
+        delete unitData.commercialUnitType;
+      }
+
       await onSubmit(unitData);
       onClose();
     } catch (error) {
+      console.error("Error saving unit:", error);
       setError(error.message || "Failed to save unit");
     } finally {
       setIsLoading(false);
@@ -170,17 +209,39 @@ const UnitFormModal = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Floor Number
+                  Floor <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  name="floorNumber"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.floorNumber}
-                  onChange={handleChange}
-                  min="1"
-                  required
-                />
+                {floors.length > 0 ? (
+                  <select
+                    name="floorId"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.floorId}
+                    onChange={handleChange}
+                    required
+                  >
+                    {floors.map((floor) => (
+                      <option key={floor._id} value={floor._id}>
+                        {floor.name || `Floor ${floor.number}`}
+                      </option>
+                    ))}
+                    <option value="">Add to New Floor</option>
+                  </select>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Floor Number
+                    </label>
+                    <input
+                      type="number"
+                      name="floorNumber"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={formData.floorNumber}
+                      onChange={handleChange}
+                      min="1"
+                      required
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

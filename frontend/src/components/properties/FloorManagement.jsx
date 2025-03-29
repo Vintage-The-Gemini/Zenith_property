@@ -1,13 +1,13 @@
-// src/components/properties/FloorManagement.jsx
+// frontend/src/components/properties/FloorManagement.jsx
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash, Building2, Home } from "lucide-react";
+import { Plus, Edit, Trash, Building2, Home, AlertTriangle } from "lucide-react";
 import Card from "../ui/Card";
+import FloorFormModal from "./FloorFormModal";
+import UnitFormModal from "./UnitFormModal";
 import floorService from "../../services/floorService";
 import unitService from "../../services/unitService";
-import UnitFormModal from "./UnitFormModal";
-import FloorFormModal from "./FloorFormModal";
 
-const FloorManagement = ({ propertyId, onUpdate }) => {
+const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) => {
   const [floors, setFloors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,27 +15,27 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
-  const [activeFloorId, setActiveFloorId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({
     show: false,
     type: "",
     id: null,
   });
+  const isCommercial = propertyType === "commercial" || propertyType === "mixed-use";
 
   useEffect(() => {
-    loadFloors();
+    if (propertyId) {
+      loadFloors();
+    }
   }, [propertyId]);
 
   const loadFloors = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Get floors for this property
       const data = await floorService.getFloorsByProperty(propertyId);
       setFloors(data);
-      // Set first floor as active if exists and none is selected
-      if (data.length > 0 && !activeFloorId) {
-        setActiveFloorId(data[0]._id);
-      }
     } catch (err) {
       console.error("Error loading floors:", err);
       setError("Failed to load floors. Please try again.");
@@ -44,6 +44,7 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
     }
   };
 
+  // Floor CRUD operations
   const handleAddFloor = () => {
     setSelectedFloor(null);
     setIsFloorModalOpen(true);
@@ -54,10 +55,11 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
     setIsFloorModalOpen(true);
   };
 
-  const handleDeleteFloor = async (id) => {
+  const handleDeleteFloor = async () => {
     try {
-      await floorService.deleteFloor(id);
+      await floorService.deleteFloor(deleteConfirm.id);
       loadFloors();
+      if (onUpdate) onUpdate();
       setDeleteConfirm({ show: false, type: "", id: null });
     } catch (error) {
       console.error("Error deleting floor:", error);
@@ -65,33 +67,13 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
     }
   };
 
-  const handleAddUnit = (floorId) => {
-    setSelectedUnit(null);
-    setActiveFloorId(floorId);
-    setIsUnitModalOpen(true);
-  };
-
-  const handleEditUnit = (unit) => {
-    setSelectedUnit(unit);
-    setIsUnitModalOpen(true);
-  };
-
-  const handleDeleteUnit = async (id) => {
-    try {
-      await unitService.deleteUnit(id);
-      loadFloors();
-      setDeleteConfirm({ show: false, type: "", id: null });
-    } catch (error) {
-      console.error("Error deleting unit:", error);
-      setError(error.message || "Failed to delete unit");
-    }
-  };
-
   const handleSubmitFloor = async (floorData) => {
     try {
       if (selectedFloor) {
+        // Update existing floor
         await floorService.updateFloor(selectedFloor._id, floorData);
       } else {
+        // Create new floor
         await floorService.createFloor({
           ...floorData,
           propertyId,
@@ -102,18 +84,44 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error("Error saving floor:", error);
-      setError(error.message || "Failed to save floor");
+      throw new Error(error.message || "Failed to save floor");
+    }
+  };
+
+  // Unit CRUD operations
+  const handleAddUnit = (floorId) => {
+    setSelectedUnit(null);
+    setSelectedFloor(floors.find(floor => floor._id === floorId));
+    setIsUnitModalOpen(true);
+  };
+
+  const handleEditUnit = (unit) => {
+    setSelectedUnit(unit);
+    setIsUnitModalOpen(true);
+  };
+
+  const handleDeleteUnit = async () => {
+    try {
+      await unitService.deleteUnit(deleteConfirm.id);
+      loadFloors();
+      if (onUpdate) onUpdate();
+      setDeleteConfirm({ show: false, type: "", id: null });
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      setError(error.message || "Failed to delete unit");
     }
   };
 
   const handleSubmitUnit = async (unitData) => {
     try {
       if (selectedUnit) {
+        // Update existing unit
         await unitService.updateUnit(selectedUnit._id, unitData);
       } else {
+        // Create new unit
         await unitService.addUnitToProperty(propertyId, {
           ...unitData,
-          floorId: activeFloorId,
+          floorId: selectedFloor?._id,
         });
       }
       setIsUnitModalOpen(false);
@@ -121,18 +129,35 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error("Error saving unit:", error);
-      setError(error.message || "Failed to save unit");
+      throw new Error(error.message || "Failed to save unit");
     }
+  };
+  
+  // Render status badge
+  const getStatusBadge = (status) => {
+    const statusClasses = {
+      available: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+      occupied: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+      maintenance: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
+      reserved: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+    };
+    
+    return (
+      <span className={`px-2 py-0.5 text-xs rounded-full ${statusClasses[status] || "bg-gray-100 text-gray-800"}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
   };
 
   if (loading) {
     return <div className="text-center py-4">Loading floors...</div>;
   }
-
+  
   return (
     <div className="space-y-6">
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center gap-2">
+          <AlertTriangle size={18} />
           <span>{error}</span>
           <button
             onClick={loadFloors}
@@ -220,9 +245,11 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium">Unit {unit.unitNumber}</p>
-                          <p className="text-sm text-gray-500">
-                            {unit.bedrooms} bed, {unit.bathrooms} bath
-                          </p>
+                          {!isCommercial && (
+                            <p className="text-sm text-gray-500">
+                              {unit.bedrooms} bed, {unit.bathrooms} bath
+                            </p>
+                          )}
                           <p className="text-sm text-gray-500">
                             KES {unit.monthlyRent?.toLocaleString() || 0}/month
                           </p>
@@ -250,20 +277,13 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <span
-                          className={`inline-block px-2 py-0.5 text-xs rounded-full ${
-                            unit.status === "available"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                              : unit.status === "occupied"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                              : unit.status === "maintenance"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-                          }`}
-                        >
-                          {unit.status.charAt(0).toUpperCase() +
-                            unit.status.slice(1)}
-                        </span>
+                        {getStatusBadge(unit.status)}
+                        
+                        {unit.currentTenant && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Tenant: {unit.currentTenant.firstName} {unit.currentTenant.lastName}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -307,7 +327,8 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
           onSubmit={handleSubmitUnit}
           initialData={selectedUnit}
           propertyId={propertyId}
-          floorId={activeFloorId}
+          propertyType={propertyType}
+          floors={floors}
         />
       )}
 
@@ -338,8 +359,8 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
               <button
                 onClick={() =>
                   deleteConfirm.type === "floor"
-                    ? handleDeleteFloor(deleteConfirm.id)
-                    : handleDeleteUnit(deleteConfirm.id)
+                    ? handleDeleteFloor()
+                    : handleDeleteUnit()
                 }
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
               >
@@ -351,6 +372,3 @@ const FloorManagement = ({ propertyId, onUpdate }) => {
       )}
     </div>
   );
-};
-
-export default FloorManagement;

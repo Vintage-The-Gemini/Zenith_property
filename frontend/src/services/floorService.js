@@ -5,7 +5,7 @@ import { getErrorMessage } from "../utils/errorHandling";
 /**
  * Get all floors for a property
  * @param {string} propertyId - Property ID
- * @returns {Promise<Array>} Array of floors
+ * @returns {Promise<Array>} Array of floors with their units
  */
 export const getFloorsByProperty = async (propertyId) => {
   try {
@@ -20,7 +20,7 @@ export const getFloorsByProperty = async (propertyId) => {
 /**
  * Get floor by ID
  * @param {string} id - Floor ID
- * @returns {Promise<Object>} Floor data
+ * @returns {Promise<Object>} Floor data with units
  */
 export const getFloorById = async (id) => {
   try {

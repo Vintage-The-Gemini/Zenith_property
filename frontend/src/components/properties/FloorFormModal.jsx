@@ -1,4 +1,4 @@
-// src/components/properties/FloorFormModal.jsx
+// frontend/src/components/properties/FloorFormModal.jsx
 import { useState, useEffect } from "react";
 import { X, Building2 } from "lucide-react";
 import Card from "../ui/Card";
@@ -16,6 +16,7 @@ const FloorFormModal = ({
     name: "",
     notes: "",
   });
+
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,7 +28,7 @@ const FloorFormModal = ({
         notes: initialData.notes || "",
       });
     } else {
-      // For new floor, suggest the next floor number
+      // Reset for new floor
       setFormData({
         number: "",
         name: "",
@@ -53,11 +54,23 @@ const FloorFormModal = ({
 
     try {
       setIsLoading(true);
-      await onSubmit({
+
+      // Format data for API
+      const floorData = {
         ...formData,
+        propertyId,
         number: parseInt(formData.number),
-      });
+      };
+
+      // If name is not provided, generate one
+      if (!floorData.name.trim()) {
+        floorData.name = `Floor ${floorData.number}`;
+      }
+
+      await onSubmit(floorData);
+      onClose();
     } catch (error) {
+      console.error("Error saving floor:", error);
       setError(error.message || "Failed to save floor");
     } finally {
       setIsLoading(false);
@@ -99,11 +112,11 @@ const FloorFormModal = ({
             <input
               type="number"
               name="number"
-              required
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               value={formData.number}
               onChange={handleChange}
               min="1"
+              required
             />
           </div>
 
@@ -117,10 +130,10 @@ const FloorFormModal = ({
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Ground Floor, First Floor, etc."
+              placeholder="e.g. Ground Floor, First Floor, etc."
             />
-            <p className="mt-1 text-xs text-gray-500">
-              If no name is provided, "Floor {number}" will be used
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              If left blank, "Floor {number}" will be used
             </p>
           </div>
 
@@ -134,7 +147,7 @@ const FloorFormModal = ({
               value={formData.notes}
               onChange={handleChange}
               rows="3"
-              placeholder="Any special notes about this floor"
+              placeholder="Any additional information about this floor"
             />
           </div>
 

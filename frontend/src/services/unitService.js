@@ -3,16 +3,25 @@ import api from "./api";
 import { getErrorMessage } from "../utils/errorHandling";
 
 /**
- * Get all units
- * @param {Object} filters - Filter options
+ * Get all units with optional filters
+ * @param {Object} filters - Filter options like propertyId, floorId, status
  * @returns {Promise<Array>} Array of units
  */
 export const getUnits = async (filters = {}) => {
   try {
-    const queryParams = new URLSearchParams(filters).toString();
-    const response = await api.get(
-      `/units${queryParams ? `?${queryParams}` : ""}`
-    );
+    const queryParams = new URLSearchParams();
+
+    // Add filters to query params
+    Object.keys(filters).forEach((key) => {
+      if (filters[key]) {
+        queryParams.append(key, filters[key]);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `/units?${queryString}` : "/units";
+
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error("Error fetching units:", error);
@@ -36,15 +45,51 @@ export const getUnitById = async (id) => {
 };
 
 /**
+ * Get units by floor
+ * @param {string} floorId - Floor ID
+ * @returns {Promise<Array>} Array of units on this floor
+ */
+export const getUnitsByFloor = async (floorId) => {
+  try {
+    const response = await api.get(`/units?floorId=${floorId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching units by floor:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+/**
+ * Get available units (useful for tenant assignment)
+ * @param {string} propertyId - Optional property ID to filter by
+ * @returns {Promise<Array>} Array of available units
+ */
+export const getAvailableUnits = async (propertyId = null) => {
+  try {
+    const url = propertyId
+      ? `/units?status=available&propertyId=${propertyId}`
+      : "/units?status=available";
+
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching available units:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+/**
  * Add a unit to a property
  * @param {string} propertyId - Property ID
- * @param {Object} unitData - Unit data
+ * @param {Object} unitData - Unit data including floorId or floorNumber
  * @returns {Promise<Object>} Created unit
  */
 export const addUnitToProperty = async (propertyId, unitData) => {
   try {
-    const unitWithPropertyId = { ...unitData, propertyId };
-    const response = await api.post("/units", unitWithPropertyId);
+    const response = await api.post("/units", {
+      ...unitData,
+      propertyId,
+    });
     return response.data;
   } catch (error) {
     console.error("Error adding unit to property:", error);
@@ -86,7 +131,7 @@ export const deleteUnit = async (unitId) => {
 /**
  * Update unit status
  * @param {string} unitId - Unit ID
- * @param {string} status - New status
+ * @param {string} status - New status (available, occupied, maintenance, reserved)
  * @returns {Promise<Object>} Updated unit
  */
 export const updateUnitStatus = async (unitId, status) => {
@@ -99,11 +144,33 @@ export const updateUnitStatus = async (unitId, status) => {
   }
 };
 
+/**
+ * Add maintenance record to a unit
+ * @param {string} unitId - Unit ID
+ * @param {Object} maintenanceData - Maintenance data
+ * @returns {Promise<Object>} Updated unit
+ */
+export const addMaintenanceRecord = async (unitId, maintenanceData) => {
+  try {
+    const response = await api.post(
+      `/units/${unitId}/maintenance`,
+      maintenanceData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error adding maintenance record:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
 export default {
   getUnits,
   getUnitById,
+  getUnitsByFloor,
+  getAvailableUnits,
   addUnitToProperty,
   updateUnit,
   deleteUnit,
   updateUnitStatus,
+  addMaintenanceRecord,
 };
