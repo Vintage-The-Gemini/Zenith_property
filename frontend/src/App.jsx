@@ -96,29 +96,29 @@ function App() {
       if (storedTheme) {
         return storedTheme;
       }
-      
+
       // Check system preference
       const userMedia = window.matchMedia("(prefers-color-scheme: dark)");
       if (userMedia.matches) {
         return "dark";
       }
     }
-    
+
     return "light";
   };
-  
+
   const [theme, setTheme] = useState(getInitialTheme);
-  
+
   // Apply theme class to document
   useEffect(() => {
     const root = window.document.documentElement;
-    
+
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-    
+
     // Save to localStorage
     localStorage.setItem("theme", theme);
   }, [theme]);

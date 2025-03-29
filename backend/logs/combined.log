@@ -149,3 +149,12 @@
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-29T20:56:40.834Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T20:57:40.622Z"}
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-29T20:57:42.675Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads","timestamp":"2025-03-29T21:01:27.744Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\properties","timestamp":"2025-03-29T21:01:27.764Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\tenants","timestamp":"2025-03-29T21:01:27.766Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\leases","timestamp":"2025-03-29T21:01:27.770Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\maintenance","timestamp":"2025-03-29T21:01:27.773Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\payments","timestamp":"2025-03-29T21:01:27.776Z"}
+{"level":"info","message":"Created upload directory: C:\\Users\\Admin\\Desktop\\desighn\\property-management-system\\backend\\uploads\\identification","timestamp":"2025-03-29T21:01:27.778Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T21:01:27.795Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-29T21:01:29.890Z"}
