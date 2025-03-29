@@ -1,4 +1,4 @@
-// frontend/src/components/tenants/TenantDetails.jsx
+// frontend/src/pages/TenantDetails.jsx
 import { useState } from "react";
 import {
   User,
@@ -10,8 +10,8 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
-import Card from "../ui/Card";
-import tenantService from "../../services/tenantService";
+import Card from "../components/ui/Card";
+import tenantService from "../services/tenantService";
 
 const TenantDetails = ({ tenant, onUpdate }) => {
   const [loading, setLoading] = useState(false);
