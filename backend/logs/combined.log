@@ -103,3 +103,7 @@
 {"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:35:28.515Z"}
 {"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:35:31.759Z"}
 {"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:36:12.203Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T14:19:40.989Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-29T14:19:43.076Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T14:19:54.299Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-29T14:19:56.416Z"}

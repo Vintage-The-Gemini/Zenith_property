@@ -19,6 +19,10 @@ const propertySchema = new mongoose.Schema(
       state: { type: String, required: true },
       zipCode: { type: String, required: true },
       country: { type: String, required: true },
+      coordinates: {
+        latitude: Number,
+        longitude: Number,
+      },
     },
     propertyType: {
       type: String,
@@ -35,6 +39,7 @@ const propertySchema = new mongoose.Schema(
       {
         name: String,
         description: String,
+        icon: String,
       },
     ],
     managers: [
@@ -74,7 +79,6 @@ const propertySchema = new mongoose.Schema(
       enum: ["active", "inactive", "maintenance"],
       default: "active",
     },
-    // Added fields to match frontend data structure
     description: {
       type: String,
     },
@@ -90,10 +94,75 @@ const propertySchema = new mongoose.Schema(
         ],
       },
     ],
+    // Commercial-specific fields
+    commercialDetails: {
+      propertyClass: {
+        type: String,
+        enum: ["A", "B", "C"],
+      },
+      zoning: String,
+      totalLeasableArea: Number,
+      yearBuilt: Number,
+      renovationYear: Number,
+      parkingSpaces: Number,
+    },
+    // Residential-specific fields
+    residentialDetails: {
+      totalUnits: Number,
+      commonAreas: [String],
+      petPolicy: {
+        allowed: Boolean,
+        restrictions: String,
+        petDeposit: Number,
+      },
+      securityFeatures: [String],
+    },
+    // Mixed-use specific fields
+    mixedUseDetails: {
+      residentialPercentage: Number,
+      commercialPercentage: Number,
+      retailPercentage: Number,
+    },
+    // Media
+    images: [
+      {
+        url: String,
+        caption: String,
+        isPrimary: Boolean,
+        uploadDate: { type: Date, default: Date.now },
+      },
+    ],
+    notes: String,
   },
   {
     timestamps: true,
   }
 );
+
+// Helper method to get property type group
+propertySchema.methods.getPropertyTypeGroup = function () {
+  if (this.propertyType === "commercial" || this.propertyType === "mixed-use") {
+    return "commercial";
+  }
+  return "residential";
+};
+
+// Virtual for active units count
+propertySchema.virtual("activeUnitsCount").get(function () {
+  return this.units.filter((unit) => {
+    return unit.status !== "maintenance" && unit.status !== "inactive";
+  }).length;
+});
+
+// Virtual for occupancy rate
+propertySchema.virtual("occupancyRate").get(function () {
+  const totalUnits = this.units.length;
+  if (totalUnits === 0) return 0;
+
+  const occupiedUnits = this.units.filter(
+    (unit) => unit.status === "occupied"
+  ).length;
+  return Math.round((occupiedUnits / totalUnits) * 100);
+});
 
 export default mongoose.model("Property", propertySchema);

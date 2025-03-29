@@ -9,15 +9,17 @@ const UnitFormModal = ({
   onSubmit,
   initialData = null,
   propertyId,
-  propertyType, // Add this prop to receive property type
+  propertyType = "apartment", // Add this prop to receive property type
 }) => {
   const isEditMode = !!initialData;
+  const isCommercial = propertyType === "commercial";
+
   const [formData, setFormData] = useState({
     unitNumber: "",
     type: "rental",
     status: "available",
-    bedrooms: 1,
-    bathrooms: 1,
+    bedrooms: isCommercial ? 0 : 1,
+    bathrooms: isCommercial ? 0 : 1,
     squareFootage: "",
     monthlyRent: "",
     securityDeposit: "",
@@ -25,11 +27,11 @@ const UnitFormModal = ({
     description: "",
     // Commercial specific fields
     commercialUnitType: "office", // office, retail, warehouse, etc.
+    floorNumber: 1,
   });
+
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const isCommercial = propertyType === "commercial";
 
   useEffect(() => {
     if (initialData) {
@@ -37,14 +39,31 @@ const UnitFormModal = ({
         unitNumber: initialData.unitNumber || "",
         type: initialData.type || "rental",
         status: initialData.status || "available",
-        bedrooms: initialData.bedrooms || (isCommercial ? 0 : 1),
-        bathrooms: initialData.bathrooms || (isCommercial ? 0 : 1),
+        bedrooms: initialData.bedrooms ?? (isCommercial ? 0 : 1),
+        bathrooms: initialData.bathrooms ?? (isCommercial ? 0 : 1),
         squareFootage: initialData.squareFootage || "",
         monthlyRent: initialData.monthlyRent || "",
         securityDeposit: initialData.securityDeposit || "",
         furnished: initialData.furnished || false,
         description: initialData.description || "",
         commercialUnitType: initialData.commercialUnitType || "office",
+        floorNumber: initialData.floorNumber || 1,
+      });
+    } else {
+      // Reset form data for new unit
+      setFormData({
+        unitNumber: "",
+        type: "rental",
+        status: "available",
+        bedrooms: isCommercial ? 0 : 1,
+        bathrooms: isCommercial ? 0 : 1,
+        squareFootage: "",
+        monthlyRent: "",
+        securityDeposit: "",
+        furnished: false,
+        description: "",
+        commercialUnitType: "office",
+        floorNumber: 1,
       });
     }
   }, [initialData, isCommercial]);
@@ -86,6 +105,7 @@ const UnitFormModal = ({
         squareFootage: formData.squareFootage
           ? parseInt(formData.squareFootage)
           : null,
+        floorNumber: parseInt(formData.floorNumber),
       };
 
       await onSubmit(unitData);
@@ -107,6 +127,10 @@ const UnitFormModal = ({
             <Home className="h-6 w-6 text-primary-600 dark:text-primary-400" />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {isEditMode ? "Edit Unit" : "Add New Unit"}
+              {propertyType &&
+                ` (${
+                  propertyType.charAt(0).toUpperCase() + propertyType.slice(1)
+                })`}
             </h2>
           </div>
           <button
@@ -146,17 +170,17 @@ const UnitFormModal = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Unit Type
+                  Floor Number
                 </label>
-                <select
-                  name="type"
+                <input
+                  type="number"
+                  name="floorNumber"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.type}
+                  value={formData.floorNumber}
                   onChange={handleChange}
-                >
-                  <option value="rental">Rental</option>
-                  <option value="bnb">BnB/Short Stay</option>
-                </select>
+                  min="1"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -176,26 +200,43 @@ const UnitFormModal = ({
               </div>
             </div>
 
-            {/* Commercial specific fields */}
-            {isCommercial && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Commercial Unit Type
+                  Unit Type
                 </label>
                 <select
-                  name="commercialUnitType"
+                  name="type"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.commercialUnitType}
+                  value={formData.type}
                   onChange={handleChange}
                 >
-                  <option value="office">Office</option>
-                  <option value="retail">Retail</option>
-                  <option value="warehouse">Warehouse</option>
-                  <option value="industrial">Industrial</option>
-                  <option value="other">Other</option>
+                  <option value="rental">Rental</option>
+                  <option value="bnb">BnB/Short Stay</option>
                 </select>
               </div>
-            )}
+
+              {/* Commercial specific fields */}
+              {isCommercial && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Commercial Unit Type
+                  </label>
+                  <select
+                    name="commercialUnitType"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.commercialUnitType}
+                    onChange={handleChange}
+                  >
+                    <option value="office">Office</option>
+                    <option value="retail">Retail</option>
+                    <option value="warehouse">Warehouse</option>
+                    <option value="industrial">Industrial</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              )}
+            </div>
 
             {/* Residential specific fields */}
             {!isCommercial && (
