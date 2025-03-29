@@ -10,8 +10,9 @@ const TenantFormModal = ({
   onClose,
   onSubmit,
   initialData = null,
-  propertyId,
+  propertyId = null,
   unitInfo = null,
+  properties = [],
 }) => {
   const isEditMode = !!initialData;
   const [formData, setFormData] = useState({
@@ -43,8 +44,6 @@ const TenantFormModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      fetchAvailableUnits();
-
       if (initialData) {
         // Format dates for the form
         const leaseStartDate = initialData.leaseDetails?.startDate
@@ -91,14 +90,31 @@ const TenantFormModal = ({
           unitId: unitInfo.id,
           propertyId: propertyId,
         }));
+      } else if (propertyId) {
+        // If only propertyId is provided, make sure it's set in the form
+        setFormData((prev) => ({
+          ...prev,
+          propertyId: propertyId,
+        }));
       }
+
+      fetchAvailableUnits();
     }
   }, [isOpen, initialData, unitInfo, propertyId]);
 
-  const fetchAvailableUnits = async () => {
+  const fetchAvailableUnits = async (selectedPropertyId = null) => {
     try {
       setLoading(true);
-      const response = await getAvailableUnits(propertyId);
+      const propId = selectedPropertyId || propertyId || formData.propertyId;
+
+      // If no property is selected, don't fetch units
+      if (!propId) {
+        setAvailableUnits([]);
+        setLoading(false);
+        return;
+      }
+
+      const response = await getAvailableUnits(propId);
       setAvailableUnits(response);
 
       // If we have unitInfo but no other form data, try to get rent and deposit from the unit
@@ -153,6 +169,16 @@ const TenantFormModal = ({
         ...prev,
         [name]: value,
       }));
+
+      // If property is changed, update available units
+      if (name === "propertyId" && value) {
+        fetchAvailableUnits(value);
+        // Clear unit selection when property changes
+        setFormData((prev) => ({
+          ...prev,
+          unitId: "",
+        }));
+      }
     }
   };
 
@@ -314,6 +340,28 @@ const TenantFormModal = ({
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Unit Assignment
               </h3>
+
+              {/* Property Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Property <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="propertyId"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={formData.propertyId}
+                  onChange={handleChange}
+                  required
+                  disabled={loading || !!unitInfo}
+                >
+                  <option value="">Select Property</option>
+                  {properties.map((property) => (
+                    <option key={property._id} value={property._id}>
+                      {property.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
