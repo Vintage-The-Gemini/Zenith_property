@@ -242,9 +242,6 @@ const UnitFormModal = ({
                 >
                   <option value="rental">Rental</option>
                   <option value="bnb">BnB/Short Stay</option>
-                  {isCommercial && (
-                    <option value="commercial">Commercial</option>
-                  )}
                 </select>
               </div>
               <div>
@@ -258,20 +255,10 @@ const UnitFormModal = ({
                   onChange={handleChange}
                 >
                   <option value="available">Available</option>
-                  {/* Only allow setting to occupied if editing and there's a tenant already assigned */}
-                  {initialData && initialData.currentTenant && (
-                    <option value="occupied">Occupied</option>
-                  )}
+                  <option value="occupied">Occupied</option>
                   <option value="maintenance">Maintenance</option>
                   <option value="reserved">Reserved</option>
                 </select>
-                {formData.status === "occupied" &&
-                  !initialData?.currentTenant && (
-                    <p className="mt-1 text-sm text-yellow-500">
-                      Note: To mark a unit as occupied, you need to assign a
-                      tenant first.
-                    </p>
-                  )}
               </div>
             </div>
 
