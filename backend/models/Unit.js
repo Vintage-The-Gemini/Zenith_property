@@ -1,4 +1,4 @@
-// models/Unit.js
+// backend/models/Unit.js
 import mongoose from "mongoose";
 
 const unitSchema = new mongoose.Schema(
@@ -11,11 +11,7 @@ const unitSchema = new mongoose.Schema(
     floorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Floor",
-    },
-    floorNumber: {
-      type: Number,
-      required: true,
-      default: 1,
+      required: true, // Make this required to enforce floor relationship
     },
     unitNumber: {
       type: String,
@@ -23,7 +19,7 @@ const unitSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["rental", "bnb"],
+      enum: ["rental", "bnb", "commercial"],
       default: "rental",
       required: true,
     },
@@ -51,23 +47,11 @@ const unitSchema = new mongoose.Schema(
     // Residential specific fields
     bedrooms: {
       type: Number,
-      default: function () {
-        // If property is commercial, default to 0
-        const Property = mongoose.model("Property");
-        return Property.findById(this.propertyId).then((property) =>
-          property && property.propertyType === "commercial" ? 0 : 1
-        );
-      },
+      default: 1,
     },
     bathrooms: {
       type: Number,
-      default: function () {
-        // If property is commercial, default to 0
-        const Property = mongoose.model("Property");
-        return Property.findById(this.propertyId).then((property) =>
-          property && property.propertyType === "commercial" ? 0 : 1
-        );
-      },
+      default: 1,
     },
     furnished: {
       type: Boolean,
@@ -125,6 +109,15 @@ const unitSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
     },
+
+    // Financial tracking
+    balance: {
+      type: Number,
+      default: 0, // Positive means tenant owes, negative means tenant has credit
+    },
+    lastPaymentDate: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -155,13 +148,6 @@ unitSchema.pre("save", async function (next) {
   }
 
   next();
-});
-
-// Set up virtual for property type access
-unitSchema.virtual("isCommercial").get(async function () {
-  const Property = mongoose.model("Property");
-  const property = await Property.findById(this.propertyId);
-  return property && property.propertyType === "commercial";
 });
 
 export default mongoose.model("Unit", unitSchema);

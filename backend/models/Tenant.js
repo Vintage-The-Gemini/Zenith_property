@@ -1,4 +1,4 @@
-// models/Tenant.js
+// backend/models/Tenant.js
 import mongoose from "mongoose";
 
 const tenantSchema = new mongoose.Schema(
@@ -117,11 +117,26 @@ const tenantSchema = new mongoose.Schema(
       {
         date: Date,
         amount: Number,
-        type: String,
-        status: String,
+        type: {
+          type: String,
+          enum: ["rent", "deposit", "fee", "maintenance", "other"],
+          default: "rent",
+        },
+        status: {
+          type: String,
+          enum: ["pending", "completed", "failed", "refunded"],
+          default: "completed",
+        },
         reference: String,
+        balance: Number, // Remaining balance after this payment
+        description: String,
       },
     ],
+    // Current balance
+    currentBalance: {
+      type: Number,
+      default: 0, // Positive means tenant owes, negative means tenant has credit
+    },
     // For BnB Guests
     bookingHistory: [
       {
@@ -147,16 +162,63 @@ tenantSchema.pre("save", async function (next) {
     const unit = await mongoose.model("Unit").findById(this.unitId);
     if (unit && unit.type === "rental") {
       const hasLeaseAgreement = this.documents.some(
-        (doc) => doc.type === "leaseAgreement" && doc.verified
+        (doc) => doc.type === "leaseAgreement"
       );
-      if (!hasLeaseAgreement) {
+      if (!hasLeaseAgreement && !this.leaseDetails.startDate) {
         throw new Error(
-          "Lease agreement must be uploaded and verified before activating tenant"
+          "Lease agreement or lease details must be provided before activating tenant"
         );
       }
     }
   }
   next();
 });
+
+// Calculate total paid amount
+tenantSchema.methods.getTotalPaid = function () {
+  return this.paymentHistory.reduce((total, payment) => {
+    if (payment.status === "completed") {
+      return total + payment.amount;
+    }
+    return total;
+  }, 0);
+};
+
+// Calculate due amount based on lease duration and rent amount
+tenantSchema.methods.getTotalDue = function () {
+  if (
+    !this.leaseDetails.startDate ||
+    !this.leaseDetails.endDate ||
+    !this.leaseDetails.rentAmount
+  ) {
+    return 0;
+  }
+
+  const start = new Date(this.leaseDetails.startDate);
+  const end = new Date(this.leaseDetails.endDate);
+  const now = new Date();
+
+  // If lease hasn't started yet, nothing is due
+  if (now < start) {
+    return 0;
+  }
+
+  // If lease has ended, calculate based on full lease period
+  if (now > end) {
+    const monthsDiff =
+      (end.getFullYear() - start.getFullYear()) * 12 +
+      (end.getMonth() - start.getMonth()) +
+      (end.getDate() >= start.getDate() ? 1 : 0);
+    return monthsDiff * this.leaseDetails.rentAmount;
+  }
+
+  // If lease is active, calculate based on months elapsed
+  const monthsElapsed =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth()) +
+    (now.getDate() >= start.getDate() ? 1 : 0);
+
+  return monthsElapsed * this.leaseDetails.rentAmount;
+};
 
 export default mongoose.model("Tenant", tenantSchema);

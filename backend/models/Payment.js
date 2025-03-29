@@ -1,4 +1,4 @@
-// models/Payment.js
+// backend/models/Payment.js
 import mongoose from "mongoose";
 import { generateInvoiceNumber } from "../utils/helpers.js";
 
@@ -69,6 +69,14 @@ const paymentSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    previousBalance: {
+      type: Number,
+      default: 0, // Balance before this payment
+    },
+    newBalance: {
+      type: Number,
+      default: 0, // Balance after this payment
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -95,6 +103,56 @@ paymentSchema.pre("save", function (next) {
   }
 
   next();
+});
+
+// Pre-save hook to update tenant balance
+paymentSchema.pre("save", async function (next) {
+  try {
+    if (this.isNew || this.isModified("status") || this.isModified("amount")) {
+      const Tenant = mongoose.model("Tenant");
+      const Unit = mongoose.model("Unit");
+
+      const tenant = await Tenant.findById(this.tenant);
+      const unit = await Unit.findById(this.unit);
+
+      if (!tenant || !unit) {
+        return next();
+      }
+
+      // Store previous balance
+      this.previousBalance = tenant.currentBalance;
+
+      // If payment is completed, update the balance
+      if (this.status === "completed") {
+        // Reduce the balance by the payment amount (payment reduces what is owed)
+        tenant.currentBalance -= this.amount;
+        unit.balance -= this.amount;
+
+        // Update last payment date
+        unit.lastPaymentDate = this.paymentDate;
+
+        // Add to tenant payment history
+        tenant.paymentHistory.push({
+          date: this.paymentDate,
+          amount: this.amount,
+          type: this.type,
+          status: this.status,
+          reference: this.reference,
+          balance: tenant.currentBalance,
+          description: this.description,
+        });
+
+        await tenant.save();
+        await unit.save();
+      }
+
+      // Update the new balance field
+      this.newBalance = tenant.currentBalance;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default mongoose.model("Payment", paymentSchema);

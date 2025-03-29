@@ -107,3 +107,9 @@
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-29T14:19:43.076Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T14:19:54.299Z"}
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-29T14:19:56.416Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T18:53:16.898Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-29T18:53:19.620Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T18:53:33.098Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-29T18:53:35.594Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-29T18:53:47.090Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-29T18:53:49.417Z"}

@@ -2,11 +2,34 @@
 import Payment from "../models/Payment.js";
 import Tenant from "../models/Tenant.js";
 import Unit from "../models/Unit.js";
+import Property from "../models/Property.js";
 import { calculateLateFees, generateInvoiceNumber } from "../utils/helpers.js";
+import logger from "../utils/logger.js";
 
+// Get all payments with filters
 export const getPayments = async (req, res) => {
   try {
-    const payments = await Payment.find()
+    // Apply filters if provided
+    const filter = {};
+    if (req.query.tenantId) filter.tenant = req.query.tenantId;
+    if (req.query.unitId) filter.unit = req.query.unitId;
+    if (req.query.propertyId) filter.property = req.query.propertyId;
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.type) filter.type = req.query.type;
+
+    // Date range filters
+    if (req.query.startDate && req.query.endDate) {
+      filter.paymentDate = {
+        $gte: new Date(req.query.startDate),
+        $lte: new Date(req.query.endDate),
+      };
+    } else if (req.query.startDate) {
+      filter.paymentDate = { $gte: new Date(req.query.startDate) };
+    } else if (req.query.endDate) {
+      filter.paymentDate = { $lte: new Date(req.query.endDate) };
+    }
+
+    const payments = await Payment.find(filter)
       .populate("tenant", "firstName lastName email")
       .populate("unit", "unitNumber")
       .populate("property", "name")
@@ -14,10 +37,12 @@ export const getPayments = async (req, res) => {
 
     res.json(payments);
   } catch (error) {
+    logger.error(`Error fetching payments: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
+// Get payment by ID
 export const getPayment = async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
@@ -31,10 +56,12 @@ export const getPayment = async (req, res) => {
 
     res.json(payment);
   } catch (error) {
+    logger.error(`Error fetching payment: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
+// Create a new payment
 export const createPayment = async (req, res) => {
   try {
     const {
@@ -46,6 +73,7 @@ export const createPayment = async (req, res) => {
       paymentMethod,
       type,
       description,
+      status = "completed",
     } = req.body;
 
     // Verify tenant exists
@@ -60,6 +88,12 @@ export const createPayment = async (req, res) => {
       return res.status(404).json({ error: "Unit not found" });
     }
 
+    // Verify property exists
+    const property = await Property.findById(propertyId);
+    if (!property) {
+      return res.status(404).json({ error: "Property not found" });
+    }
+
     // Generate reference number
     const reference = generateInvoiceNumber();
 
@@ -69,17 +103,19 @@ export const createPayment = async (req, res) => {
       unit: unitId,
       property: propertyId,
       amount,
-      dueDate: new Date(dueDate),
+      dueDate: new Date(dueDate || new Date()),
+      paymentDate: new Date(),
       paymentMethod,
       type,
       description,
       reference,
-      createdBy: req.user._id,
+      status,
+      createdBy: req.user ? req.user._id : null,
     });
 
     // Check if payment is late
     const today = new Date();
-    const due = new Date(dueDate);
+    const due = new Date(dueDate || new Date());
 
     if (today > due) {
       const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
@@ -91,33 +127,25 @@ export const createPayment = async (req, res) => {
         lateFee,
       };
 
-      // Add late fee to total amount
-      payment.amount += lateFee;
+      // Add late fee to total amount if not already included
+      if (req.body.includeLateFeesInTotal) {
+        payment.amount += lateFee;
+      }
     }
 
     await payment.save();
 
-    // Update tenant payment history
-    if (tenant.paymentHistory) {
-      tenant.paymentHistory.push({
-        date: payment.paymentDate,
-        amount: payment.amount,
-        type: payment.type,
-        status: payment.status,
-        reference: payment.reference,
-      });
-      await tenant.save();
-    }
-
     res.status(201).json(payment);
   } catch (error) {
+    logger.error(`Error creating payment: ${error.message}`);
     res.status(400).json({ error: error.message });
   }
 };
 
+// Update payment status
 export const updatePaymentStatus = async (req, res) => {
   try {
-    const { status, paymentMethod } = req.body;
+    const { status, paymentMethod, paymentDate } = req.body;
 
     const payment = await Payment.findById(req.params.id);
     if (!payment) {
@@ -129,34 +157,21 @@ export const updatePaymentStatus = async (req, res) => {
       payment.paymentMethod = paymentMethod;
     }
 
-    // If marking as completed, update the payment date to now
+    // If marking as completed, update the payment date
     if (status === "completed" && payment.status !== "completed") {
-      payment.paymentDate = new Date();
+      payment.paymentDate = paymentDate || new Date();
     }
 
     await payment.save();
 
-    // Update tenant payment history if tenant exists
-    if (payment.tenant) {
-      const tenant = await Tenant.findById(payment.tenant);
-      if (tenant && tenant.paymentHistory) {
-        const paymentIndex = tenant.paymentHistory.findIndex(
-          (p) => p.reference === payment.reference
-        );
-
-        if (paymentIndex !== -1) {
-          tenant.paymentHistory[paymentIndex].status = status;
-          await tenant.save();
-        }
-      }
-    }
-
     res.json(payment);
   } catch (error) {
+    logger.error(`Error updating payment status: ${error.message}`);
     res.status(400).json({ error: error.message });
   }
 };
 
+// Get payments by tenant
 export const getPaymentsByTenant = async (req, res) => {
   try {
     const payments = await Payment.find({ tenant: req.params.tenantId })
@@ -166,10 +181,12 @@ export const getPaymentsByTenant = async (req, res) => {
 
     res.json(payments);
   } catch (error) {
+    logger.error(`Error fetching tenant payments: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
+// Get payments by property
 export const getPaymentsByProperty = async (req, res) => {
   try {
     const payments = await Payment.find({ property: req.params.propertyId })
@@ -179,10 +196,12 @@ export const getPaymentsByProperty = async (req, res) => {
 
     res.json(payments);
   } catch (error) {
+    logger.error(`Error fetching property payments: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
+// Get payments by unit
 export const getPaymentsByUnit = async (req, res) => {
   try {
     const payments = await Payment.find({ unit: req.params.unitId })
@@ -191,10 +210,12 @@ export const getPaymentsByUnit = async (req, res) => {
 
     res.json(payments);
   } catch (error) {
+    logger.error(`Error fetching unit payments: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
 
+// Get payment summary statistics
 export const getPaymentSummary = async (req, res) => {
   try {
     // Get current month's start and end dates
@@ -240,6 +261,26 @@ export const getPaymentSummary = async (req, res) => {
       0
     );
 
+    // Get year to date statistics
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const ytdPayments = await Payment.find({
+      status: "completed",
+      paymentDate: { $gte: startOfYear, $lte: now },
+    });
+    const ytdTotal = ytdPayments.reduce(
+      (sum, payment) => sum + payment.amount,
+      0
+    );
+
+    // Get payment methods breakdown for completed payments
+    const paymentMethods = {};
+    completedPayments.forEach((payment) => {
+      if (!paymentMethods[payment.paymentMethod]) {
+        paymentMethods[payment.paymentMethod] = 0;
+      }
+      paymentMethods[payment.paymentMethod] += payment.amount;
+    });
+
     res.json({
       currentMonth: {
         name: startOfMonth.toLocaleString("default", { month: "long" }),
@@ -250,8 +291,72 @@ export const getPaymentSummary = async (req, res) => {
       overdue: totalOverdue,
       totalCount: completedPayments.length + pendingPayments.length,
       overdueCount: overduePayments.length,
+      ytdTotal: ytdTotal,
+      paymentMethods: paymentMethods,
     });
   } catch (error) {
+    logger.error(`Error fetching payment summary: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Generate monthly rent invoices for all active tenants
+export const generateRentInvoices = async (req, res) => {
+  try {
+    // Find all active tenants
+    const tenants = await Tenant.find({ status: "active" })
+      .populate("unitId")
+      .populate("propertyId");
+
+    const invoices = [];
+    const today = new Date();
+
+    for (const tenant of tenants) {
+      // Skip if unit or property not found
+      if (!tenant.unitId || !tenant.propertyId) continue;
+
+      // Skip if lease details are incomplete or lease has ended
+      if (
+        !tenant.leaseDetails ||
+        !tenant.leaseDetails.rentAmount ||
+        !tenant.leaseDetails.endDate
+      )
+        continue;
+      if (new Date(tenant.leaseDetails.endDate) < today) continue;
+
+      // Create a due date (typically first of next month)
+      const dueDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+      // Create the invoice as a pending payment
+      const invoice = new Payment({
+        tenant: tenant._id,
+        unit: tenant.unitId._id,
+        property: tenant.propertyId._id,
+        amount: tenant.leaseDetails.rentAmount,
+        dueDate: dueDate,
+        paymentDate: null,
+        paymentMethod: "pending",
+        type: "rent",
+        description: `Monthly rent for ${dueDate.toLocaleString("default", {
+          month: "long",
+          year: "numeric",
+        })}`,
+        reference: generateInvoiceNumber(),
+        status: "pending",
+        previousBalance: tenant.currentBalance,
+        newBalance: tenant.currentBalance + tenant.leaseDetails.rentAmount,
+      });
+
+      await invoice.save();
+      invoices.push(invoice);
+    }
+
+    res.json({
+      message: `Successfully generated ${invoices.length} rent invoices`,
+      invoices: invoices,
+    });
+  } catch (error) {
+    logger.error(`Error generating rent invoices: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
