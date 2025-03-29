@@ -1,4 +1,4 @@
-// models/Property.js
+// backend/models/Property.js
 import mongoose from "mongoose";
 
 const propertySchema = new mongoose.Schema(
@@ -33,6 +33,17 @@ const propertySchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Unit",
+      },
+    ],
+    // Reference to floors in this property
+    floors: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Floor",
+        },
+        number: Number,
+        name: String,
       },
     ],
     amenities: [
@@ -82,18 +93,6 @@ const propertySchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    floors: [
-      {
-        number: Number,
-        name: String,
-        units: [
-          {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Unit",
-          },
-        ],
-      },
-    ],
     // Commercial-specific fields
     commercialDetails: {
       propertyClass: {
@@ -136,8 +135,30 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Virtual for active units count
+propertySchema.virtual("activeUnitsCount").get(function () {
+  if (!this.units) return 0;
+  return this.units.filter(
+    (unit) => unit.status !== "maintenance" && unit.status !== "inactive"
+  ).length;
+});
+
+// Virtual for occupancy rate
+propertySchema.virtual("occupancyRate").get(function () {
+  const totalUnits = this.units ? this.units.length : 0;
+  if (totalUnits === 0) return 0;
+
+  const occupiedUnits = this.units.filter(
+    (unit) => unit.status === "occupied"
+  ).length;
+
+  return Math.round((occupiedUnits / totalUnits) * 100);
+});
 
 // Helper method to get property type group
 propertySchema.methods.getPropertyTypeGroup = function () {
@@ -146,23 +167,5 @@ propertySchema.methods.getPropertyTypeGroup = function () {
   }
   return "residential";
 };
-
-// Virtual for active units count
-propertySchema.virtual("activeUnitsCount").get(function () {
-  return this.units.filter((unit) => {
-    return unit.status !== "maintenance" && unit.status !== "inactive";
-  }).length;
-});
-
-// Virtual for occupancy rate
-propertySchema.virtual("occupancyRate").get(function () {
-  const totalUnits = this.units.length;
-  if (totalUnits === 0) return 0;
-
-  const occupiedUnits = this.units.filter(
-    (unit) => unit.status === "occupied"
-  ).length;
-  return Math.round((occupiedUnits / totalUnits) * 100);
-});
 
 export default mongoose.model("Property", propertySchema);

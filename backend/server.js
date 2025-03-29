@@ -20,6 +20,7 @@ import expenseRoutes from "./routes/expenses.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import paymentRoutes from "./routes/payments.js";
 import maintenanceRoutes from "./routes/maintenance.js";
+import floorRoutes from "./routes/floors.js"; // Add floor routes import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,7 @@ app.get("/", (req, res) => {
       auth: "/api/auth",
       dashboard: "/api/dashboard",
       properties: "/api/properties",
+      floors: "/api/floors", // Add floors endpoint
       units: "/api/units",
       tenants: "/api/tenants",
       expenses: "/api/expenses",
@@ -62,6 +64,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/floors", floorRoutes); // Add floor routes
 app.use("/api/tenants", tenantRoutes);
 app.use("/api/units", unitRoutes);
 app.use("/api/expenses", expenseRoutes);

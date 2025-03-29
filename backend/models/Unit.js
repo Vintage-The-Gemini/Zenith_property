@@ -11,7 +11,7 @@ const unitSchema = new mongoose.Schema(
     floorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Floor",
-      required: true, // Make this required to enforce floor relationship
+      required: true,
     },
     unitNumber: {
       type: String,
@@ -121,6 +121,8 @@ const unitSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
@@ -129,6 +131,11 @@ unitSchema.index({ propertyId: 1, unitNumber: 1 }, { unique: true });
 
 // Middleware to handle unit status changes
 unitSchema.pre("save", async function (next) {
+  // Track previous status for status change operations
+  if (this.isModified("status")) {
+    this._previousStatus = this._original?.status;
+  }
+
   // If status is changing to occupied, ensure there's a tenant assigned
   if (
     this.isModified("status") &&
@@ -147,6 +154,14 @@ unitSchema.pre("save", async function (next) {
     this.currentTenant = null;
   }
 
+  next();
+});
+
+// Store original document values before making changes
+unitSchema.pre("save", function (next) {
+  if (this.isNew) return next();
+
+  this._original = this.toObject();
   next();
 });
 

@@ -135,7 +135,7 @@ const FloorFormModal = ({
               placeholder="e.g. Ground Floor, First Floor, etc."
             />
             <p className="mt-1 text-xs text-gray-500">
-              If left blank, "Floor {number}" will be used
+              If left blank, "Floor {formData.number}" will be used
             </p>
           </div>
 
