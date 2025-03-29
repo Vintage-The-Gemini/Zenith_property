@@ -42,7 +42,12 @@ export const createProperty = async (propertyData) => {
     return response.data;
   } catch (error) {
     console.error("Error creating property:", error);
-    throw new Error(getErrorMessage(error));
+    if (error.response && error.response.data && error.response.data.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error(
+      error.message || "An error occurred while creating the property"
+    );
   }
 };
 
@@ -54,11 +59,20 @@ export const createProperty = async (propertyData) => {
  */
 export const updateProperty = async (id, propertyData) => {
   try {
+    console.log(
+      "Updating property with data:",
+      JSON.stringify(propertyData, null, 2)
+    );
     const response = await api.put(`/properties/${id}`, propertyData);
     return response.data;
   } catch (error) {
     console.error("Error updating property:", error);
-    throw new Error(getErrorMessage(error));
+    if (error.response && error.response.data && error.response.data.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error(
+      error.message || "An error occurred while updating the property"
+    );
   }
 };
 
@@ -73,7 +87,12 @@ export const deleteProperty = async (id) => {
     return response.data;
   } catch (error) {
     console.error("Error deleting property:", error);
-    throw new Error(getErrorMessage(error));
+    if (error.response && error.response.data && error.response.data.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error(
+      error.message || "An error occurred while deleting the property"
+    );
   }
 };
 

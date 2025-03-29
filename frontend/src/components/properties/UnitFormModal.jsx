@@ -9,6 +9,7 @@ const UnitFormModal = ({
   onSubmit,
   initialData = null,
   propertyId,
+  propertyType, // Add this prop to receive property type
 }) => {
   const isEditMode = !!initialData;
   const [formData, setFormData] = useState({
@@ -22,9 +23,13 @@ const UnitFormModal = ({
     securityDeposit: "",
     furnished: false,
     description: "",
+    // Commercial specific fields
+    commercialUnitType: "office", // office, retail, warehouse, etc.
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const isCommercial = propertyType === "commercial";
 
   useEffect(() => {
     if (initialData) {
@@ -32,16 +37,17 @@ const UnitFormModal = ({
         unitNumber: initialData.unitNumber || "",
         type: initialData.type || "rental",
         status: initialData.status || "available",
-        bedrooms: initialData.bedrooms || 1,
-        bathrooms: initialData.bathrooms || 1,
+        bedrooms: initialData.bedrooms || (isCommercial ? 0 : 1),
+        bathrooms: initialData.bathrooms || (isCommercial ? 0 : 1),
         squareFootage: initialData.squareFootage || "",
         monthlyRent: initialData.monthlyRent || "",
         securityDeposit: initialData.securityDeposit || "",
         furnished: initialData.furnished || false,
         description: initialData.description || "",
+        commercialUnitType: initialData.commercialUnitType || "office",
       });
     }
-  }, [initialData]);
+  }, [initialData, isCommercial]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -131,7 +137,9 @@ const UnitFormModal = ({
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 value={formData.unitNumber}
                 onChange={handleChange}
-                placeholder="e.g. 101, A1, etc."
+                placeholder={
+                  isCommercial ? "e.g. Shop-01, Office-A" : "e.g. 101, A1"
+                }
               />
             </div>
 
@@ -168,35 +176,59 @@ const UnitFormModal = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Commercial specific fields */}
+            {isCommercial && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Bedrooms
+                  Commercial Unit Type
                 </label>
-                <input
-                  type="number"
-                  name="bedrooms"
+                <select
+                  name="commercialUnitType"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.bedrooms}
+                  value={formData.commercialUnitType}
                   onChange={handleChange}
-                  min="0"
-                />
+                >
+                  <option value="office">Office</option>
+                  <option value="retail">Retail</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Bathrooms
-                </label>
-                <input
-                  type="number"
-                  name="bathrooms"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.bathrooms}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.5"
-                />
+            )}
+
+            {/* Residential specific fields */}
+            {!isCommercial && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Bedrooms
+                  </label>
+                  <input
+                    type="number"
+                    name="bedrooms"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.bedrooms}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Bathrooms
+                  </label>
+                  <input
+                    type="number"
+                    name="bathrooms"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.bathrooms}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.5"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -257,22 +289,24 @@ const UnitFormModal = ({
               </div>
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="furnished"
-                id="furnished"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
-                checked={formData.furnished}
-                onChange={handleChange}
-              />
-              <label
-                htmlFor="furnished"
-                className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-              >
-                This unit is furnished
-              </label>
-            </div>
+            {!isCommercial && (
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="furnished"
+                  id="furnished"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
+                  checked={formData.furnished}
+                  onChange={handleChange}
+                />
+                <label
+                  htmlFor="furnished"
+                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                >
+                  This unit is furnished
+                </label>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

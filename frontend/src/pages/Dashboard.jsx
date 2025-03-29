@@ -1,5 +1,5 @@
 // frontend/src/pages/Dashboard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2,
@@ -8,12 +8,14 @@ import {
   TrendingUp,
   Wrench,
   Plus,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import dashboardService from "../services/dashboardService";
 
 const Dashboard = () => {
-  // In a real app, these would be fetched from the API
-  const stats = {
+  const [stats, setStats] = useState({
     totalProperties: 0,
     totalUnits: 0,
     occupiedUnits: 0,
@@ -21,7 +23,43 @@ const Dashboard = () => {
     totalTenants: 0,
     monthlyRevenue: 0,
     pendingMaintenance: 0,
-  };
+    yearToDateRevenue: 0,
+  });
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch dashboard statistics
+        const statsData = await dashboardService.getDashboardStats();
+        setStats(statsData);
+
+        // Fetch recent activities
+        const activitiesData = await dashboardService.getRecentActivities();
+        setActivities(activitiesData);
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -33,6 +71,13 @@ const Dashboard = () => {
           Property management overview
         </p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center gap-2">
+          <AlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,7 +159,7 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Maintenance
+                  Pending Maintenance
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.pendingMaintenance}
@@ -123,7 +168,70 @@ const Dashboard = () => {
             </div>
           </Card>
         </Link>
+
+        <Card className="p-6">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-full mr-4">
+              <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Year-to-Date Revenue
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                KES {stats.yearToDateRevenue.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* Recent Activities */}
+      <Card className="p-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Recent Activities
+        </h2>
+        {activities.length > 0 ? (
+          <div className="space-y-4">
+            {activities.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-start p-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+              >
+                <div
+                  className={`p-2 rounded-full mr-3 ${
+                    activity.type === "payment"
+                      ? "bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                      : "bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                  }`}
+                >
+                  {activity.type === "payment" ? (
+                    <CreditCard className="h-4 w-4" />
+                  ) : (
+                    <Wrench className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {activity.title}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {activity.description}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    {new Date(activity.date).toLocaleDateString()} at{" "}
+                    {new Date(activity.date).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-500">No recent activities found.</p>
+          </div>
+        )}
+      </Card>
 
       {/* Quick Actions */}
       <Card className="p-6">
@@ -154,25 +262,6 @@ const Dashboard = () => {
               <Wrench className="h-5 w-5 mr-2" />
               <span>Maintenance</span>
             </button>
-          </Link>
-        </div>
-      </Card>
-
-      {/* Get Started */}
-      <Card className="p-6">
-        <div className="text-center">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Welcome to PropertyManager
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Get started by adding your first property
-          </p>
-          <Link
-            to="/properties"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Add Property
           </Link>
         </div>
       </Card>

@@ -52,3 +52,54 @@
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T11:33:11.197Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T12:03:34.210Z"}
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T12:03:36.199Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:12:52.420Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:12:55.913Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:13:00.476Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:13:02.566Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:13:08.357Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:13:10.256Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:19:05.303Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:19:09.859Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:22:52.512Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:22:54.605Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:23:28.026Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:23:30.008Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:23:34.223Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:23:36.189Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:23:59.485Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:24:01.465Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:24:14.935Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:24:16.875Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:24:40.364Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:24:42.422Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:24:48.566Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:24:51.020Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:25:03.246Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:25:05.210Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:25:24.033Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:25:26.059Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:25:48.091Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:25:50.097Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:26:18.070Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:26:21.475Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:26:23.460Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:26:49.902Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:26:51.876Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:27:07.782Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:27:09.941Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:27:30.589Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:27:32.688Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:27:47.081Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:27:49.985Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-03-27T15:27:52.170Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:28:01.252Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:28:04.399Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:28:06.427Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:30:12.899Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-03-27T15:30:14.848Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-27T15:31:15.071Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-03-27T15:31:17.082Z"}
+{"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:35:11.677Z"}
+{"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:35:28.515Z"}
+{"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:35:31.759Z"}
+{"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:36:12.203Z"}

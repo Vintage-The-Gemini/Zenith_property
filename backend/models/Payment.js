@@ -1,5 +1,6 @@
-// backend/models/Payment.js
+// models/Payment.js
 import mongoose from "mongoose";
+import { generateInvoiceNumber } from "../utils/helpers.js";
 
 const paymentSchema = new mongoose.Schema(
   {
@@ -79,7 +80,7 @@ const paymentSchema = new mongoose.Schema(
 );
 
 // Pre-save hook to generate receipt number
-paymentSchema.pre("save", async function (next) {
+paymentSchema.pre("save", function (next) {
   if (!this.receiptNumber) {
     // Generate receipt number: current year + month + random 4 digits
     const date = new Date();
@@ -88,6 +89,11 @@ paymentSchema.pre("save", async function (next) {
     const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
     this.receiptNumber = `RCPT-${year}${month}-${random}`;
   }
+
+  if (!this.reference) {
+    this.reference = generateInvoiceNumber();
+  }
+
   next();
 });
 

@@ -35,21 +35,55 @@ export const UnitFormModal = ({
     notes: initialData?.notes || "",
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // Format data
-    const unitData = {
-      ...formData,
-      monthlyRent: parseFloat(formData.monthlyRent),
-      floorNumber: parseInt(formData.floorNumber),
-      bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-      bathrooms: formData.bathrooms
-        ? parseFloat(formData.bathrooms)
-        : undefined,
-    };
+    // Basic validation
+    if (!formData.name.trim()) {
+      setError("Property name is required");
+      return;
+    }
 
-    onSubmit(unitData);
+    if (
+      !formData.address.street.trim() ||
+      !formData.address.city.trim() ||
+      !formData.address.state.trim() ||
+      !formData.address.zipCode.trim() ||
+      !formData.address.country.trim()
+    ) {
+      setError("All address fields are required");
+      return;
+    }
+
+    // Make sure floor numbers are unique
+    const floorNumbers = formData.floors.map((floor) => floor.number);
+    if (new Set(floorNumbers).size !== floorNumbers.length) {
+      setError("Floor numbers must be unique");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Create a new object with only the allowed fields to send to the API
+      const propertyData = {
+        name: formData.name,
+        address: formData.address,
+        propertyType: formData.propertyType,
+        description: formData.description,
+        amenities: formData.amenities,
+        // Only include floors if they're defined
+        ...(formData.floors && { floors: formData.floors }),
+      };
+
+      await onSubmit(propertyData);
+      onClose();
+    } catch (error) {
+      setError(error.message || "Failed to save property");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
