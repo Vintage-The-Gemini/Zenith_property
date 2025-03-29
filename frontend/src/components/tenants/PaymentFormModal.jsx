@@ -1,6 +1,6 @@
 // frontend/src/components/tenants/PaymentFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, DollarSign } from "lucide-react";
+import { X, DollarSign, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 
 const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
@@ -62,29 +62,27 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
       <Card className="max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <DollarSign className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Record Payment
-            </h2>
+            <DollarSign className="h-6 w-6 text-primary-600" />
+            <h2 className="text-xl font-medium">Record Payment</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            disabled={isLoading}
+            className="text-gray-400 hover:text-gray-500"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm mb-4">
+          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4">
+            <AlertCircle className="h-5 w-5 mr-2 inline-block" />
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Amount (KES) <span className="text-red-500">*</span>
             </label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -94,23 +92,23 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
               <input
                 type="number"
                 name="amount"
-                required
-                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 value={formData.amount}
                 onChange={handleChange}
                 min="0"
                 step="0.01"
+                required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Payment Type
             </label>
             <select
               name="type"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.type}
               onChange={handleChange}
             >
@@ -123,12 +121,12 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Payment Method
             </label>
             <select
               name="paymentMethod"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.paymentMethod}
               onChange={handleChange}
             >
@@ -142,13 +140,13 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Reference Number
             </label>
             <input
               type="text"
               name="reference"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.reference}
               onChange={handleChange}
               placeholder="Payment reference number"
@@ -156,12 +154,12 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Description
             </label>
             <textarea
               name="description"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.description}
               onChange={handleChange}
               rows="2"
@@ -173,14 +171,14 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
               disabled={isLoading}
             >
               {isLoading ? "Processing..." : "Record Payment"}
