@@ -16,6 +16,10 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import Card from "../components/ui/Card";
+import PropertyFormModal from "../components/properties/PropertyFormModal";
+import UnitFormModal from "../components/properties/UnitFormModal";
+import FloorManagement from "../components/properties/FloorManagement";
 import {
   getPropertyById,
   updateProperty,
@@ -26,9 +30,7 @@ import {
   updateUnit,
   deleteUnit,
 } from "../services/unitService";
-import PropertyFormModal from "../components/properties/PropertyFormModal";
-import UnitFormModal from "../components/properties/UnitFormModal";
-import Card from "../components/ui/Card";
+import floorService from "../services/floorService";
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -38,8 +40,9 @@ const PropertyDetail = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [isPropertyFormModalOpen, setIsPropertyFormModalOpen] = useState(false);
-  const [isUnitFormModalOpen, setIsUnitFormModalOpen] = useState(false);
+  const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [selectedFloor, setSelectedFloor] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({
     show: false,
     type: "",
@@ -50,17 +53,39 @@ const PropertyDetail = () => {
     loadProperty();
   }, [id]);
 
+  // Load property details
   const loadProperty = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getPropertyById(id);
       setProperty(data);
+
+      // Load floors if they're not included in the property data
+      if (!data.floors || data.floors.length === 0) {
+        loadFloors(data._id);
+      }
     } catch (err) {
       console.error("Error loading property:", err);
       setError("Failed to load property details. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Explicitly load floors for this property
+  const loadFloors = async (propertyId) => {
+    try {
+      const floorsData = await floorService.getFloorsByProperty(
+        propertyId || id
+      );
+      setProperty((prev) => ({
+        ...prev,
+        floors: floorsData,
+      }));
+    } catch (err) {
+      console.error("Error loading floors:", err);
+      // Don't set the error state here to avoid conflicting with property loading errors
     }
   };
 
@@ -85,14 +110,26 @@ const PropertyDetail = () => {
     }
   };
 
-  const handleAddUnit = () => {
+  const handleAddUnit = (floorId) => {
+    // Verify floors exist before trying to add a unit
+    if (!property.floors || property.floors.length === 0) {
+      setError("Please add a floor before adding units");
+      return;
+    }
+
     setSelectedUnit(null);
-    setIsUnitFormModalOpen(true);
+    const floor = property.floors.find((f) => f._id === floorId);
+    if (floor) {
+      setSelectedFloor(floor);
+      setIsUnitModalOpen(true);
+    } else {
+      setError("Selected floor not found. Please try again.");
+    }
   };
 
   const handleEditUnit = (unit) => {
     setSelectedUnit(unit);
-    setIsUnitFormModalOpen(true);
+    setIsUnitModalOpen(true);
   };
 
   const handleDeleteUnitClick = (unitId) => {
@@ -109,26 +146,31 @@ const PropertyDetail = () => {
         // Update existing unit
         const updatedUnit = await updateUnit(selectedUnit._id, unitData);
 
-        // Update local state
-        const updatedUnits = property.units.map((unit) =>
-          unit._id === selectedUnit._id ? updatedUnit : unit
-        );
+        // Update local state - find and replace the updated unit
+        if (property.units && property.units.length > 0) {
+          const updatedUnits = property.units.map((unit) =>
+            unit._id === selectedUnit._id ? updatedUnit : unit
+          );
 
-        setProperty({
-          ...property,
-          units: updatedUnits,
-        });
+          setProperty({
+            ...property,
+            units: updatedUnits,
+          });
+        }
       } else {
         // Add new unit
         const newUnit = await addUnitToProperty(id, unitData);
 
-        // Update local state
+        // Update local state to include the new unit
         setProperty({
           ...property,
           units: [...(property.units || []), newUnit],
         });
       }
-      setIsUnitFormModalOpen(false);
+
+      // Close the modal and reload floors to get the updated unit data
+      setIsUnitModalOpen(false);
+      loadFloors();
     } catch (error) {
       console.error("Error saving unit:", error);
       throw new Error(error.message || "Failed to save unit");
@@ -139,17 +181,21 @@ const PropertyDetail = () => {
     try {
       await deleteUnit(deleteConfirm.id);
 
-      // Update local state
-      const updatedUnits = property.units.filter(
-        (unit) => unit._id !== deleteConfirm.id
-      );
+      // Update local state by removing the deleted unit
+      if (property.units && property.units.length > 0) {
+        const updatedUnits = property.units.filter(
+          (unit) => unit._id !== deleteConfirm.id
+        );
 
-      setProperty({
-        ...property,
-        units: updatedUnits,
-      });
+        setProperty({
+          ...property,
+          units: updatedUnits,
+        });
+      }
 
       setDeleteConfirm({ show: false, type: "", id: null });
+      // Reload floors to sync the UI
+      loadFloors();
     } catch (error) {
       console.error("Error deleting unit:", error);
       setError("Failed to delete unit. Please try again.");
@@ -433,78 +479,11 @@ const PropertyDetail = () => {
         {activeTab === "overview" && <PropertyOverview property={property} />}
 
         {activeTab === "units" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Units</h3>
-              <button
-                onClick={handleAddUnit}
-                className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add Unit
-              </button>
-            </div>
-
-            {property.units && property.units.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {property.units.map((unit) => (
-                  <Card
-                    key={unit._id}
-                    className="p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between">
-                      <h5 className="font-medium">Unit {unit.unitNumber}</h5>
-                      {getStatusBadge(unit.status)}
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Rent: KES {unit.monthlyRent?.toLocaleString() || 0}/month
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {unit.bedrooms} bed, {unit.bathrooms} bath
-                      {unit.squareFootage
-                        ? `, ${unit.squareFootage} sq ft`
-                        : ""}
-                    </p>
-
-                    {unit.status === "occupied" && unit.currentTenant && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-sm">
-                          Tenant: {unit.currentTenant.firstName}{" "}
-                          {unit.currentTenant.lastName}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2">
-                      <button
-                        onClick={() => handleEditUnit(unit)}
-                        className="px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUnitClick(unit._id)}
-                        className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-6 text-center">
-                <p className="text-gray-500">No units added yet.</p>
-                <button
-                  onClick={handleAddUnit}
-                  className="mt-4 inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add Unit
-                </button>
-              </Card>
-            )}
-          </div>
+          <FloorManagement
+            propertyId={property._id}
+            propertyType={property.propertyType}
+            onUpdate={loadFloors}
+          />
         )}
 
         {activeTab === "tenants" && (
@@ -535,13 +514,15 @@ const PropertyDetail = () => {
       )}
 
       {/* Unit Form Modal */}
-      {isUnitFormModalOpen && (
+      {isUnitModalOpen && (
         <UnitFormModal
-          isOpen={isUnitFormModalOpen}
-          onClose={() => setIsUnitFormModalOpen(false)}
+          isOpen={isUnitModalOpen}
+          onClose={() => setIsUnitModalOpen(false)}
           onSubmit={handleSubmitUnit}
           initialData={selectedUnit}
           propertyId={property._id}
+          propertyType={property.propertyType}
+          floors={property.floors || []}
         />
       )}
 
@@ -633,6 +614,14 @@ const PropertyOverview = ({ property }) => {
                 ? new Date(property.createdAt).toLocaleDateString()
                 : "-"}
             </p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-gray-500">Floors</h4>
+            <p className="mt-1">{property.floors?.length || 0}</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-gray-500">Units</h4>
+            <p className="mt-1">{property.units?.length || 0}</p>
           </div>
         </div>
         {property.description && (

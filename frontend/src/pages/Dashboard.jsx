@@ -1,4 +1,4 @@
-// frontend/src/pages/Dashboard.jsx
+// frontend/src/pages/Dashboard.jsx (enhanced)
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -12,7 +12,13 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import PaymentStats from "../components/dashboard/PaymentStats";
+import OccupancyChart from "../components/dashboard/OccupancyChart";
+import RevenueExpensesChart from "../components/dashboard/RevenueExpensesChart";
 import dashboardService from "../services/dashboardService";
+import propertyService from "../services/propertyService";
+import unitService from "../services/unitService";
+import paymentService from "../services/paymentService";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -29,19 +35,41 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Data for charts
+  const [properties, setProperties] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch dashboard statistics
-        const statsData = await dashboardService.getDashboardStats();
-        setStats(statsData);
+        // Fetch data in parallel for better performance
+        const [
+          statsData,
+          activitiesData,
+          propertiesData,
+          unitsData,
+          paymentsData,
+        ] = await Promise.all([
+          dashboardService.getDashboardStats(),
+          dashboardService.getRecentActivities(),
+          propertyService.getAllProperties(),
+          unitService.getUnits(),
+          paymentService.getAllPayments(),
+        ]);
 
-        // Fetch recent activities
-        const activitiesData = await dashboardService.getRecentActivities();
+        setStats(statsData);
         setActivities(activitiesData);
+        setProperties(propertiesData);
+        setUnits(unitsData);
+        setPayments(paymentsData);
+
+        // For now, we'll just use sample expenses data
+        setExpenses([]);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError("Failed to load dashboard data");
@@ -80,7 +108,7 @@ const Dashboard = () => {
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Link to="/properties">
           <Card className="p-6 cursor-pointer hover:shadow-md transition-shadow">
             <div className="flex items-center">
@@ -150,41 +178,15 @@ const Dashboard = () => {
             </div>
           </Card>
         </Link>
-
-        <Link to="/maintenance">
-          <Card className="p-6 cursor-pointer hover:shadow-md transition-shadow">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-full mr-4">
-                <Wrench className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Pending Maintenance
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.pendingMaintenance}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <Card className="p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-full mr-4">
-              <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Year-to-Date Revenue
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {stats.yearToDateRevenue.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </Card>
       </div>
+
+      {/* Data Visualization Components */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PaymentStats />
+        <OccupancyChart properties={properties} units={units} />
+      </div>
+
+      <RevenueExpensesChart payments={payments} expenses={expenses} />
 
       {/* Recent Activities */}
       <Card className="p-6">

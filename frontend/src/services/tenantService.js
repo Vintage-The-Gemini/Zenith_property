@@ -148,6 +148,16 @@ export const uploadDocuments = async (id, formData) => {
   }
 };
 
+export const deleteTenant = async (id) => {
+  try {
+    const response = await api.delete(`/tenants/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting tenant:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
 export default {
   getAllTenants,
   getTenantById,

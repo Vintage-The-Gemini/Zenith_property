@@ -30,7 +30,7 @@ const UnitFormModal = ({
     // Commercial specific fields
     commercialUnitType: isCommercial ? "office" : "",
     // Floor relationship
-    floorId: floors.length > 0 ? floors[0]._id : "",
+    floorId: "",
   });
 
   const [error, setError] = useState("");
@@ -51,15 +51,24 @@ const UnitFormModal = ({
         description: initialData.description || "",
         commercialUnitType:
           initialData.commercialUnitType || (isCommercial ? "office" : ""),
-        floorId:
-          initialData.floorId || (floors.length > 0 ? floors[0]._id : ""),
+        floorId: initialData.floorId || "",
       });
-    } else if (floors.length > 0) {
-      // Pre-select the first floor for new units
-      setFormData((prev) => ({
-        ...prev,
-        floorId: floors[0]._id,
-      }));
+    } else {
+      // Reset form for new unit, but populate floorId if floors are available
+      setFormData({
+        unitNumber: "",
+        type: "rental",
+        status: "available",
+        bedrooms: isCommercial ? 0 : 1,
+        bathrooms: isCommercial ? 0 : 1,
+        squareFootage: "",
+        monthlyRent: "",
+        securityDeposit: "",
+        furnished: false,
+        description: "",
+        commercialUnitType: isCommercial ? "office" : "",
+        floorId: floors.length > 0 ? floors[0]._id : "",
+      });
     }
   }, [initialData, floors, isCommercial]);
 
@@ -133,9 +142,9 @@ const UnitFormModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full p-6">
-        <div className="flex justify-between items-center mb-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Home className="h-6 w-6 text-primary-600" />
             <h2 className="text-xl font-medium">
@@ -150,249 +159,256 @@ const UnitFormModal = ({
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
-            {error}
-          </div>
-        )}
+        <div className="p-6">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Floor
-            </label>
-            <select
-              name="floorId"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.floorId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Floor</option>
-              {floors.map((floor) => (
-                <option key={floor._id} value={floor._id}>
-                  {floor.name || `Floor ${floor.number}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Unit Number
-            </label>
-            <input
-              type="text"
-              name="unitNumber"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.unitNumber}
-              onChange={handleChange}
-              placeholder="101"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Monthly Rent (KES)
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">KES</span>
-              </div>
-              <input
-                type="number"
-                name="monthlyRent"
-                className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.monthlyRent}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Floor <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="floorId"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.floorId}
                 onChange={handleChange}
-                placeholder="15000"
-                min="0"
-                step="0.01"
+                required
+              >
+                <option value="">Select Floor</option>
+                {floors.map((floor) => (
+                  <option key={floor._id} value={floor._id}>
+                    {floor.name || `Floor ${floor.number}`}
+                  </option>
+                ))}
+              </select>
+              {floors.length === 0 && (
+                <p className="mt-1 text-sm text-red-500">
+                  No floors available. Please add a floor first.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Unit Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="unitNumber"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.unitNumber}
+                onChange={handleChange}
+                placeholder="101"
                 required
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Unit Type
+                Monthly Rent (KES) <span className="text-red-500">*</span>
               </label>
-              <select
-                name="type"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.type}
-                onChange={handleChange}
-              >
-                <option value="rental">Rental</option>
-                <option value="bnb">BnB/Short Stay</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Status
-              </label>
-              <select
-                name="status"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.status}
-                onChange={handleChange}
-              >
-                <option value="available">Available</option>
-                <option value="occupied">Occupied</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="reserved">Reserved</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Residential specific fields */}
-          {!isCommercial && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Bedrooms
-                </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">KES</span>
+                </div>
                 <input
                   type="number"
-                  name="bedrooms"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  value={formData.bedrooms}
+                  name="monthlyRent"
+                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={formData.monthlyRent}
                   onChange={handleChange}
+                  placeholder="15000"
                   min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Bathrooms
-                </label>
-                <input
-                  type="number"
-                  name="bathrooms"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  value={formData.bathrooms}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.5"
+                  step="0.01"
+                  required
                 />
               </div>
             </div>
-          )}
 
-          {/* Commercial specific fields */}
-          {isCommercial && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Unit Type
+                </label>
+                <select
+                  name="type"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={formData.type}
+                  onChange={handleChange}
+                >
+                  <option value="rental">Rental</option>
+                  <option value="bnb">BnB/Short Stay</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={formData.status}
+                  onChange={handleChange}
+                >
+                  <option value="available">Available</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="reserved">Reserved</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Residential specific fields */}
+            {!isCommercial && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Bedrooms
+                  </label>
+                  <input
+                    type="number"
+                    name="bedrooms"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.bedrooms}
+                    onChange={handleChange}
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Bathrooms
+                  </label>
+                  <input
+                    type="number"
+                    name="bathrooms"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.bathrooms}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.5"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Commercial specific fields */}
+            {isCommercial && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Commercial Unit Type
+                </label>
+                <select
+                  name="commercialUnitType"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={formData.commercialUnitType}
+                  onChange={handleChange}
+                >
+                  <option value="office">Office</option>
+                  <option value="retail">Retail</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Commercial Unit Type
+                Security Deposit (KES)
               </label>
-              <select
-                name="commercialUnitType"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.commercialUnitType}
-                onChange={handleChange}
-              >
-                <option value="office">Office</option>
-                <option value="retail">Retail</option>
-                <option value="warehouse">Warehouse</option>
-                <option value="industrial">Industrial</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Security Deposit (KES)
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">KES</span>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 sm:text-sm">KES</span>
+                </div>
+                <input
+                  type="number"
+                  name="securityDeposit"
+                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={formData.securityDeposit}
+                  onChange={handleChange}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Square Footage
+              </label>
               <input
                 type="number"
-                name="securityDeposit"
-                className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.securityDeposit}
+                name="squareFootage"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.squareFootage}
                 onChange={handleChange}
                 placeholder="0"
                 min="0"
-                step="0.01"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Square Footage
-            </label>
-            <input
-              type="number"
-              name="squareFootage"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.squareFootage}
-              onChange={handleChange}
-              placeholder="0"
-              min="0"
-            />
-          </div>
+            {!isCommercial && (
+              <div className="flex items-center">
+                <input
+                  id="furnished"
+                  name="furnished"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  checked={formData.furnished}
+                  onChange={handleChange}
+                />
+                <label
+                  htmlFor="furnished"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Furnished
+                </label>
+              </div>
+            )}
 
-          {!isCommercial && (
-            <div className="flex items-center">
-              <input
-                id="furnished"
-                name="furnished"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                checked={formData.furnished}
-                onChange={handleChange}
-              />
-              <label
-                htmlFor="furnished"
-                className="ml-2 block text-sm text-gray-700"
-              >
-                Furnished
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Description
               </label>
+              <textarea
+                name="description"
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Unit description..."
+              />
             </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
-              name="description"
-              rows="3"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Unit description..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Saving..."
-                : isEditMode
-                ? "Update Unit"
-                : "Add Unit"}
-            </button>
-          </div>
-        </form>
-      </Card>
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? "Saving..."
+                  : isEditMode
+                  ? "Update Unit"
+                  : "Add Unit"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

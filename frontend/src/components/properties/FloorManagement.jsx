@@ -1,13 +1,24 @@
 // frontend/src/components/properties/FloorManagement.jsx
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash, Building2, Home, AlertTriangle } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash,
+  Building2,
+  Home,
+  AlertTriangle,
+} from "lucide-react";
 import Card from "../ui/Card";
 import FloorFormModal from "./FloorFormModal";
 import UnitFormModal from "./UnitFormModal";
 import floorService from "../../services/floorService";
 import unitService from "../../services/unitService";
 
-const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) => {
+const FloorManagement = ({
+  propertyId,
+  propertyType = "apartment",
+  onUpdate,
+}) => {
   const [floors, setFloors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +31,8 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
     type: "",
     id: null,
   });
-  const isCommercial = propertyType === "commercial" || propertyType === "mixed-use";
+  const isCommercial =
+    propertyType === "commercial" || propertyType === "mixed-use";
 
   useEffect(() => {
     if (propertyId) {
@@ -32,7 +44,7 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
     try {
       setLoading(true);
       setError(null);
-      
+
       // Get floors for this property
       const data = await floorService.getFloorsByProperty(propertyId);
       setFloors(data);
@@ -91,7 +103,7 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
   // Unit CRUD operations
   const handleAddUnit = (floorId) => {
     setSelectedUnit(null);
-    setSelectedFloor(floors.find(floor => floor._id === floorId));
+    setSelectedFloor(floors.find((floor) => floor._id === floorId));
     setIsUnitModalOpen(true);
   };
 
@@ -132,27 +144,38 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
       throw new Error(error.message || "Failed to save unit");
     }
   };
-  
+
   // Render status badge
   const getStatusBadge = (status) => {
     const statusClasses = {
-      available: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-      occupied: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
-      maintenance: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
-      reserved: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+      available:
+        "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+      occupied:
+        "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+      maintenance:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
+      reserved:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400",
     };
-    
+
     return (
-      <span className={`px-2 py-0.5 text-xs rounded-full ${statusClasses[status] || "bg-gray-100 text-gray-800"}`}>
+      <span
+        className={`px-2 py-0.5 text-xs rounded-full ${
+          statusClasses[status] || "bg-gray-100 text-gray-800"
+        }`}
+      >
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
   };
 
+  // Check if floors are loaded
+  const hasFloors = floors && floors.length > 0;
+
   if (loading) {
     return <div className="text-center py-4">Loading floors...</div>;
   }
-  
+
   return (
     <div className="space-y-6">
       {error && (
@@ -174,14 +197,14 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
         </h3>
         <button
           onClick={handleAddFloor}
-          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
         >
           <Plus className="h-4 w-4 mr-1" />
           Add Floor
         </button>
       </div>
 
-      {floors.length === 0 ? (
+      {!hasFloors ? (
         <Card className="p-6 text-center">
           <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-3" />
           <p className="text-gray-500 dark:text-gray-400 mb-4">
@@ -189,7 +212,7 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
           </p>
           <button
             onClick={handleAddFloor}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Floor
@@ -207,7 +230,7 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleAddUnit(floor._id)}
-                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md"
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Add Unit
@@ -278,10 +301,11 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
 
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
                         {getStatusBadge(unit.status)}
-                        
+
                         {unit.currentTenant && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Tenant: {unit.currentTenant.firstName} {unit.currentTenant.lastName}
+                            Tenant: {unit.currentTenant.firstName}{" "}
+                            {unit.currentTenant.lastName}
                           </p>
                         )}
                       </div>
@@ -296,9 +320,9 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
                   </p>
                   <button
                     onClick={() => handleAddUnit(floor._id)}
-                    className="mt-2 inline-flex items-center px-2 py-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+                    className="mt-2 inline-flex items-center px-3 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-md"
                   >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" />
                     Add Unit
                   </button>
                 </div>
@@ -372,3 +396,6 @@ const FloorManagement = ({ propertyId, propertyType = "apartment", onUpdate }) =
       )}
     </div>
   );
+};
+
+export default FloorManagement;
