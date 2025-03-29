@@ -1,15 +1,17 @@
 // frontend/src/components/tenants/TenantFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, User } from "lucide-react";
+import { X, User, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
+import { getAvailableUnits } from "../../services/unitService";
+import { createTenant, updateTenant } from "../../services/tenantService";
 
 const TenantFormModal = ({
   isOpen,
   onClose,
   onSubmit,
   initialData = null,
-  units = [],
   propertyId,
+  unitInfo = null,
 }) => {
   const isEditMode = !!initialData;
   const [formData, setFormData] = useState({
@@ -17,12 +19,16 @@ const TenantFormModal = ({
     lastName: "",
     email: "",
     phone: "",
-    unitId: "",
-    leaseStartDate: "",
-    leaseEndDate: "",
-    rentAmount: "",
-    securityDeposit: "",
-    status: "pending",
+    unitId: unitInfo?.id || "",
+    propertyId: propertyId || "",
+    leaseDetails: {
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 12))
+        .toISOString()
+        .split("T")[0],
+      rentAmount: "",
+      securityDeposit: "",
+    },
     emergencyContact: {
       name: "",
       relationship: "",
@@ -31,91 +37,122 @@ const TenantFormModal = ({
     },
   });
 
+  const [availableUnits, setAvailableUnits] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (initialData) {
-      // Format the dates properly for date inputs
-      const startDate = initialData.leaseDetails?.startDate
-        ? new Date(initialData.leaseDetails.startDate)
-            .toISOString()
-            .split("T")[0]
-        : "";
+    if (isOpen) {
+      fetchAvailableUnits();
 
-      const endDate = initialData.leaseDetails?.endDate
-        ? new Date(initialData.leaseDetails.endDate).toISOString().split("T")[0]
-        : "";
+      if (initialData) {
+        // Format dates for the form
+        const leaseStartDate = initialData.leaseDetails?.startDate
+          ? new Date(initialData.leaseDetails.startDate)
+              .toISOString()
+              .split("T")[0]
+          : "";
 
-      setFormData({
-        firstName: initialData.firstName || "",
-        lastName: initialData.lastName || "",
-        email: initialData.email || "",
-        phone: initialData.phone || "",
-        unitId: initialData.unitId || "",
-        leaseStartDate: startDate,
-        leaseEndDate: endDate,
-        rentAmount: initialData.leaseDetails?.rentAmount || "",
-        securityDeposit: initialData.leaseDetails?.securityDeposit || "",
-        status: initialData.status || "pending",
-        emergencyContact: {
-          name: initialData.emergencyContact?.name || "",
-          relationship: initialData.emergencyContact?.relationship || "",
-          phone: initialData.emergencyContact?.phone || "",
-          email: initialData.emergencyContact?.email || "",
-        },
-      });
-    } else if (units.length > 0) {
-      // Pre-select the first available unit if no tenant data is provided
-      // Also pre-fill rent amount from unit data if available
-      const availableUnit =
-        units.find((unit) => unit.status === "available") || units[0];
-      if (availableUnit) {
-        setFormData((prevData) => ({
-          ...prevData,
-          unitId: availableUnit._id || "",
-          rentAmount: availableUnit.monthlyRent || "",
-          securityDeposit: availableUnit.securityDeposit || "",
+        const leaseEndDate = initialData.leaseDetails?.endDate
+          ? new Date(initialData.leaseDetails.endDate)
+              .toISOString()
+              .split("T")[0]
+          : "";
+
+        setFormData({
+          firstName: initialData.firstName || "",
+          lastName: initialData.lastName || "",
+          email: initialData.email || "",
+          phone: initialData.phone || "",
+          unitId:
+            initialData.unitId?._id || initialData.unitId || unitInfo?.id || "",
+          propertyId:
+            initialData.propertyId?._id ||
+            initialData.propertyId ||
+            propertyId ||
+            "",
+          leaseDetails: {
+            startDate: leaseStartDate,
+            endDate: leaseEndDate,
+            rentAmount: initialData.leaseDetails?.rentAmount || "",
+            securityDeposit: initialData.leaseDetails?.securityDeposit || "",
+          },
+          emergencyContact: {
+            name: initialData.emergencyContact?.name || "",
+            relationship: initialData.emergencyContact?.relationship || "",
+            phone: initialData.emergencyContact?.phone || "",
+            email: initialData.emergencyContact?.email || "",
+          },
+        });
+      } else if (unitInfo) {
+        // Pre-set the unit if provided via unitInfo
+        setFormData((prev) => ({
+          ...prev,
+          unitId: unitInfo.id,
+          propertyId: propertyId,
         }));
       }
     }
-  }, [initialData, units]);
+  }, [isOpen, initialData, unitInfo, propertyId]);
+
+  const fetchAvailableUnits = async () => {
+    try {
+      setLoading(true);
+      const response = await getAvailableUnits(propertyId);
+      setAvailableUnits(response);
+
+      // If we have unitInfo but no other form data, try to get rent and deposit from the unit
+      if (unitInfo && !initialData && response.length > 0) {
+        const selectedUnit = response.find((unit) => unit._id === unitInfo.id);
+        if (selectedUnit) {
+          setFormData((prev) => ({
+            ...prev,
+            leaseDetails: {
+              ...prev.leaseDetails,
+              rentAmount:
+                selectedUnit.monthlyRent || prev.leaseDetails.rentAmount,
+              securityDeposit:
+                selectedUnit.securityDeposit ||
+                prev.leaseDetails.securityDeposit,
+            },
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching available units:", err);
+      setError("Failed to load available units");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle nested emergency contact fields
-    if (name.startsWith("emergency.")) {
-      const field = name.split(".")[1];
-      setFormData({
-        ...formData,
-        emergencyContact: {
-          ...formData.emergencyContact,
+    // Handle nested fields
+    if (name.startsWith("leaseDetails.")) {
+      const field = name.replace("leaseDetails.", "");
+      setFormData((prev) => ({
+        ...prev,
+        leaseDetails: {
+          ...prev.leaseDetails,
           [field]: value,
         },
-      });
-    } else if (name === "unitId") {
-      // When unit is changed, auto-populate rent amount if available
-      const selectedUnit = units.find((unit) => unit._id === value);
-      if (selectedUnit) {
-        setFormData({
-          ...formData,
-          unitId: value,
-          rentAmount: selectedUnit.monthlyRent || formData.rentAmount,
-          securityDeposit:
-            selectedUnit.securityDeposit || formData.securityDeposit,
-        });
-      } else {
-        setFormData({
-          ...formData,
-          unitId: value,
-        });
-      }
+      }));
+    } else if (name.startsWith("emergencyContact.")) {
+      const field = name.replace("emergencyContact.", "");
+      setFormData((prev) => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [field]: value,
+        },
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [name]: value,
-      });
+      }));
     }
   };
 
@@ -124,18 +161,13 @@ const TenantFormModal = ({
     setError("");
 
     // Basic validation
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+    if (!formData.firstName || !formData.lastName) {
       setError("First and last name are required");
       return;
     }
 
-    if (!formData.email.trim()) {
+    if (!formData.email) {
       setError("Email is required");
-      return;
-    }
-
-    if (!formData.phone.trim()) {
-      setError("Phone number is required");
       return;
     }
 
@@ -145,33 +177,36 @@ const TenantFormModal = ({
     }
 
     try {
-      setIsLoading(true);
+      setLoading(true);
 
       // Format data for API
       const tenantData = {
         ...formData,
-        propertyId,
         leaseDetails: {
-          startDate: formData.leaseStartDate,
-          endDate: formData.leaseEndDate,
-          rentAmount: parseFloat(formData.rentAmount) || 0,
-          securityDeposit: parseFloat(formData.securityDeposit) || 0,
-          paymentFrequency: "monthly", // Default to monthly
+          ...formData.leaseDetails,
+          rentAmount: parseFloat(formData.leaseDetails.rentAmount) || 0,
+          securityDeposit:
+            parseFloat(formData.leaseDetails.securityDeposit) || 0,
         },
       };
 
-      // Remove the flat properties that are now nested
-      delete tenantData.leaseStartDate;
-      delete tenantData.leaseEndDate;
-      delete tenantData.rentAmount;
-      delete tenantData.securityDeposit;
+      let result;
+      if (isEditMode) {
+        result = await updateTenant(initialData._id, tenantData);
+      } else {
+        result = await createTenant(tenantData);
+      }
 
-      await onSubmit(tenantData);
+      if (onSubmit) {
+        onSubmit(result);
+      }
+
       onClose();
-    } catch (error) {
-      setError(error.message || "Failed to save tenant");
+    } catch (err) {
+      console.error("Error saving tenant:", err);
+      setError(err.message || "Failed to save tenant");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -179,186 +214,183 @@ const TenantFormModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <User className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-medium text-gray-900 dark:text-white">
               {isEditMode ? "Edit Tenant" : "Add New Tenant"}
+              {unitInfo && !isEditMode && ` for Unit ${unitInfo.unitNumber}`}
             </h2>
           </div>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            disabled={isLoading}
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="p-6">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm">
-              {error}
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-              Personal Information
-            </h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Tenant Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  First Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Last Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Phone <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.phone}
-                  onChange={handleChange}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </div>
             </div>
 
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2 pt-4">
-              Unit & Lease Details
-            </h3>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Unit Assignment
+              </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Unit <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="unitId"
-                  required
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   value={formData.unitId}
                   onChange={handleChange}
+                  required
+                  disabled={unitInfo !== null || loading}
                 >
                   <option value="">Select a unit</option>
-                  {units.map((unit) => (
+                  {availableUnits.map((unit) => (
                     <option key={unit._id} value={unit._id}>
-                      Unit {unit.unitNumber} -{" "}
-                      {unit.status === "available" ? "Available" : unit.status}
+                      {unit.propertyId?.name || "Property"} - Unit{" "}
+                      {unit.unitNumber}
                     </option>
                   ))}
+                  {unitInfo && (
+                    <option value={unitInfo.id}>
+                      Unit {unitInfo.unitNumber}
+                    </option>
+                  )}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.status}
-                  onChange={handleChange}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="active">Active</option>
-                  <option value="past">Past</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Lease Start Date
-                </label>
-                <input
-                  type="date"
-                  name="leaseStartDate"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.leaseStartDate}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Lease End Date
-                </label>
-                <input
-                  type="date"
-                  name="leaseEndDate"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.leaseEndDate}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Monthly Rent (KES)
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">KES</span>
-                  </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Lease Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    name="leaseDetails.startDate"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.leaseDetails.startDate}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    name="leaseDetails.endDate"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.leaseDetails.endDate}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Monthly Rent (KES)
+                  </label>
                   <input
                     type="number"
-                    name="rentAmount"
-                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={formData.rentAmount}
+                    name="leaseDetails.rentAmount"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.leaseDetails.rentAmount}
                     onChange={handleChange}
                     min="0"
                     step="0.01"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Security Deposit (KES)
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">KES</span>
-                  </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Security Deposit (KES)
+                  </label>
                   <input
                     type="number"
-                    name="securityDeposit"
-                    className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={formData.securityDeposit}
+                    name="leaseDetails.securityDeposit"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.leaseDetails.securityDeposit}
                     onChange={handleChange}
                     min="0"
                     step="0.01"
@@ -367,84 +399,88 @@ const TenantFormModal = ({
               </div>
             </div>
 
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2 pt-4">
-              Emergency Contact
-            </h3>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Emergency Contact
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    name="emergencyContact.name"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.emergencyContact.name}
+                    onChange={handleChange}
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  name="emergency.name"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.emergencyContact.name}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Relationship
-                </label>
-                <input
-                  type="text"
-                  name="emergency.relationship"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.emergencyContact.relationship}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  name="emergency.phone"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.emergencyContact.phone}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="emergency.email"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={formData.emergencyContact.email}
-                  onChange={handleChange}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Relationship
+                  </label>
+                  <input
+                    type="text"
+                    name="emergencyContact.relationship"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.emergencyContact.relationship}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    name="emergencyContact.phone"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.emergencyContact.phone}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="emergencyContact.email"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={formData.emergencyContact.email}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Saving..."
-                : isEditMode
-                ? "Update Tenant"
-                : "Add Tenant"}
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading
+                  ? "Saving..."
+                  : isEditMode
+                  ? "Update Tenant"
+                  : "Add Tenant"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

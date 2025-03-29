@@ -11,6 +11,7 @@ import {
 import Card from "../ui/Card";
 import FloorFormModal from "./FloorFormModal";
 import UnitFormModal from "./UnitFormModal";
+import UnitStatusModal from "./UnitStatusModal";
 import floorService from "../../services/floorService";
 import unitService from "../../services/unitService";
 
@@ -24,6 +25,7 @@ const FloorManagement = ({
   const [error, setError] = useState(null);
   const [isFloorModalOpen, setIsFloorModalOpen] = useState(false);
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({
@@ -112,6 +114,11 @@ const FloorManagement = ({
     setIsUnitModalOpen(true);
   };
 
+  const handleChangeUnitStatus = (unit) => {
+    setSelectedUnit(unit);
+    setIsStatusModalOpen(true);
+  };
+
   const handleDeleteUnit = async () => {
     try {
       await unitService.deleteUnit(deleteConfirm.id);
@@ -145,6 +152,12 @@ const FloorManagement = ({
     }
   };
 
+  const handleStatusChange = async (newStatus) => {
+    // After successful status change, reload floors
+    await loadFloors();
+    if (onUpdate) onUpdate();
+  };
+
   // Render status badge
   const getStatusBadge = (status) => {
     const statusClasses = {
@@ -162,7 +175,8 @@ const FloorManagement = ({
       <span
         className={`px-2 py-0.5 text-xs rounded-full ${
           statusClasses[status] || "bg-gray-100 text-gray-800"
-        }`}
+        } cursor-pointer`}
+        onClick={() => handleChangeUnitStatus(unit)}
       >
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
@@ -300,7 +314,24 @@ const FloorManagement = ({
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        {getStatusBadge(unit.status)}
+                        <span
+                          className={`px-2 py-0.5 text-xs rounded-full cursor-pointer
+                            ${
+                              unit.status === "available"
+                                ? "bg-green-100 text-green-800"
+                                : unit.status === "occupied"
+                                ? "bg-blue-100 text-blue-800"
+                                : unit.status === "maintenance"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : unit.status === "reserved"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          onClick={() => handleChangeUnitStatus(unit)}
+                        >
+                          {unit.status?.charAt(0).toUpperCase() +
+                            unit.status?.slice(1) || "Available"}
+                        </span>
 
                         {unit.currentTenant && (
                           <p className="text-xs text-gray-500 mt-1">
@@ -353,6 +384,17 @@ const FloorManagement = ({
           propertyId={propertyId}
           propertyType={propertyType}
           floors={floors}
+        />
+      )}
+
+      {/* Unit Status Modal */}
+      {isStatusModalOpen && (
+        <UnitStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+          unit={selectedUnit}
+          propertyId={propertyId}
+          onStatusChange={handleStatusChange}
         />
       )}
 

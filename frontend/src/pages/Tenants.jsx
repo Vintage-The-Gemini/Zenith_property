@@ -1,6 +1,5 @@
 // frontend/src/pages/Tenants.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -9,32 +8,28 @@ import {
   AlertTriangle,
   Mail,
   Phone,
-  Building2,
   Home,
   Calendar,
-  CheckCircle,
-  XCircle,
-  Clock,
+  DollarSign,
+  Edit,
+  Trash,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import TenantFormModal from "../components/tenants/TenantFormModal";
 import { getAllTenants, deleteTenant } from "../services/tenantService";
-import { getAvailableUnits } from "../services/unitService";
 import { getAllProperties } from "../services/propertyService";
+import { getAvailableUnits } from "../services/unitService";
 
 const Tenants = () => {
   const [tenants, setTenants] = useState([]);
-  const [units, setUnits] = useState([]);
   const [properties, setProperties] = useState([]);
+  const [availableUnits, setAvailableUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null });
-  const navigate = useNavigate();
-
-  // Filter states
   const [filters, setFilters] = useState({
     propertyId: "",
     status: "",
@@ -58,7 +53,7 @@ const Tenants = () => {
 
       setTenants(tenantsData);
       setProperties(propertiesData);
-      setUnits(unitsData);
+      setAvailableUnits(unitsData);
     } catch (err) {
       console.error("Error loading tenant data:", err);
       setError("Failed to load tenants. Please try again.");
@@ -95,10 +90,9 @@ const Tenants = () => {
 
   const handleSubmitTenant = async (tenantData) => {
     try {
-      // Logic will be implemented in TenantFormModal
-      // Just close the modal and refresh data
+      // Close the modal and refresh data
       setIsModalOpen(false);
-      loadData();
+      await loadData();
     } catch (error) {
       console.error("Error saving tenant:", error);
       throw new Error(error.message || "Failed to save tenant");
@@ -133,50 +127,16 @@ const Tenants = () => {
 
     // Apply filters
     const propertyMatch = filters.propertyId
-      ? tenant.propertyId === filters.propertyId
+      ? tenant.propertyId === filters.propertyId ||
+        (tenant.propertyId?._id && tenant.propertyId._id === filters.propertyId)
       : true;
+
     const statusMatch = filters.status
       ? tenant.status === filters.status
       : true;
 
     return searchMatch && propertyMatch && statusMatch;
   });
-
-  // Get status badge color
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "active":
-        return (
-          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Active
-          </span>
-        );
-      case "pending":
-        return (
-          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending
-          </span>
-        );
-      case "past":
-        return (
-          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-            <XCircle className="w-3 h-3 mr-1" />
-            Past
-          </span>
-        );
-      case "blacklisted":
-        return (
-          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-            <XCircle className="w-3 h-3 mr-1" />
-            Blacklisted
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -264,7 +224,6 @@ const Tenants = () => {
             <option value="active">Active</option>
             <option value="pending">Pending</option>
             <option value="past">Past</option>
-            <option value="blacklisted">Blacklisted</option>
           </select>
         </div>
       </div>
@@ -326,8 +285,7 @@ const Tenants = () => {
           {filteredTenants.map((tenant) => (
             <Card
               key={tenant._id}
-              className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/tenants/${tenant._id}`)}
+              className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
             >
               <div className="p-6">
                 <div className="flex justify-between">
@@ -347,18 +305,34 @@ const Tenants = () => {
                     </div>
                   </div>
 
-                  <div>{getStatusBadge(tenant.status)}</div>
+                  <div>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full 
+                      ${
+                        tenant.status === "active"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                          : tenant.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400"
+                      }`}
+                    >
+                      {tenant.status?.charAt(0).toUpperCase() +
+                        tenant.status?.slice(1) || "Unknown"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <div className="flex items-start mt-2">
-                    <Building2 className="h-4 w-4 mr-1 text-gray-500 mt-0.5" />
+                    <Home className="h-4 w-4 mr-1 text-gray-500 mt-0.5" />
                     <div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {tenant.propertyId?.name || "N/A"}
+                        {tenant.propertyId?.name ||
+                          tenant.unitId?.propertyId?.name ||
+                          "No property"}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Unit {tenant.unitId?.unitNumber || "N/A"}
+                        Unit {tenant.unitId?.unitNumber || "Not assigned"}
                       </div>
                     </div>
                   </div>
@@ -382,20 +356,14 @@ const Tenants = () => {
 
               <div className="bg-gray-50 dark:bg-gray-800 px-6 py-3 flex justify-end space-x-2 border-t border-gray-100 dark:border-gray-700">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditTenant(tenant);
-                  }}
+                  onClick={() => handleEditTenant(tenant)}
                   className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
                 >
                   Edit
                 </button>
 
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteClick(tenant._id);
-                  }}
+                  onClick={() => handleDeleteClick(tenant._id)}
                   className="text-xs text-red-600 hover:text-red-700 dark:text-red-400"
                 >
                   Delete
@@ -413,7 +381,6 @@ const Tenants = () => {
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleSubmitTenant}
           initialData={selectedTenant}
-          units={units}
           properties={properties}
         />
       )}
@@ -427,7 +394,7 @@ const Tenants = () => {
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
               Are you sure you want to delete this tenant? This action cannot be
-              undone and may affect unit occupancy and payment records.
+              undone.
             </p>
             <div className="flex justify-end gap-3">
               <button

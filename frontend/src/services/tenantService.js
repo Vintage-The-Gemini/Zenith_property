@@ -3,16 +3,25 @@ import api from "./api";
 import { getErrorMessage } from "../utils/errorHandling";
 
 /**
- * Get all tenants
+ * Get all tenants with optional filters
  * @param {Object} filters - Filter options
  * @returns {Promise<Array>} Array of tenants
  */
 export const getAllTenants = async (filters = {}) => {
   try {
-    const queryParams = new URLSearchParams(filters).toString();
-    const response = await api.get(
-      `/tenants${queryParams ? `?${queryParams}` : ""}`
-    );
+    const queryParams = new URLSearchParams();
+
+    // Add filters to query params
+    Object.keys(filters).forEach((key) => {
+      if (filters[key]) {
+        queryParams.append(key, filters[key]);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `/tenants?${queryString}` : "/tenants";
+
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error("Error fetching tenants:", error);
@@ -42,7 +51,7 @@ export const getTenantById = async (id) => {
  */
 export const getTenantsByProperty = async (propertyId) => {
   try {
-    const response = await api.get(`/tenants?propertyId=${propertyId}`);
+    const response = await api.get(`/tenants/property/${propertyId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching property tenants:", error);
@@ -57,7 +66,7 @@ export const getTenantsByProperty = async (propertyId) => {
  */
 export const getTenantsByUnit = async (unitId) => {
   try {
-    const response = await api.get(`/tenants?unitId=${unitId}`);
+    const response = await api.get(`/tenants/unit/${unitId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching unit tenants:", error);
@@ -148,6 +157,11 @@ export const uploadDocuments = async (id, formData) => {
   }
 };
 
+/**
+ * Delete a tenant
+ * @param {string} id - Tenant ID
+ * @returns {Promise<Object>} Response data
+ */
 export const deleteTenant = async (id) => {
   try {
     const response = await api.delete(`/tenants/${id}`);
@@ -168,4 +182,5 @@ export default {
   endTenancy,
   recordPayment,
   uploadDocuments,
+  deleteTenant,
 };

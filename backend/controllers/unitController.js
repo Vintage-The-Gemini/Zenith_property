@@ -4,6 +4,7 @@ import Unit from "../models/Unit.js";
 import Property from "../models/Property.js";
 import Floor from "../models/Floor.js";
 import Maintenance from "../models/Maintenance.js";
+import Tenant from "../models/Tenant.js";
 import logger from "../utils/logger.js";
 
 /**
@@ -226,31 +227,59 @@ export const addMaintenanceRecord = async (req, res) => {
  * Update unit status
  */
 export const updateUnitStatus = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const unit = await Unit.findById(req.params.id);
+    const unit = await Unit.findById(req.params.id).session(session);
+
     if (!unit) {
       return res.status(404).json({ error: "Unit not found" });
     }
 
-    // Validate status change
+    // Check if trying to set status to occupied
     if (req.body.status === "occupied" && !unit.currentTenant) {
-      return res.status(400).json({
-        error:
-          "Cannot mark unit as occupied without assigning a tenant. Please assign a tenant first.",
-      });
+      if (!req.body.tenantId) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          error: "Cannot mark unit as occupied without assigning a tenant",
+        });
+      }
+
+      // Verify tenant exists
+      const tenant = await Tenant.findById(req.body.tenantId).session(session);
+      if (!tenant) {
+        await session.abortTransaction();
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Set current tenant for the unit
+      unit.currentTenant = tenant._id;
     }
 
-    // Store previous status for reference
-    unit._previousStatus = unit.status;
+    // If changing from occupied to something else, remove tenant reference
+    if (unit.status === "occupied" && req.body.status !== "occupied") {
+      unit.currentTenant = null;
+    }
 
     // Update status
     unit.status = req.body.status;
+    await unit.save({ session });
 
-    await unit.save();
-    res.json(unit);
+    await session.commitTransaction();
+
+    const updatedUnit = await Unit.findById(req.params.id)
+      .populate("propertyId", "name")
+      .populate("floorId", "number name")
+      .populate("currentTenant", "firstName lastName email phone");
+
+    res.json(updatedUnit);
   } catch (error) {
+    await session.abortTransaction();
     logger.error(`Error updating unit status: ${error.message}`);
     res.status(400).json({ error: error.message });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -344,7 +373,7 @@ export const updateUnit = async (req, res) => {
       }
     }
 
-    // Handle status change
+    // Handle status change and tenant assignment
     if (req.body.status && req.body.status !== unit.status) {
       if (
         req.body.status === "occupied" &&
@@ -356,8 +385,10 @@ export const updateUnit = async (req, res) => {
         });
       }
 
-      // Store previous status for reference in pre-save hook
-      unit._previousStatus = unit.status;
+      if (unit.status === "occupied" && req.body.status !== "occupied") {
+        // If changing from occupied to something else, remove tenant reference
+        unit.currentTenant = null;
+      }
     }
 
     // Update unit fields
