@@ -46,8 +46,17 @@ export const getPaymentById = async (id) => {
  * @param {Object} paymentData - Payment data including tenant, unit, amount, etc.
  * @returns {Promise<Object>} Created payment
  */
+
 export const createPayment = async (paymentData) => {
   try {
+    // If dueAmount is not provided, default to the amount
+    if (!paymentData.dueAmount || paymentData.dueAmount <= 0) {
+      paymentData.dueAmount = paymentData.amount;
+    }
+
+    // Calculate variance automatically
+    paymentData.paymentVariance = paymentData.amount - paymentData.dueAmount;
+
     const response = await api.post("/payments", paymentData);
     return response.data;
   } catch (error) {

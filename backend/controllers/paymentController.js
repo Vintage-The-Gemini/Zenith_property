@@ -69,76 +69,42 @@ export const createPayment = async (req, res) => {
       unitId,
       propertyId,
       amount,
-      dueDate,
-      paymentMethod,
-      type,
-      description,
-      status = "completed",
+      dueAmount,
+      // Other fields...
     } = req.body;
 
-    // Verify tenant exists
+    // Find tenant and get current balance
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
       return res.status(404).json({ error: "Tenant not found" });
     }
 
-    // Verify unit exists
-    const unit = await Unit.findById(unitId);
-    if (!unit) {
-      return res.status(404).json({ error: "Unit not found" });
-    }
+    // Calculate variance and update tenant balance
+    const previousBalance = tenant.currentBalance || 0;
+    const actualDueAmount = dueAmount || amount;
+    const paymentVariance = amount - actualDueAmount;
 
-    // Verify property exists
-    const property = await Property.findById(propertyId);
-    if (!property) {
-      return res.status(404).json({ error: "Property not found" });
-    }
+    // Update tenant balance
+    tenant.currentBalance = previousBalance - amount;
+    await tenant.save();
 
-    // Generate reference number
-    const reference = generateInvoiceNumber();
-
-    // Create payment
+    // Create payment record with balance info
     const payment = new Payment({
       tenant: tenantId,
       unit: unitId,
       property: propertyId,
       amount,
-      dueDate: new Date(dueDate || new Date()),
-      paymentDate: new Date(),
-      paymentMethod,
-      type,
-      description,
-      reference,
-      status,
-      createdBy: req.user ? req.user._id : null,
+      dueAmount: actualDueAmount,
+      paymentVariance,
+      previousBalance,
+      newBalance: tenant.currentBalance,
+      // Other fields...
     });
 
-    // Check if payment is late
-    const today = new Date();
-    const due = new Date(dueDate || new Date());
-
-    if (today > due) {
-      const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
-      const lateFee = calculateLateFees(amount, daysLate);
-
-      payment.latePayment = {
-        isLate: true,
-        daysLate,
-        lateFee,
-      };
-
-      // Add late fee to total amount if not already included
-      if (req.body.includeLateFeesInTotal) {
-        payment.amount += lateFee;
-      }
-    }
-
     await payment.save();
-
     res.status(201).json(payment);
   } catch (error) {
-    logger.error(`Error creating payment: ${error.message}`);
-    res.status(400).json({ error: error.message });
+    // Error handling...
   }
 };
 
