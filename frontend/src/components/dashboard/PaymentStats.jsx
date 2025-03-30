@@ -30,7 +30,16 @@ const PaymentStats = () => {
       try {
         setLoading(true);
         const data = await paymentService.getPaymentSummary();
-        setStats(data);
+        setStats({
+          collected: data.collected || 0,
+          pending: data.pending || 0,
+          overdue: data.overdue || 0,
+          totalCount: data.totalCount || 0,
+          overdueCount: data.overdueCount || 0,
+          ytdTotal: data.ytdTotal || 0,
+          currentMonth: data.currentMonth || { name: "", year: 0 },
+          paymentMethods: data.paymentMethods || {},
+        });
       } catch (err) {
         console.error("Error fetching payment stats:", err);
         setError("Failed to load payment statistics");
@@ -44,8 +53,6 @@ const PaymentStats = () => {
 
   const handleTimeFrameChange = (newTimeFrame) => {
     setTimeFrame(newTimeFrame);
-    // In a real implementation, you might make a new API call with the timeframe as a parameter
-    // For now, we'll just update the UI state
   };
 
   // Calculate percentage of pending payments
@@ -103,7 +110,7 @@ const PaymentStats = () => {
   const paymentMethodsArray = Object.entries(stats.paymentMethods || {}).map(
     ([method, amount]) => ({
       method,
-      amount,
+      amount: amount || 0,
       percentage:
         stats.collected > 0 ? Math.round((amount / stats.collected) * 100) : 0,
     })
@@ -114,7 +121,8 @@ const PaymentStats = () => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
           <CreditCard className="h-5 w-5 mr-2 text-primary-600 dark:text-primary-400" />
-          Payment Summary - {stats.currentMonth.name} {stats.currentMonth.year}
+          Payment Summary - {stats.currentMonth?.name || ""}{" "}
+          {stats.currentMonth?.year || ""}
         </h3>
 
         <div className="flex space-x-1 text-xs">
@@ -155,15 +163,17 @@ const PaymentStats = () => {
         <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
           <p className="text-sm text-gray-500 dark:text-gray-400">Collected</p>
           <p className="text-xl font-semibold flex items-center text-green-600 dark:text-green-400">
-            KES {stats.collected.toLocaleString()}
+            KES {(stats.collected || 0).toLocaleString()}
             <ArrowUp className="h-4 w-4 ml-1" />
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {stats.totalCount > 0 && (
               <>
                 {Math.round(
-                  (stats.collected /
-                    (stats.collected + stats.pending + stats.overdue)) *
+                  ((stats.collected || 0) /
+                    ((stats.collected || 0) +
+                      (stats.pending || 0) +
+                      (stats.overdue || 0))) *
                     100
                 )}
                 % of total revenue
@@ -175,16 +185,16 @@ const PaymentStats = () => {
         <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
           <p className="text-sm text-gray-500 dark:text-gray-400">Pending</p>
           <p className="text-xl font-semibold flex items-center text-yellow-600 dark:text-yellow-400">
-            KES {stats.pending.toLocaleString()}
+            KES {(stats.pending || 0).toLocaleString()}
             <Clock className="h-4 w-4 ml-1" />
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {pendingPercentage > 0 && (
               <>
                 {pendingPercentage}% of total (
-                {stats.totalCount -
-                  stats.overdueCount -
-                  (stats.collected ? stats.collected : 0)}{" "}
+                {(stats.totalCount || 0) -
+                  (stats.overdueCount || 0) -
+                  (stats.collected || 0)}{" "}
                 payments)
               </>
             )}
@@ -194,13 +204,14 @@ const PaymentStats = () => {
         <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
           <p className="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
           <p className="text-xl font-semibold flex items-center text-red-600 dark:text-red-400">
-            KES {stats.overdue.toLocaleString()}
+            KES {(stats.overdue || 0).toLocaleString()}
             <ArrowDown className="h-4 w-4 ml-1" />
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {overduePercentage > 0 && (
               <>
-                {overduePercentage}% of total ({stats.overdueCount} payments)
+                {overduePercentage}% of total ({stats.overdueCount || 0}{" "}
+                payments)
               </>
             )}
           </p>
@@ -211,7 +222,7 @@ const PaymentStats = () => {
             Year to Date
           </p>
           <p className="text-xl font-semibold flex items-center text-blue-600 dark:text-blue-400">
-            KES {stats.ytdTotal.toLocaleString()}
+            KES {(stats.ytdTotal || 0).toLocaleString()}
             <TrendingUp className="h-4 w-4 ml-1" />
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Floor from "../models/Floor.js";
 import Property from "../models/Property.js";
 import Unit from "../models/Unit.js";
+import logger from "../utils/logger.js";
 
 /**
  * Get all floors for a property
@@ -37,6 +38,7 @@ export const getFloorsByProperty = async (req, res) => {
 
     res.json(floors);
   } catch (error) {
+    logger.error(`Error in getFloorsByProperty: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -69,6 +71,7 @@ export const getFloor = async (req, res) => {
 
     res.json(floor);
   } catch (error) {
+    logger.error(`Error in getFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -98,6 +101,7 @@ export const getUnitsForFloor = async (req, res) => {
 
     res.json(units);
   } catch (error) {
+    logger.error(`Error in getUnitsForFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -113,7 +117,7 @@ export const createFloor = async (req, res) => {
     const { propertyId, number, name, notes } = req.body;
 
     // Validate required fields
-    if (!propertyId || !number) {
+    if (!propertyId || number === undefined) {
       return res
         .status(400)
         .json({ error: "Property ID and floor number are required" });
@@ -144,23 +148,29 @@ export const createFloor = async (req, res) => {
 
     await floor.save({ session });
 
-    // Add floor to property's floors array
+    // Add floor to property's floors array if it doesn't already exist
     if (!property.floors) {
       property.floors = [];
     }
 
-    property.floors.push({
-      _id: floor._id,
-      number: floor.number,
-      name: floor.name,
-    });
+    // Check if floor already exists in property
+    const floorExists = property.floors.some((f) => f.number === floor.number);
 
-    await property.save({ session });
+    if (!floorExists) {
+      property.floors.push({
+        _id: floor._id,
+        number: floor.number,
+        name: floor.name,
+      });
+      await property.save({ session });
+    }
+
     await session.commitTransaction();
 
     res.status(201).json(floor);
   } catch (error) {
     await session.abortTransaction();
+    logger.error(`Error in createFloor: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();
@@ -185,7 +195,7 @@ export const updateFloor = async (req, res) => {
     }
 
     // Check for duplicate floor number if number is being updated
-    if (updates.number && updates.number !== floor.number) {
+    if (updates.number !== undefined && updates.number !== floor.number) {
       const existingFloor = await Floor.findOne({
         propertyId: floor.propertyId,
         number: updates.number,
@@ -201,13 +211,15 @@ export const updateFloor = async (req, res) => {
 
     // Update the floor
     Object.keys(updates).forEach((key) => {
-      floor[key] = updates[key];
+      if (updates[key] !== undefined) {
+        floor[key] = updates[key];
+      }
     });
 
     await floor.save({ session });
 
     // Update the floor in the property's floors array if name or number changed
-    if (updates.number || updates.name) {
+    if (updates.number !== undefined || updates.name !== undefined) {
       await Property.updateOne(
         { _id: floor.propertyId, "floors._id": floor._id },
         {
@@ -224,6 +236,7 @@ export const updateFloor = async (req, res) => {
     res.json(floor);
   } catch (error) {
     await session.abortTransaction();
+    logger.error(`Error in updateFloor: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();
@@ -268,6 +281,7 @@ export const deleteFloor = async (req, res) => {
     res.json({ message: "Floor deleted successfully" });
   } catch (error) {
     await session.abortTransaction();
+    logger.error(`Error in deleteFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   } finally {
     session.endSession();

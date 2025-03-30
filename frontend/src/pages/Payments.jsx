@@ -209,11 +209,7 @@ const Payments = () => {
         });
       } else {
         // Create new payment
-        await paymentService.createPayment({
-          ...paymentData,
-          amount: parseFloat(paymentData.amount),
-          dueAmount: parseFloat(paymentData.dueAmount || paymentData.amount),
-        });
+        await paymentService.createPayment(paymentData);
       }
       setShowForm(false);
       loadAllData();

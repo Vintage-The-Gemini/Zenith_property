@@ -45,28 +45,13 @@ export const getPaymentById = async (id) => {
 
 /**
  * Create a new payment
- * @param {Object} paymentData - Payment data including tenant, unit, amount, etc.
+ * @param {Object} paymentData - Payment data
  * @returns {Promise<Object>} Created payment
  */
 export const createPayment = async (paymentData) => {
   try {
-    // Ensure we have properly formatted data for the API
-    const formattedData = {
-      tenant: paymentData.tenantId,
-      unit: paymentData.unitId,
-      property: paymentData.propertyId,
-      amount: parseFloat(paymentData.amount),
-      dueAmount: parseFloat(paymentData.dueAmount || paymentData.amount),
-      dueDate: paymentData.dueDate || new Date().toISOString(),
-      paymentDate: paymentData.paymentDate || new Date().toISOString(),
-      paymentMethod: paymentData.paymentMethod || "cash",
-      type: paymentData.type || "rent",
-      description: paymentData.description || "",
-      status: paymentData.status || "completed",
-    };
-
-    console.log("Creating payment with data:", formattedData);
-    const response = await api.post("/payments", formattedData);
+    console.log("Creating payment with data:", paymentData);
+    const response = await api.post("/payments", paymentData);
     return response.data;
   } catch (error) {
     console.error("Error creating payment:", error);
@@ -149,20 +134,6 @@ export const getPaymentsByUnit = async (unitId) => {
   }
 };
 
-/**
- * Generate rent invoices for active tenants
- * @returns {Promise<Object>} Generation result
- */
-export const generateRentInvoices = async () => {
-  try {
-    const response = await api.post("/payments/generate-invoices");
-    return response.data;
-  } catch (error) {
-    console.error("Error generating rent invoices:", error);
-    throw new Error(getErrorMessage(error));
-  }
-};
-
 export default {
   getAllPayments,
   getPaymentById,
@@ -172,5 +143,4 @@ export default {
   getPaymentsByTenant,
   getPaymentsByProperty,
   getPaymentsByUnit,
-  generateRentInvoices,
 };

@@ -23,7 +23,7 @@ export const getFinancialSummary = async (req, res) => {
     // Build property filter
     const propertyFilter = {};
     if (propertyId)
-      propertyFilter.property = mongoose.Types.ObjectId(propertyId);
+      propertyFilter.property = new mongoose.Types.ObjectId(propertyId);
 
     // Query payments
     const payments = await Payment.find({

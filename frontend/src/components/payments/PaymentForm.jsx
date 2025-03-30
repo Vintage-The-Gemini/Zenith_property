@@ -194,9 +194,19 @@ const PaymentForm = ({
 
       // Format data for API
       const paymentData = {
-        ...formData,
+        tenant: formData.tenantId, // Change tenantId to tenant to match API
+        unit: formData.unitId, // Change unitId to unit to match API
+        property: formData.propertyId, // Change propertyId to property to match API
         amount: parseFloat(formData.amount),
         dueAmount: parseFloat(formData.dueAmount || formData.amount),
+        paymentDate:
+          formData.paymentDate || new Date().toISOString().split("T")[0],
+        dueDate: formData.dueDate || new Date().toISOString().split("T")[0],
+        paymentMethod: formData.paymentMethod || "cash",
+        type: formData.type || "rent",
+        status: formData.status || "completed",
+        description: formData.description || "",
+        reference: formData.reference || "",
       };
 
       await onSubmit(paymentData);
