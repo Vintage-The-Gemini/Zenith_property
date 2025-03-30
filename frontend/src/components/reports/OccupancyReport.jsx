@@ -1,6 +1,6 @@
 // src/components/reports/OccupancyReport.jsx
 import { useState, useEffect } from "react";
-import { Home, Building2, Calendar } from "lucide-react";
+import { Building2, Calendar, Clock } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
 
@@ -42,7 +42,7 @@ const OccupancyReport = ({ filters, onError }) => {
   if (!reportData) {
     return (
       <div className="text-center py-8">
-        <Home className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+        <Building2 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
         <p className="text-gray-500 dark:text-gray-400">
           No occupancy data available
         </p>
@@ -226,13 +226,15 @@ const OccupancyReport = ({ filters, onError }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       {new Date(lease.leaseEndDate).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          lease.daysRemaining <= 30
+                          lease.daysRemaining <= 0
                             ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                            : lease.daysRemaining <= 90
+                            : lease.daysRemaining <= 30
                             ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                            : lease.daysRemaining <= 90
+                            ? "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
                             : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
                         }`}
                       >

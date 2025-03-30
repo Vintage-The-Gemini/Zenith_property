@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { BarChart2, DollarSign, Download } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
-import { exportPropertyRevenueToCSV } from "../../utils/csvExporter";
+import {
+  exportPropertyRevenueToCSV,
+  exportMonthlyDataToCSV,
+} from "../../utils/csvExporter";
 
 const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
   const [reportData, setReportData] = useState(null);
@@ -54,18 +57,44 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
     setRetryCount((prev) => prev + 1);
   };
 
-  const handleExportCSV = () => {
+  const handleExportPropertyData = () => {
     setExporting(true);
     try {
-      if (reportData && reportData.revenueByProperty) {
+      if (
+        reportData &&
+        reportData.revenueByProperty &&
+        reportData.revenueByProperty.length > 0
+      ) {
         exportPropertyRevenueToCSV(reportData.revenueByProperty);
       } else {
         throw new Error("No property revenue data available to export");
       }
     } catch (error) {
-      console.error("Error exporting CSV:", error);
+      console.error("Error exporting property data:", error);
       if (onError) {
-        onError("Failed to export data to CSV. Please try again.");
+        onError("Failed to export property data to CSV. Please try again.");
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportMonthlyData = () => {
+    setExporting(true);
+    try {
+      if (
+        reportData &&
+        reportData.revenueByMonth &&
+        reportData.revenueByMonth.length > 0
+      ) {
+        exportMonthlyDataToCSV(reportData.revenueByMonth);
+      } else {
+        throw new Error("No monthly revenue data available to export");
+      }
+    } catch (error) {
+      console.error("Error exporting monthly data:", error);
+      if (onError) {
+        onError("Failed to export monthly data to CSV. Please try again.");
       }
     } finally {
       setExporting(false);
@@ -169,9 +198,20 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
 
       {/* Revenue by Month Chart */}
       <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">
-          Revenue vs Expenses by Month
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Revenue vs Expenses by Month</h3>
+          {reportData.revenueByMonth &&
+            reportData.revenueByMonth.length > 0 && (
+              <button
+                onClick={handleExportMonthlyData}
+                disabled={exporting}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none"
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                {exporting ? "Exporting..." : "Export Monthly Data"}
+              </button>
+            )}
+        </div>
 
         {reportData.revenueByMonth && reportData.revenueByMonth.length > 0 ? (
           <div className="space-y-4">
@@ -251,12 +291,12 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
           {reportData.revenueByProperty &&
             reportData.revenueByProperty.length > 0 && (
               <button
-                onClick={handleExportCSV}
+                onClick={handleExportPropertyData}
                 disabled={exporting}
                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none"
               >
                 <Download className="h-4 w-4 mr-1.5" />
-                {exporting ? "Exporting..." : "Export CSV"}
+                {exporting ? "Exporting..." : "Export Property Data"}
               </button>
             )}
         </div>
