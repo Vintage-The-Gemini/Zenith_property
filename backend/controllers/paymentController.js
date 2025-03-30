@@ -88,25 +88,20 @@ export const createPayment = async (req, res) => {
       return res.status(404).json({ error: "Tenant not found" });
     }
 
-    // Verify unit exists
-    const unitExists = await Unit.findById(unit).session(session);
-    if (!unitExists) {
-      await session.abortTransaction();
-      return res.status(404).json({ error: "Unit not found" });
-    }
-
-    // Verify property exists
-    const propertyExists = await Property.findById(property).session(session);
-    if (!propertyExists) {
-      await session.abortTransaction();
-      return res.status(404).json({ error: "Property not found" });
-    }
-
-    // Create payment with correct balance information
+    // Get the previous balance from tenant
     const previousBalance = tenantExists.currentBalance || 0;
+    
+    // Calculate the actual due amount (use provided or default to amount)
     const actualDueAmount = dueAmount || amount;
+    
+    // Calculate variance (positive means overpaid, negative means underpaid)
     const paymentVariance = amount - actualDueAmount;
-
+    
+    // Calculate new balance
+    const newBalance = status === "completed" ? 
+      previousBalance - amount : previousBalance;
+    
+    // Create payment with balance information
     const payment = new Payment({
       tenant,
       unit,
@@ -122,50 +117,53 @@ export const createPayment = async (req, res) => {
       reference,
       previousBalance,
       paymentVariance,
-      newBalance:
-        status === "completed" ? previousBalance - amount : previousBalance,
+      newBalance,
+      carryForward: paymentVariance !== 0,
+      carryForwardAmount: paymentVariance,
     });
 
     await payment.save({ session });
 
-    // If payment is completed, update tenant balance
+    // Update tenant balance if payment is completed
     if (status === "completed" || status === "partial") {
-      tenantExists.currentBalance = previousBalance - amount;
-
-      // Add to payment history if not already there
+      tenantExists.currentBalance = newBalance;
+      
+      // Add to payment history
       if (!tenantExists.paymentHistory) {
         tenantExists.paymentHistory = [];
       }
-
+      
       tenantExists.paymentHistory.push({
         date: payment.paymentDate,
         amount: payment.amount,
         type: payment.type,
         status: payment.status,
         reference: payment.reference,
-        balance: tenantExists.currentBalance,
-        description: payment.description,
+        balance: newBalance,
+        description: payment.description
       });
 
       await tenantExists.save({ session });
-
-      // Update the unit's last payment date
-      unitExists.lastPaymentDate = payment.paymentDate;
-      await unitExists.save({ session });
+      
+      // Also update the unit's last payment date
+      const unit = await Unit.findById(payment.unit).session(session);
+      if (unit) {
+        unit.lastPaymentDate = payment.paymentDate;
+        await unit.save({ session });
+      }
     }
 
     await session.commitTransaction();
-
-    // Return the populated payment
+    
+    // Return populated payment
     const populatedPayment = await Payment.findById(payment._id)
       .populate("tenant", "firstName lastName email")
       .populate("unit", "unitNumber")
       .populate("property", "name");
-
+      
     res.status(201).json(populatedPayment);
   } catch (error) {
     await session.abortTransaction();
-    logger.error(`Error creating payment: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();

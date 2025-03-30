@@ -239,38 +239,38 @@ const PaymentDetail = () => {
         </div>
       </Card>
 
-      {/* Payment Balance Information */}
-      {(payment.previousBalance !== undefined ||
-        payment.newBalance !== undefined) && (
-        <Card className="p-6">
-          <h2 className="text-lg font-medium mb-4">Balance Information</h2>
+    {/* Payment Balance Information */}
+{(payment.previousBalance !== undefined || payment.newBalance !== undefined) && (
+  <Card className="p-6">
+    <h2 className="text-lg font-medium mb-4">Balance Information</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">
-                Previous Balance
-              </h4>
-              <p className="mt-1">
-                KES {payment.previousBalance?.toLocaleString() || 0}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">
-                Payment Amount
-              </h4>
-              <p className="mt-1">
-                KES {payment.amount?.toLocaleString() || 0}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">New Balance</h4>
-              <p className="mt-1">
-                KES {payment.newBalance?.toLocaleString() || 0}
-              </p>
-            </div>
-          </div>
-        </Card>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <h4 className="text-sm font-medium text-gray-500">Previous Balance</h4>
+        <p className="mt-1">KES {payment.previousBalance?.toLocaleString() || 0}</p>
+      </div>
+      <div>
+        <h4 className="text-sm font-medium text-gray-500">Payment Amount</h4>
+        <p className="mt-1">KES {payment.amount?.toLocaleString() || 0}</p>
+      </div>
+      <div>
+        <h4 className="text-sm font-medium text-gray-500">New Balance</h4>
+        <p className="mt-1">KES {payment.newBalance?.toLocaleString() || 0}</p>
+      </div>
+      
+      {payment.paymentVariance !== 0 && (
+        <div className="md:col-span-3">
+          <h4 className="text-sm font-medium text-gray-500">Payment Variance</h4>
+          <p className={`mt-1 ${payment.paymentVariance > 0 ? 'text-green-600' : payment.paymentVariance < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+            {payment.paymentVariance > 0 ? 'Overpaid: ' : payment.paymentVariance < 0 ? 'Underpaid: ' : ''}
+            KES {Math.abs(payment.paymentVariance)?.toLocaleString() || 0}
+            {payment.paymentVariance > 0 ? ' (Credit)' : payment.paymentVariance < 0 ? ' (Balance Due)' : ''}
+          </p>
+        </div>
       )}
+    </div>
+  </Card>
+)}
     </div>
   );
 };

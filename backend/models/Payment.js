@@ -73,6 +73,14 @@ const paymentSchema = new mongoose.Schema(
       type: Number,
       default: 0, // Balance after this payment
     },
+    carryForward: {
+      type: Boolean,
+      default: false, // Whether this payment has a carry forward amount
+    },
+    carryForwardAmount: {
+      type: Number,
+      default: 0, // Amount carried forward (could be positive or negative)
+    },
   },
   {
     timestamps: true,
@@ -100,8 +108,12 @@ paymentSchema.pre("save", function (next) {
   }
 
   // Calculate payment variance if it's a completed payment
-  if (this.status === "completed") {
+  if (this.status === "completed" || this.status === "partial") {
     this.paymentVariance = this.amount - this.dueAmount;
+    
+    // Set carryForward flag if there's a variance
+    this.carryForward = this.paymentVariance !== 0;
+    this.carryForwardAmount = this.paymentVariance;
 
     // Set status to partial if amount is less than due amount
     if (this.amount < this.dueAmount) {

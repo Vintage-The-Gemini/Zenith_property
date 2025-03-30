@@ -34,6 +34,8 @@ import {
   deleteUnit,
 } from "../services/unitService";
 import floorService from "../services/floorService";
+import { exportPropertyPaymentsToCSV } from '../utils/paymentReportExporter';
+
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -55,6 +57,18 @@ const PropertyDetail = () => {
   useEffect(() => {
     loadProperty();
   }, [id]);
+
+  const handleExportPayments = async () => {
+    try {
+      setExporting(true);
+      await exportPropertyPaymentsToCSV(id, null, null, property.name);
+      setExporting(false);
+    } catch (error) {
+      console.error('Error exporting payments:', error);
+      setError('Failed to export payments');
+      setExporting(false);
+    }
+  };
 
   // Load property details
   const loadProperty = async () => {
@@ -507,12 +521,19 @@ const PropertyDetail = () => {
           />
         )}
 
-        {activeTab === "payments" && (
-          <PropertyPaymentsList
-            propertyId={property._id}
-            propertyName={property.name}
-          />
-        )}
+{activeTab === "payments" && (
+  <div className="flex justify-between mb-4">
+    <h3 className="text-lg font-medium">Property Payments</h3>
+    <button
+      onClick={handleExportPayments}
+      disabled={exporting}
+      className="inline-flex items-center px-3 py-1.5 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700"
+    >
+      <Download className="h-4 w-4 mr-1.5" />
+      {exporting ? 'Exporting...' : 'Export Payments'}
+    </button>
+  </div>
+)}
 
         {activeTab === "expenses" && (
           <PropertyExpensesList
@@ -586,6 +607,7 @@ const PropertyDetail = () => {
     </div>
   );
 };
+
 
 // PropertyOverview Component
 const PropertyOverview = ({ property }) => {
