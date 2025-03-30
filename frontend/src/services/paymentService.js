@@ -1,6 +1,7 @@
 // frontend/src/services/paymentService.js
 import api from "./api";
 import { getErrorMessage } from "../utils/errorHandling";
+
 /**
  * Get all payments with optional filters
  * @param {Object} filters - Filter criteria like status, type, date range
@@ -26,6 +27,7 @@ export const getAllPayments = async (filters = {}) => {
     throw new Error(getErrorMessage(error));
   }
 };
+
 /**
  * Get payment by ID
  * @param {string} id - Payment ID
@@ -46,18 +48,25 @@ export const getPaymentById = async (id) => {
  * @param {Object} paymentData - Payment data including tenant, unit, amount, etc.
  * @returns {Promise<Object>} Created payment
  */
-
 export const createPayment = async (paymentData) => {
   try {
-    // If dueAmount is not provided, default to the amount
-    if (!paymentData.dueAmount || paymentData.dueAmount <= 0) {
-      paymentData.dueAmount = paymentData.amount;
-    }
+    // Ensure we have properly formatted data for the API
+    const formattedData = {
+      tenant: paymentData.tenantId,
+      unit: paymentData.unitId,
+      property: paymentData.propertyId,
+      amount: parseFloat(paymentData.amount),
+      dueAmount: parseFloat(paymentData.dueAmount || paymentData.amount),
+      dueDate: paymentData.dueDate || new Date().toISOString(),
+      paymentDate: paymentData.paymentDate || new Date().toISOString(),
+      paymentMethod: paymentData.paymentMethod || "cash",
+      type: paymentData.type || "rent",
+      description: paymentData.description || "",
+      status: paymentData.status || "completed",
+    };
 
-    // Calculate variance automatically
-    paymentData.paymentVariance = paymentData.amount - paymentData.dueAmount;
-
-    const response = await api.post("/payments", paymentData);
+    console.log("Creating payment with data:", formattedData);
+    const response = await api.post("/payments", formattedData);
     return response.data;
   } catch (error) {
     console.error("Error creating payment:", error);

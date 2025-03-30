@@ -19,6 +19,7 @@ import Card from "../ui/Card";
 import PaymentForm from "../payments/PaymentForm";
 import paymentService from "../../services/paymentService";
 import tenantService from "../../services/tenantService";
+import unitService from "../../services/unitService"; // Add this import
 
 const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [payments, setPayments] = useState([]);

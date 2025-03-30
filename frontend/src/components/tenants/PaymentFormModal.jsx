@@ -2,51 +2,101 @@
 import { useState, useEffect } from "react";
 import { X, DollarSign, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
+import unitService from "../../services/unitService";
 
 const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
   const [formData, setFormData] = useState({
+    tenantId: tenant?._id || "",
+    unitId: tenant?.unitId?._id || tenant?.unitId || "",
+    propertyId: tenant?.propertyId?._id || tenant?.propertyId || "",
     amount: 0,
+    dueAmount: 0,
     type: "rent",
     status: "completed",
     paymentMethod: "cash",
     reference: "",
     description: "",
+    paymentDate: new Date().toISOString().split("T")[0],
+    dueDate: new Date().toISOString().split("T")[0],
   });
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [unitDetails, setUnitDetails] = useState(null);
 
   useEffect(() => {
-    if (tenant && tenant.leaseDetails) {
+    if (tenant) {
+      // Determine tenant's unit ID
+      let unitId = tenant.unitId;
+      if (tenant.unitId && typeof tenant.unitId === "object") {
+        unitId = tenant.unitId._id;
+      }
+
+      // Determine tenant's property ID
+      let propertyId = tenant.propertyId;
+      if (tenant.propertyId && typeof tenant.propertyId === "object") {
+        propertyId = tenant.propertyId._id;
+      }
+
       setFormData({
-        ...formData,
-        amount: tenant.leaseDetails.rentAmount || 0,
+        tenantId: tenant._id || "",
+        unitId: unitId || "",
+        propertyId: propertyId || "",
+        amount: tenant.leaseDetails?.rentAmount || 0,
+        dueAmount: tenant.leaseDetails?.rentAmount || 0,
+        type: "rent",
+        status: "completed",
+        paymentMethod: "cash",
         reference: `REF-${Date.now().toString().slice(-6)}`,
+        description: `Rent payment for ${tenant.firstName} ${tenant.lastName}`,
+        paymentDate: new Date().toISOString().split("T")[0],
+        dueDate: new Date().toISOString().split("T")[0],
       });
+
+      // If unit ID is available, fetch unit details
+      if (unitId) {
+        fetchUnitDetails(unitId);
+      }
     }
   }, [tenant]);
 
+  const fetchUnitDetails = async (unitId) => {
+    try {
+      const unit = await unitService.getUnitById(unitId);
+      setUnitDetails(unit);
+    } catch (error) {
+      console.error("Error fetching unit details:", error);
+    }
+  };
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!formData.amount || formData.amount <= 0) {
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
       setError("Payment amount must be greater than zero");
       return;
     }
 
     try {
       setIsLoading(true);
-      await onSubmit({
+
+      const paymentData = {
         ...formData,
         amount: parseFloat(formData.amount),
+        dueAmount: parseFloat(formData.dueAmount || formData.amount),
         date: new Date(),
-      });
+      };
+
+      await onSubmit(paymentData);
       onClose();
     } catch (error) {
       setError(error.message || "Failed to record payment");
@@ -83,6 +133,36 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
+              Tenant
+            </label>
+            <input
+              type="text"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-gray-100"
+              value={`${tenant?.firstName || ""} ${tenant?.lastName || ""}`}
+              disabled
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Unit
+            </label>
+            <input
+              type="text"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-gray-100"
+              value={
+                unitDetails
+                  ? `Unit ${unitDetails.unitNumber}`
+                  : tenant?.unitId?.unitNumber
+                  ? `Unit ${tenant.unitId.unitNumber}`
+                  : "Loading..."
+              }
+              disabled
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
               Amount (KES) <span className="text-red-500">*</span>
             </label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -100,6 +180,29 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Due Amount (KES)
+            </label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">KES</span>
+              </div>
+              <input
+                type="number"
+                name="dueAmount"
+                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.dueAmount}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              If left blank, will default to Amount
+            </p>
           </div>
 
           <div>
@@ -150,6 +253,32 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
               value={formData.reference}
               onChange={handleChange}
               placeholder="Payment reference number"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Payment Date
+            </label>
+            <input
+              type="date"
+              name="paymentDate"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.paymentDate}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Due Date
+            </label>
+            <input
+              type="date"
+              name="dueDate"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.dueDate}
+              onChange={handleChange}
             />
           </div>
 

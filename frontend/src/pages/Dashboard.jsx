@@ -27,6 +27,7 @@ import propertyService from "../services/propertyService";
 import unitService from "../services/unitService";
 import paymentService from "../services/paymentService";
 import tenantService from "../services/tenantService";
+import expenseService from "../services/expenseService";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -72,6 +73,7 @@ const Dashboard = () => {
       !propertiesLoading &&
       !unitsLoading &&
       !paymentsLoading &&
+      !expensesLoading &&
       !tenantsLoading
     ) {
       setLoading(false);
@@ -83,6 +85,7 @@ const Dashboard = () => {
     propertiesLoading,
     unitsLoading,
     paymentsLoading,
+    expensesLoading,
     tenantsLoading,
   ]);
 
@@ -106,7 +109,7 @@ const Dashboard = () => {
       // Fetch payments
       fetchPayments();
 
-      // Fetch expenses (if available)
+      // Fetch expenses
       fetchExpenses();
 
       // Fetch tenants
@@ -181,9 +184,8 @@ const Dashboard = () => {
   const fetchExpenses = async () => {
     try {
       setExpensesLoading(true);
-      // If you have an expenses service, use it here
-      // For now, we'll just use sample data
-      setExpenses([]);
+      const expensesData = await expenseService.getAllExpenses();
+      setExpenses(expensesData);
     } catch (err) {
       console.error("Error fetching expenses:", err);
     } finally {

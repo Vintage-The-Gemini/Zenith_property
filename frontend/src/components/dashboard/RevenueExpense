@@ -1,0 +1,178 @@
+// frontend/src/components/dashboard/RevenueExpensesChart.jsx
+import { useState, useEffect } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import Card from "../ui/Card";
+import { DollarSign, BarChart2 } from "lucide-react";
+
+const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {
+  const [chartData, setChartData] = useState([]);
+  const [summary, setSummary] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netIncome: 0,
+  });
+
+  useEffect(() => {
+    // Prepare data for the chart
+    const prepareData = () => {
+      // Group by month
+      const monthlyData = {};
+      
+      // Process payments
+      payments.forEach(payment => {
+        if (payment.status !== 'completed') return;
+        
+        const date = new Date(payment.paymentDate);
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        const monthYear = `${month} ${year}`;
+        
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = {
+            month: monthYear,
+            revenue: 0,
+            expenses: 0,
+            profit: 0,
+            date: new Date(year, date.getMonth(), 1)
+          };
+        }
+        
+        monthlyData[monthYear].revenue += payment.amount || 0;
+      });
+      
+      // Process expenses
+      expenses.forEach(expense => {
+        const date = new Date(expense.date);
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        const monthYear = `${month} ${year}`;
+        
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = {
+            month: monthYear,
+            revenue: 0,
+            expenses: 0,
+            profit: 0,
+            date: new Date(year, date.getMonth(), 1)
+          };
+        }
+        
+        monthlyData[monthYear].expenses += expense.amount || 0;
+      });
+      
+      // Calculate profit for each month
+      Object.values(monthlyData).forEach(data => {
+        data.profit = data.revenue - data.expenses;
+      });
+      
+      // Convert to array and sort by date
+      const sortedData = Object.values(monthlyData).sort((a, b) => a.date - b.date);
+      
+      // Calculate summary
+      const totalRevenue = payments
+        .filter(payment => payment.status === 'completed')
+        .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+      
+      const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+      
+      setSummary({
+        totalRevenue,
+        totalExpenses,
+        netIncome: totalRevenue - totalExpenses
+      });
+      
+      setChartData(sortedData);
+    };
+    
+    prepareData();
+  }, [payments, expenses]);
+
+  return (
+    <Card className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+          <BarChart2 className="h-5 w-5 mr-2 text-primary-600" />
+          Revenue vs Expenses
+        </h2>
+        <div className="flex gap-2">
+          <div className="text-sm">
+            <span className="text-green-600">◼</span> Revenue
+          </div>
+          <div className="text-sm">
+            <span className="text-red-600">◼</span> Expenses
+          </div>
+          <div className="text-sm">
+            <span className="text-blue-600">◼</span> Profit
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-full mr-3">
+              <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                KES {summary.totalRevenue.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-full mr-3">
+              <DollarSign className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total Expenses</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                KES {summary.totalExpenses.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full mr-3">
+              <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Net Income</p>
+              <p className={`text-xl font-semibold ${summary.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                KES {summary.netIncome.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="h-80">
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip formatter={(value) => `KES ${value.toLocaleString()}`} />
+              <Legend />
+              <Bar dataKey="revenue" name="Revenue" fill="#16a34a" />
+              <Bar dataKey="expenses" name="Expenses" fill="#dc2626" />
+              <Bar dataKey="profit" name="Profit" fill="#2563eb" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-gray-500 dark:text-gray-400">No data available for chart</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+export default RevenueExpensesChart;

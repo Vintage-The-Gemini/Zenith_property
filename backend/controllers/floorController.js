@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import Floor from "../models/Floor.js";
 import Property from "../models/Property.js";
 import Unit from "../models/Unit.js";
-import logger from "../utils/logger.js";
 
 /**
  * Get all floors for a property
@@ -38,7 +37,6 @@ export const getFloorsByProperty = async (req, res) => {
 
     res.json(floors);
   } catch (error) {
-    logger.error(`Error in getFloorsByProperty: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -71,7 +69,6 @@ export const getFloor = async (req, res) => {
 
     res.json(floor);
   } catch (error) {
-    logger.error(`Error in getFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -101,7 +98,6 @@ export const getUnitsForFloor = async (req, res) => {
 
     res.json(units);
   } catch (error) {
-    logger.error(`Error in getUnitsForFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -165,7 +161,6 @@ export const createFloor = async (req, res) => {
     res.status(201).json(floor);
   } catch (error) {
     await session.abortTransaction();
-    logger.error(`Error in createFloor: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();
@@ -229,7 +224,6 @@ export const updateFloor = async (req, res) => {
     res.json(floor);
   } catch (error) {
     await session.abortTransaction();
-    logger.error(`Error in updateFloor: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();
@@ -274,7 +268,6 @@ export const deleteFloor = async (req, res) => {
     res.json({ message: "Floor deleted successfully" });
   } catch (error) {
     await session.abortTransaction();
-    logger.error(`Error in deleteFloor: ${error.message}`);
     res.status(500).json({ error: error.message });
   } finally {
     session.endSession();

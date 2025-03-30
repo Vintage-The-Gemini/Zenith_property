@@ -1,7 +1,6 @@
 // backend/models/Payment.js
 import mongoose from "mongoose";
 import { generateInvoiceNumber } from "../utils/helpers.js";
-import logger from "../utils/logger.js";
 
 const paymentSchema = new mongoose.Schema(
   {
@@ -88,64 +87,6 @@ const paymentSchema = new mongoose.Schema(
       type: Number,
       default: 0, // Negative means underpaid, positive means overpaid
     },
-    // For recurring payments
-    isRecurring: {
-      type: Boolean,
-      default: false,
-    },
-    recurringFrequency: {
-      type: String,
-      enum: ["weekly", "monthly", "quarterly", "annually"],
-    },
-    recurringStartDate: {
-      type: Date,
-    },
-    recurringEndDate: {
-      type: Date,
-    },
-    // For tracking who created the payment
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    // For receipt and evidence
-    attachments: [
-      {
-        title: String,
-        path: String,
-        uploadDate: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-    // For tracking payment allocation to multiple invoices
-    allocations: [
-      {
-        invoiceId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Invoice", // If you have an invoice model
-        },
-        amount: Number,
-        description: String,
-      },
-    ],
-    // For tracking edits/adjustments to payments
-    adjustmentHistory: [
-      {
-        date: {
-          type: Date,
-          default: Date.now,
-        },
-        previousAmount: Number,
-        newAmount: Number,
-        reason: String,
-        adjustedBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-      },
-    ],
   },
   {
     timestamps: true,
@@ -169,6 +110,11 @@ paymentSchema.pre("save", function (next) {
   // Generate reference number if not present
   if (!this.reference) {
     this.reference = generateInvoiceNumber();
+  }
+
+  // If due amount is not set, use the amount
+  if (!this.dueAmount) {
+    this.dueAmount = this.amount;
   }
 
   // Calculate payment variance for tracking partial/overpayments
@@ -218,7 +164,7 @@ paymentSchema.pre("save", async function (next) {
       }
 
       // Store previous balance before making changes
-      this.previousBalance = tenant.currentBalance;
+      this.previousBalance = tenant.currentBalance || 0;
 
       // Default the dueAmount to the full amount if not specified
       if (!this.dueAmount || this.dueAmount <= 0) {
@@ -231,15 +177,18 @@ paymentSchema.pre("save", async function (next) {
         this.paymentVariance = this.amount - this.dueAmount;
 
         // Update tenant balance
+        if (!tenant.currentBalance) tenant.currentBalance = 0;
         tenant.currentBalance -= this.amount;
 
         // Update unit balance
+        if (!unit.balance) unit.balance = 0;
         unit.balance -= this.amount;
 
         // Update last payment date
         unit.lastPaymentDate = this.paymentDate;
 
         // Add to tenant payment history
+        if (!tenant.paymentHistory) tenant.paymentHistory = [];
         tenant.paymentHistory.push({
           date: this.paymentDate,
           amount: this.amount,
@@ -259,25 +208,9 @@ paymentSchema.pre("save", async function (next) {
     }
     next();
   } catch (error) {
-    logger.error(`Error in payment pre-save hook: ${error.message}`);
+    console.error(`Error in payment pre-save hook: ${error.message}`);
     next(error);
   }
-});
-
-// Calculate if payment is on time, late, or early
-paymentSchema.virtual("paymentTiming").get(function () {
-  if (!this.dueDate || !this.paymentDate) return "unknown";
-
-  const dueDate = new Date(this.dueDate);
-  const paymentDate = new Date(this.paymentDate);
-
-  // Compare dates (ignoring time component)
-  const dueStr = dueDate.toISOString().split("T")[0];
-  const paymentStr = paymentDate.toISOString().split("T")[0];
-
-  if (paymentStr < dueStr) return "early";
-  if (paymentStr > dueStr) return "late";
-  return "on-time";
 });
 
 // Virtual for payment status description
@@ -302,14 +235,20 @@ paymentSchema.virtual("statusDescription").get(function () {
   }
 });
 
-// Virtual for formatted amount
-paymentSchema.virtual("formattedAmount").get(function () {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "KES",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(this.amount || 0);
+// Virtual for payment timing (on-time, late, early)
+paymentSchema.virtual("paymentTiming").get(function () {
+  if (!this.dueDate || !this.paymentDate) return "unknown";
+
+  const dueDate = new Date(this.dueDate);
+  const paymentDate = new Date(this.paymentDate);
+
+  // Compare dates (ignoring time component)
+  const dueStr = dueDate.toISOString().split("T")[0];
+  const paymentStr = paymentDate.toISOString().split("T")[0];
+
+  if (paymentStr < dueStr) return "early";
+  if (paymentStr > dueStr) return "late";
+  return "on-time";
 });
 
 // Virtual for days overdue (if payment is pending)
@@ -324,80 +263,5 @@ paymentSchema.virtual("daysOverdue").get(function () {
   const diffTime = Math.abs(today - dueDate);
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
-
-// Helper methods
-
-// Calculate late fee based on current configuration
-paymentSchema.methods.calculateLateFee = function (
-  lateFeePercentage = 0.1,
-  maxDays = 30
-) {
-  if (!this.dueDate) return 0;
-
-  const dueDate = new Date(this.dueDate);
-  const today = new Date();
-
-  // If not late, no fee
-  if (today <= dueDate) return 0;
-
-  // Calculate days late, capped at maxDays
-  const diffTime = Math.abs(today - dueDate);
-  const daysLate = Math.min(
-    Math.ceil(diffTime / (1000 * 60 * 60 * 24)),
-    maxDays
-  );
-
-  // Simple late fee calculation
-  return this.dueAmount * lateFeePercentage * (daysLate / 30);
-};
-
-// Method to record a payment adjustment
-paymentSchema.methods.adjustPayment = async function (
-  newAmount,
-  reason,
-  adjustedBy
-) {
-  // Store the previous amount
-  const previousAmount = this.amount;
-
-  // Add to adjustment history
-  this.adjustmentHistory.push({
-    date: new Date(),
-    previousAmount,
-    newAmount,
-    reason,
-    adjustedBy,
-  });
-
-  // Update the amount
-  this.amount = newAmount;
-
-  // Recalculate payment variance
-  if (this.dueAmount > 0) {
-    this.paymentVariance = newAmount - this.dueAmount;
-
-    // Update status based on new amount
-    if (newAmount >= this.dueAmount) {
-      this.status = "completed";
-    } else {
-      this.status = "partial";
-    }
-  }
-
-  await this.save();
-};
-
-// Method to record payment allocation
-paymentSchema.methods.allocateToInvoice = function (
-  invoiceId,
-  amount,
-  description = ""
-) {
-  this.allocations.push({
-    invoiceId,
-    amount,
-    description,
-  });
-};
 
 export default mongoose.model("Payment", paymentSchema);
