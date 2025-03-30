@@ -1,16 +1,17 @@
-// src/components/reports/RevenueExpensesReport.jsx
+// frontend/src/components/reports/RevenueExpensesReport.jsx
 import { useState, useEffect } from "react";
-import { BarChart2, TrendingUp, DollarSign } from "lucide-react";
+import { BarChart2, TrendingUp, DollarSign, AlertTriangle } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
 
 const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     fetchRevenueExpensesReport();
-  }, [dateRange, filters]);
+  }, [dateRange, filters, retryCount]);
 
   const fetchRevenueExpensesReport = async () => {
     try {
@@ -18,21 +19,33 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
 
       // Prepare filter parameters
       const params = {
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        period: filters.period || "monthly",
-        propertyId: filters.propertyId,
+        startDate: dateRange?.startDate || "",
+        endDate: dateRange?.endDate || "",
+        period: filters?.period || "monthly",
+        propertyId: filters?.propertyId || "",
       };
+
+      // Remove any undefined or null values
+      Object.keys(params).forEach((key) => {
+        if (params[key] === undefined || params[key] === null) {
+          delete params[key];
+        }
+      });
 
       const data = await reportService.getRevenueVsExpenses(params);
       setReportData(data);
     } catch (err) {
       console.error("Error fetching revenue vs expenses report:", err);
-      if (onError)
+      if (onError) {
         onError("Failed to load revenue vs expenses report. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1);
   };
 
   if (loading) {
@@ -49,8 +62,14 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
       <div className="text-center py-8">
         <BarChart2 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
         <p className="text-gray-500 dark:text-gray-400">
-          No revenue/expenses data available
+          No revenue and expenses data available
         </p>
+        <button
+          onClick={handleRetry}
+          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -103,7 +122,7 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 KES {reportData.summary.netProfit.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500">
                 {reportData.summary.totalRevenue > 0
                   ? `(${Math.round(
                       (reportData.summary.netProfit /
@@ -122,8 +141,8 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">
             Revenue vs Expenses by{" "}
-            {reportData.periodType.charAt(0).toUpperCase() +
-              reportData.periodType.slice(1)}
+            {reportData.periodType?.charAt(0).toUpperCase() +
+              reportData.periodType?.slice(1) || "Period"}
           </h3>
         </div>
 
@@ -149,6 +168,7 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
                       width: `${
                         (period.revenue /
                           Math.max(
+                            1,
                             ...reportData.data.map((d) =>
                               Math.max(d.revenue, d.expenses)
                             )
@@ -163,6 +183,7 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
                       width: `${
                         (period.expenses /
                           Math.max(
+                            1,
                             ...reportData.data.map((d) =>
                               Math.max(d.revenue, d.expenses)
                             )
@@ -206,6 +227,10 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
           <h3 className="text-lg font-medium mb-4">Profit Margin Trend</h3>
 
           <div className="h-40 relative">
+            <div
+              className="absolute left-0 right-0 border-b border-gray-400 dark:border-gray-600"
+              style={{ bottom: "50%" }}
+            ></div>
             {reportData.data.map((period, index) => {
               const margin =
                 period.revenue > 0 ? (period.profit / period.revenue) * 100 : 0;
@@ -213,18 +238,19 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
               // Cap margin at 100% for visualization purposes
               const cappedMargin = Math.min(Math.max(margin, -100), 100);
 
-              // Calculate height and position
+              // Calculate height and position based on margin
               const heightPercentage = Math.abs(cappedMargin);
               const isNegative = cappedMargin < 0;
 
               return (
                 <div
                   key={index}
-                  className="absolute bottom-0 flex flex-col items-center"
+                  className="absolute bottom-1/2 flex flex-col items-center"
                   style={{
-                    left: `${(index / (reportData.data.length - 1)) * 100}%`,
+                    left: `${
+                      (index / (reportData.data.length - 1 || 1)) * 100
+                    }%`,
                     transform: "translateX(-50%)",
-                    width: "30px",
                   }}
                 >
                   <div className="text-xs text-center mb-1">
@@ -232,24 +258,27 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
                   </div>
                   <div
                     className={`w-8 ${
-                      isNegative ? "bg-red-500" : "bg-green-500"
-                    }`}
+                      isNegative ? "bg-red-500 bottom-0" : "bg-green-500 top-0"
+                    } absolute`}
                     style={{
-                      height: `${heightPercentage}%`,
-                      maxHeight: "80%",
+                      height: `${heightPercentage / 2}%`,
+                      maxHeight: "40%",
+                      bottom: isNegative ? "0" : "50%",
+                      transform: isNegative ? "none" : "translateY(-100%)",
                     }}
                   ></div>
-                  <div className="text-xs text-center mt-1 w-16 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <div
+                    className="text-xs text-center mt-1 w-16 overflow-hidden text-ellipsis whitespace-nowrap"
+                    style={{
+                      position: "absolute",
+                      bottom: "-25px",
+                    }}
+                  >
                     {period.period}
                   </div>
                 </div>
               );
             })}
-            {/* Zero Line */}
-            <div
-              className="absolute left-0 right-0 border-b border-gray-400 dark:border-gray-600"
-              style={{ bottom: "0%" }}
-            ></div>
           </div>
         </Card>
       )}

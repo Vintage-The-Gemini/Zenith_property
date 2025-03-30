@@ -7,10 +7,11 @@ import reportService from "../../services/reportService";
 const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     fetchFinancialReport();
-  }, [dateRange, filters]);
+  }, [dateRange, filters, retryCount]);
 
   const fetchFinancialReport = async () => {
     try {
@@ -18,10 +19,17 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
 
       // Prepare filter parameters
       const params = {
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        ...filters,
+        startDate: dateRange?.startDate || "",
+        endDate: dateRange?.endDate || "",
+        ...(filters || {}),
       };
+
+      // Remove any undefined or null values
+      Object.keys(params).forEach((key) => {
+        if (params[key] === undefined || params[key] === null) {
+          delete params[key];
+        }
+      });
 
       const data = await reportService.getFinancialSummary(params);
       setReportData(data);
@@ -32,11 +40,16 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
       }
     } catch (err) {
       console.error("Error fetching financial report:", err);
-      if (onError)
+      if (onError) {
         onError("Failed to load financial report. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1);
   };
 
   if (loading) {
@@ -55,6 +68,12 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
         <p className="text-gray-500 dark:text-gray-400">
           No financial data available
         </p>
+        <button
+          onClick={handleRetry}
+          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -121,7 +140,7 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
                 Pending Revenue
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {reportData.summary.pendingRevenue.toLocaleString()}
+                KES {(reportData.summary.pendingRevenue || 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -152,7 +171,10 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
                       width: `${
                         (data.revenue /
                           Math.max(
-                            ...reportData.revenueByMonth.map((d) => d.revenue)
+                            1,
+                            ...reportData.revenueByMonth.map((d) =>
+                              Math.max(d.revenue, d.expenses)
+                            )
                           )) *
                         100
                       }%`,
@@ -164,7 +186,10 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
                       width: `${
                         (data.expenses /
                           Math.max(
-                            ...reportData.revenueByMonth.map((d) => d.revenue)
+                            1,
+                            ...reportData.revenueByMonth.map((d) =>
+                              Math.max(d.revenue, d.expenses)
+                            )
                           )) *
                         100
                       }%`,

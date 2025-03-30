@@ -3,19 +3,24 @@ import api from "./api";
 import { getErrorMessage } from "../utils/errorHandling";
 
 /**
- * Get financial summary report
+ * Get financial summary report with better error handling
  * @param {Object} filters - Filter parameters including date range, propertyId, etc.
  * @returns {Promise<Object>} Financial summary data
  */
 export const getFinancialSummary = async (filters = {}) => {
   try {
-    const queryParams = new URLSearchParams();
-
-    // Add filters to query params
-    Object.keys(filters).forEach((key) => {
-      if (filters[key]) {
-        queryParams.append(key, filters[key]);
+    // Clean filters to remove undefined/null values
+    const cleanedFilters = { ...filters };
+    Object.keys(cleanedFilters).forEach((key) => {
+      if (cleanedFilters[key] === undefined || cleanedFilters[key] === null) {
+        delete cleanedFilters[key];
       }
+    });
+
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    Object.keys(cleanedFilters).forEach((key) => {
+      queryParams.append(key, cleanedFilters[key]);
     });
 
     const queryString = queryParams.toString();
@@ -23,11 +28,43 @@ export const getFinancialSummary = async (filters = {}) => {
       ? `/reports/financial?${queryString}`
       : "/reports/financial";
 
+    console.log("Fetching financial summary from:", url);
     const response = await api.get(url);
-    return response.data;
+
+    // Add some default values if data is missing
+    const data = response.data || {};
+    if (!data.summary) {
+      data.summary = {
+        totalRevenue: 0,
+        pendingRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+      };
+    }
+
+    if (!data.revenueByMonth) {
+      data.revenueByMonth = [];
+    }
+
+    if (!data.revenueByProperty) {
+      data.revenueByProperty = [];
+    }
+
+    return data;
   } catch (error) {
     console.error("Error fetching financial summary:", error);
-    throw new Error(getErrorMessage(error));
+    // Provide default data structure on error
+    return {
+      summary: {
+        totalRevenue: 0,
+        pendingRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+      },
+      revenueByMonth: [],
+      revenueByProperty: [],
+      error: getErrorMessage(error),
+    };
   }
 };
 

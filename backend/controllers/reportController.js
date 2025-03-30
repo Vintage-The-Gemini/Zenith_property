@@ -11,156 +11,166 @@ import logger from "../utils/logger.js";
  * Get financial summary report
  */
 export const getFinancialSummary = async (req, res) => {
-  try {
-    // Extract filter parameters
-    const { startDate, endDate, propertyId } = req.query;
-
-    // Build date filter
-    const dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
-
-    // Build property filter
-    const propertyFilter = {};
-    if (propertyId)
-      propertyFilter.property = new mongoose.Types.ObjectId(propertyId);
-
-    // Query payments
-    const payments = await Payment.find({
-      ...(Object.keys(dateFilter).length > 0
-        ? { paymentDate: dateFilter }
-        : {}),
-      ...propertyFilter,
-    })
-      .populate("tenant")
-      .populate("property")
-      .populate("unit");
-
-    // Query expenses
-    const expenses = await Expense.find({
-      ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
-      ...propertyFilter,
-    }).populate("property");
-
-    // Calculate totals
-    const totalRevenue = payments
-      .filter((payment) => payment.status === "completed")
-      .reduce((sum, payment) => sum + payment.amount, 0);
-
-    const pendingRevenue = payments
-      .filter((payment) => payment.status === "pending")
-      .reduce((sum, payment) => sum + payment.amount, 0);
-
-    const totalExpenses = expenses.reduce(
-      (sum, expense) => sum + expense.amount,
-      0
-    );
-
-    // Group revenue by month
-    const revenueByMonth = {};
-    payments.forEach((payment) => {
-      if (payment.status !== "completed") return;
-
-      const date = new Date(payment.paymentDate);
-      const monthYear = `${date.getFullYear()}-${date.getMonth() + 1}`;
-
-      if (!revenueByMonth[monthYear]) {
-        revenueByMonth[monthYear] = {
-          month: new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            1
-          ).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-          revenue: 0,
-          expenses: 0,
-        };
+    try {
+      // Extract filter parameters
+      const { startDate, endDate, propertyId } = req.query;
+  
+      // Build date filter
+      const dateFilter = {};
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) dateFilter.$lte = new Date(endDate);
+  
+      // Build property filter
+      const propertyFilter = {};
+      if (propertyId) {
+        // Fix the ObjectId usage
+        try {
+          propertyFilter.property = mongoose.Types.ObjectId.createFromHexString(propertyId);
+        } catch (error) {
+          // If there's an issue with the ObjectId, use a safer approach
+          propertyFilter.property = propertyId;
+        }
       }
-
-      revenueByMonth[monthYear].revenue += payment.amount;
-    });
-
-    // Group expenses by month
-    expenses.forEach((expense) => {
-      const date = new Date(expense.date);
-      const monthYear = `${date.getFullYear()}-${date.getMonth() + 1}`;
-
-      if (!revenueByMonth[monthYear]) {
-        revenueByMonth[monthYear] = {
-          month: new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            1
-          ).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-          revenue: 0,
-          expenses: 0,
-        };
-      }
-
-      revenueByMonth[monthYear].expenses += expense.amount;
-    });
-
-    // Group revenue by property
-    const revenueByProperty = {};
-
-    payments.forEach((payment) => {
-      if (payment.status !== "completed") return;
-      const propertyId = payment.property?._id || payment.property;
-      if (!propertyId) return;
-
-      if (!revenueByProperty[propertyId]) {
-        revenueByProperty[propertyId] = {
-          propertyId,
-          name: payment.property?.name || "Unknown Property",
-          revenue: 0,
-          expenses: 0,
-          profit: 0,
-        };
-      }
-
-      revenueByProperty[propertyId].revenue += payment.amount;
-    });
-
-    // Add expenses to property revenue
-    expenses.forEach((expense) => {
-      const propertyId = expense.property?._id || expense.property;
-      if (!propertyId) return;
-
-      if (!revenueByProperty[propertyId]) {
-        revenueByProperty[propertyId] = {
-          propertyId,
-          name: expense.property?.name || "Unknown Property",
-          revenue: 0,
-          expenses: 0,
-          profit: 0,
-        };
-      }
-
-      revenueByProperty[propertyId].expenses += expense.amount;
-    });
-
-    // Calculate profit
-    Object.keys(revenueByProperty).forEach((key) => {
-      revenueByProperty[key].profit =
-        revenueByProperty[key].revenue - revenueByProperty[key].expenses;
-    });
-
-    res.json({
-      summary: {
-        totalRevenue,
-        pendingRevenue,
-        totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
-      },
-      revenueByMonth: Object.values(revenueByMonth),
-      revenueByProperty: Object.values(revenueByProperty),
-      payments,
-    });
-  } catch (error) {
-    logger.error(`Error in getFinancialSummary: ${error.message}`);
-    res.status(500).json({ error: error.message });
+  
+      // Query payments
+      const payments = await Payment.find({
+        ...(Object.keys(dateFilter).length > 0
+          ? { paymentDate: dateFilter }
+          : {}),
+        ...propertyFilter,
+      })
+        .populate("tenant")
+        .populate("property")
+        .populate("unit");
+  
+      // Query expenses
+      const expenses = await Expense.find({
+        ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
+        ...propertyFilter,
+      }).populate("property");
+  
+      // Calculate totals
+      const totalRevenue = payments
+        .filter((payment) => payment.status === "completed")
+        .reduce((sum, payment) => sum + payment.amount, 0);
+  
+      const pendingRevenue = payments
+        .filter((payment) => payment.status === "pending")
+        .reduce((sum, payment) => sum + payment.amount, 0);
+  
+      const totalExpenses = expenses.reduce(
+        (sum, expense) => sum + expense.amount,
+        0
+      );
+  
+      // Group revenue by month
+      const revenueByMonth = {};
+      payments.forEach((payment) => {
+        if (payment.status !== "completed") return;
+  
+        const date = new Date(payment.paymentDate);
+        const monthYear = `${date.getFullYear()}-${date.getMonth() + 1}`;
+  
+        if (!revenueByMonth[monthYear]) {
+          revenueByMonth[monthYear] = {
+            month: new Date(
+              date.getFullYear(),
+              date.getMonth(),
+              1
+            ).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            revenue: 0,
+            expenses: 0,
+          };
+        }
+  
+        revenueByMonth[monthYear].revenue += payment.amount;
+      });
+  
+      // Group expenses by month
+      expenses.forEach((expense) => {
+        const date = new Date(expense.date);
+        const monthYear = `${date.getFullYear()}-${date.getMonth() + 1}`;
+  
+        if (!revenueByMonth[monthYear]) {
+          revenueByMonth[monthYear] = {
+            month: new Date(
+              date.getFullYear(),
+              date.getMonth(),
+              1
+            ).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            revenue: 0,
+            expenses: 0,
+          };
+        }
+  
+        revenueByMonth[monthYear].expenses += expense.amount;
+      });
+  
+      // Group revenue by property
+      const revenueByProperty = {};
+  
+      payments.forEach((payment) => {
+        if (payment.status !== "completed") return;
+        const propertyId = payment.property?._id || payment.property;
+        if (!propertyId) return;
+  
+        const propId = propertyId.toString(); // Convert ObjectId to string for consistent keys
+        
+        if (!revenueByProperty[propId]) {
+          revenueByProperty[propId] = {
+            propertyId: propId,
+            name: payment.property?.name || "Unknown Property",
+            revenue: 0,
+            expenses: 0,
+            profit: 0,
+          };
+        }
+  
+        revenueByProperty[propId].revenue += payment.amount;
+      });
+  
+      // Add expenses to property revenue
+      expenses.forEach((expense) => {
+        const propertyId = expense.property?._id || expense.property;
+        if (!propertyId) return;
+  
+        const propId = propertyId.toString(); // Convert ObjectId to string for consistent keys
+        
+        if (!revenueByProperty[propId]) {
+          revenueByProperty[propId] = {
+            propertyId: propId,
+            name: expense.property?.name || "Unknown Property",
+            revenue: 0,
+            expenses: 0,
+            profit: 0,
+          };
+        }
+  
+        revenueByProperty[propId].expenses += expense.amount;
+      });
+  
+      // Calculate profit
+      Object.keys(revenueByProperty).forEach((key) => {
+        revenueByProperty[key].profit =
+          revenueByProperty[key].revenue - revenueByProperty[key].expenses;
+      });
+  
+      res.json({
+        summary: {
+          totalRevenue,
+          pendingRevenue,
+          totalExpenses,
+          netProfit: totalRevenue - totalExpenses,
+        },
+        revenueByMonth: Object.values(revenueByMonth),
+        revenueByProperty: Object.values(revenueByProperty),
+        payments,
+      });
+    } catch (error) {
+      logger.error(`Error in getFinancialSummary: ${error.message}`);
+      res.status(500).json({ error: error.message });
+    }
   }
-};
-
 /**
  * Get occupancy report
  */
