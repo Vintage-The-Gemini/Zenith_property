@@ -19,11 +19,9 @@ import Card from "../ui/Card";
 import PaymentForm from "../payments/PaymentForm";
 import paymentService from "../../services/paymentService";
 import tenantService from "../../services/tenantService";
-// import expenseService from "../../services/expenseService";
 
 const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [payments, setPayments] = useState([]);
-  // const [expenses, setExpenses] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +30,6 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  // const [activeTab, setActiveTab] = useState("payments"); // payments, expenses
   const [filters, setFilters] = useState({
     status: "",
     type: "",
@@ -43,8 +40,6 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [summary, setSummary] = useState({
     monthlyTotal: 0,
     pendingTotal: 0,
-    // expensesTotal: 0,
-    // netIncome: 0,
     variance: 0,
     lastMonthRevenue: 0,
     growthRate: 0,
@@ -143,6 +138,116 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       setError("Failed to load payments. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreatePayment = async (paymentData) => {
+    try {
+      // Add property ID to the payment data
+      const paymentWithProperty = {
+        ...paymentData,
+        propertyId,
+      };
+
+      await paymentService.createPayment(paymentWithProperty);
+      setShowForm(false);
+      await loadData(); // Refresh data
+    } catch (err) {
+      console.error("Error creating payment:", err);
+      setError(err.message || "Failed to create payment");
+    }
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await paymentService.updatePaymentStatus(id, { status });
+      await loadData(); // Refresh data
+    } catch (err) {
+      setError("Failed to update payment status");
+    }
+  };
+
+  // Filter payments based on search and filters
+  const filteredPayments = payments.filter((payment) => {
+    const searchLower = searchTerm.toLowerCase();
+
+    // Search in tenant name, unit number, or reference
+    const tenantName = payment.tenant
+      ? `${payment.tenant.firstName} ${payment.tenant.lastName}`.toLowerCase()
+      : "";
+    const unitNumber = payment.unit?.unitNumber?.toLowerCase() || "";
+    const reference = payment.reference?.toLowerCase() || "";
+
+    const matchesSearch =
+      tenantName.includes(searchLower) ||
+      unitNumber.includes(searchLower) ||
+      reference.includes(searchLower);
+
+    if (searchTerm && !matchesSearch) return false;
+
+    // Apply status filter
+    if (filters.status && payment.status !== filters.status) return false;
+
+    // Apply type filter
+    if (filters.type && payment.type !== filters.type) return false;
+
+    // Apply date range filters
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      const paymentDate = new Date(payment.paymentDate);
+      if (paymentDate < startDate) return false;
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      const paymentDate = new Date(payment.paymentDate);
+      if (paymentDate > endDate) return false;
+    }
+
+    return true;
+  });
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Status badge component
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "completed":
+        return (
+          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </span>
+        );
+      case "failed":
+        return (
+          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+            <XCircle className="w-3 h-3 mr-1" />
+            Failed
+          </span>
+        );
+      case "partial":
+        return (
+          <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            <DollarSign className="w-3 h-3 mr-1" />
+            Partial
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
     }
   };
 
@@ -540,112 +645,3 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 };
 
 export default PropertyPaymentsList;
-const handleCreatePayment = async (paymentData) => {
-  try {
-    // Add property ID to the payment data
-    const paymentWithProperty = {
-      ...paymentData,
-      propertyId,
-    };
-
-    await paymentService.createPayment(paymentWithProperty);
-    setShowForm(false);
-    await loadData(); // Refresh data
-  } catch (err) {
-    console.error("Error creating payment:", err);
-    setError(err.message || "Failed to create payment");
-  }
-};
-
-const handleUpdateStatus = async (id, status) => {
-  try {
-    await paymentService.updatePaymentStatus(id, { status });
-    await loadData(); // Refresh data
-  } catch (err) {
-    setError("Failed to update payment status");
-  }
-};
-
-// Filter payments based on search and filters
-const filteredPayments = payments.filter((payment) => {
-  const searchLower = searchTerm.toLowerCase();
-
-  // Search in tenant name, unit number, or reference
-  const tenantName = payment.tenant
-    ? `${payment.tenant.firstName} ${payment.tenant.lastName}`.toLowerCase()
-    : "";
-  const unitNumber = payment.unit?.unitNumber?.toLowerCase() || "";
-  const reference = payment.reference?.toLowerCase() || "";
-
-  const matchesSearch =
-    tenantName.includes(searchLower) ||
-    unitNumber.includes(searchLower) ||
-    reference.includes(searchLower);
-
-  if (searchTerm && !matchesSearch) return false;
-
-  // Apply status filter
-  if (filters.status && payment.status !== filters.status) return false;
-
-  // Apply type filter
-  if (filters.type && payment.type !== filters.type) return false;
-
-  // Apply date range filters
-  if (filters.startDate) {
-    const startDate = new Date(filters.startDate);
-    const paymentDate = new Date(payment.paymentDate);
-    if (paymentDate < startDate) return false;
-  }
-
-  if (filters.endDate) {
-    const endDate = new Date(filters.endDate);
-    const paymentDate = new Date(payment.paymentDate);
-    if (paymentDate > endDate) return false;
-  }
-
-  return true;
-});
-
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString();
-};
-
-// Status badge component
-const getStatusBadge = (status) => {
-  switch (status) {
-    case "completed":
-      return (
-        <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Completed
-        </span>
-      );
-    case "pending":
-      return (
-        <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-          <Clock className="w-3 h-3 mr-1" />
-          Pending
-        </span>
-      );
-    case "failed":
-      return (
-        <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-          <XCircle className="w-3 h-3 mr-1" />
-          Failed
-        </span>
-      );
-    case "partial":
-      return (
-        <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-          <DollarSign className="w-3 h-3 mr-1" />
-          Partial
-        </span>
-      );
-    default:
-      return (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-          {status}
-        </span>
-      );
-  }
-};
