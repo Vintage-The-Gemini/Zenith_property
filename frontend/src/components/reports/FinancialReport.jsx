@@ -1,10 +1,10 @@
-// src/components/reports/FinancialReport.jsx
+// frontend/src/components/reports/FinancialReport.jsx
 import { useState, useEffect } from "react";
 import { BarChart2, DollarSign, Download } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
 
-const FinancialReport = ({ dateRange, filters, onError }) => {
+const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +25,11 @@ const FinancialReport = ({ dateRange, filters, onError }) => {
 
       const data = await reportService.getFinancialSummary(params);
       setReportData(data);
+
+      // Pass data to parent component for export functionality
+      if (onDataLoad) {
+        onDataLoad(data);
+      }
     } catch (err) {
       console.error("Error fetching financial report:", err);
       if (onError)
