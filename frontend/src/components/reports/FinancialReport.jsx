@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import { BarChart2, DollarSign, Download } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
+import { exportPropertyRevenueToCSV } from "../../utils/csvExporter";
 
 const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -50,6 +52,24 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
 
   const handleRetry = () => {
     setRetryCount((prev) => prev + 1);
+  };
+
+  const handleExportCSV = () => {
+    setExporting(true);
+    try {
+      if (reportData && reportData.revenueByProperty) {
+        exportPropertyRevenueToCSV(reportData.revenueByProperty);
+      } else {
+        throw new Error("No property revenue data available to export");
+      }
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      if (onError) {
+        onError("Failed to export data to CSV. Please try again.");
+      }
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -226,7 +246,20 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
 
       {/* Revenue by Property */}
       <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Revenue by Property</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Revenue by Property</h3>
+          {reportData.revenueByProperty &&
+            reportData.revenueByProperty.length > 0 && (
+              <button
+                onClick={handleExportCSV}
+                disabled={exporting}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none"
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                {exporting ? "Exporting..." : "Export CSV"}
+              </button>
+            )}
+        </div>
 
         {reportData.revenueByProperty &&
         reportData.revenueByProperty.length > 0 ? (
