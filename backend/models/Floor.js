@@ -63,3 +63,4 @@ floorSchema.virtual("occupiedUnitsCount").get(function () {
 });
 
 export default mongoose.model("Floor", floorSchema);
+//some code here
