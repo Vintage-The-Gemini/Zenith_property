@@ -1,5 +1,6 @@
 // frontend/src/components/properties/PropertyPaymentsList.jsx
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -12,8 +13,8 @@ import {
 } from "lucide-react";
 import Card from "../ui/Card";
 import PaymentForm from "../payments/PaymentForm";
-import { getPaymentsByProperty } from "../../services/paymentService";
-import { getTenantsByProperty } from "../../services/tenantService";
+import paymentService from "../../services/paymentService";
+import tenantService from "../../services/tenantService";
 
 const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [payments, setPayments] = useState([]);
@@ -38,8 +39,8 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
       // Load payments and tenants in parallel
       const [paymentsData, tenantsData] = await Promise.all([
-        getPaymentsByProperty(propertyId),
-        getTenantsByProperty(propertyId),
+        paymentService.getPaymentsByProperty(propertyId),
+        tenantService.getTenantsByProperty(propertyId),
       ]);
 
       setPayments(paymentsData);
@@ -91,11 +92,12 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
         propertyId,
       };
 
-      await setShowForm(false);
+      await paymentService.createPayment(paymentWithProperty);
       await loadData();
+      setShowForm(false);
     } catch (err) {
       console.error("Error creating payment:", err);
-      setError("Failed to create payment. Please try again.");
+      throw new Error(err.message || "Failed to create payment");
     }
   };
 
@@ -286,6 +288,12 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
                   >
                     Status
                   </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -310,6 +318,30 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(payment.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {payment.status === "pending" ? (
+                        <button
+                          onClick={() => {
+                            paymentService
+                              .updatePaymentStatus(payment._id, {
+                                status: "completed",
+                                paymentDate: new Date(),
+                              })
+                              .then(() => loadData());
+                          }}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Mark Paid
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/payments/${payment._id}`}
+                          className="text-primary-600 hover:text-primary-900"
+                        >
+                          View
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

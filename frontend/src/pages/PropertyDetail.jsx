@@ -20,6 +20,8 @@ import Card from "../components/ui/Card";
 import PropertyFormModal from "../components/properties/PropertyFormModal";
 import UnitFormModal from "../components/properties/UnitFormModal";
 import FloorManagement from "../components/properties/FloorManagement";
+import PropertyTenantList from "../components/properties/PropertyTenantList";
+import PropertyPaymentsList from "../components/properties/PropertyPaymentsList";
 import {
   getPropertyById,
   updateProperty,
@@ -487,19 +489,17 @@ const PropertyDetail = () => {
         )}
 
         {activeTab === "tenants" && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
-              Tenant management will be implemented soon.
-            </p>
-          </div>
+          <PropertyTenantList
+            propertyId={property._id}
+            propertyName={property.name}
+          />
         )}
 
         {activeTab === "payments" && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
-              Payment tracking will be implemented soon.
-            </p>
-          </div>
+          <PropertyPaymentsList
+            propertyId={property._id}
+            propertyName={property.name}
+          />
         )}
       </div>
 

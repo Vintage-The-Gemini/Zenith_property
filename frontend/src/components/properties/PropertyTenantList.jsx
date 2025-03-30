@@ -1,5 +1,6 @@
 // frontend/src/components/properties/PropertyTenantList.jsx
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -8,11 +9,13 @@ import {
   AlertTriangle,
   Mail,
   Phone,
+  Home,
+  Calendar,
 } from "lucide-react";
 import Card from "../ui/Card";
 import TenantFormModal from "../tenants/TenantFormModal";
-import { getTenantsByProperty } from "../../services/tenantService";
 import PaymentFormModal from "../tenants/PaymentFormModal";
+import tenantService from "../../services/tenantService";
 
 const PropertyTenantList = ({ propertyId, propertyName }) => {
   const [tenants, setTenants] = useState([]);
@@ -33,7 +36,7 @@ const PropertyTenantList = ({ propertyId, propertyName }) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getTenantsByProperty(propertyId);
+      const data = await tenantService.getTenantsByProperty(propertyId);
       setTenants(data);
     } catch (err) {
       console.error("Error loading tenants:", err);
@@ -204,14 +207,12 @@ const PropertyTenantList = ({ propertyId, propertyName }) => {
                   >
                     Record Payment
                   </button>
-                  <button
-                    onClick={() =>
-                      (window.location.href = `/tenants/${tenant._id}`)
-                    }
+                  <Link
+                    to={`/tenants/${tenant._id}`}
                     className="text-gray-600 hover:text-gray-800 text-sm font-medium"
                   >
                     View Details
-                  </button>
+                  </Link>
                 </div>
               </Card>
             ))}
