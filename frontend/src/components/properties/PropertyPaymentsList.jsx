@@ -23,7 +23,6 @@ import tenantService from "../../services/tenantService";
 const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [payments, setPayments] = useState([]);
   const [tenants, setTenants] = useState([]);
-  const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");

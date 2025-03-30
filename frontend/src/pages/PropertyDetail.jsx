@@ -22,6 +22,7 @@ import UnitFormModal from "../components/properties/UnitFormModal";
 import FloorManagement from "../components/properties/FloorManagement";
 import PropertyTenantList from "../components/properties/PropertyTenantList";
 import PropertyPaymentsList from "../components/properties/PropertyPaymentsList";
+import PropertyExpensesList from "../components/properties/PropertyExpensesList";
 import {
   getPropertyById,
   updateProperty,
@@ -473,6 +474,17 @@ const PropertyDetail = () => {
           >
             Payments
           </button>
+          <button
+            onClick={() => setActiveTab("expenses")}
+            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+              activeTab === "expenses"
+                ? "border-primary-600 text-primary-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <DollarSign className="mr-2 h-5 w-5" />
+            Expenses
+          </button>
         </nav>
       </div>
 
@@ -497,6 +509,13 @@ const PropertyDetail = () => {
 
         {activeTab === "payments" && (
           <PropertyPaymentsList
+            propertyId={property._id}
+            propertyName={property.name}
+          />
+        )}
+
+        {activeTab === "expenses" && (
+          <PropertyExpensesList
             propertyId={property._id}
             propertyName={property.name}
           />
@@ -625,11 +644,63 @@ const PropertyOverview = ({ property }) => {
           </div>
         </div>
         {property.description && (
-          <div className="mt-6">
+          <div className="mt-6 pt-6 border-t border-gray-200">
             <h4 className="text-sm font-medium text-gray-500">Description</h4>
             <p className="mt-1 text-gray-700">{property.description}</p>
           </div>
         )}
+      </Card>
+
+      {/* Property Amenities */}
+      {property.amenities && property.amenities.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Amenities</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {property.amenities.map((amenity, index) => (
+              <div
+                key={index}
+                className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center"
+              >
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {amenity.name || amenity}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Financial Summary */}
+      <Card className="p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Financial Summary
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h4 className="text-sm font-medium text-gray-500 mb-1">
+              Potential Monthly Income
+            </h4>
+            <p className="text-xl font-semibold text-gray-900">
+              KES {getPropertyIncome(property).potential.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h4 className="text-sm font-medium text-gray-500 mb-1">
+              Actual Monthly Income
+            </h4>
+            <p className="text-xl font-semibold text-gray-900">
+              KES {getPropertyIncome(property).actual.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h4 className="text-sm font-medium text-gray-500 mb-1">
+              Vacancy Loss
+            </h4>
+            <p className="text-xl font-semibold text-red-600">
+              KES {getPropertyIncome(property).vacancy.toLocaleString()}
+            </p>
+          </div>
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -642,6 +713,28 @@ const PropertyOverview = ({ property }) => {
       </Card>
     </div>
   );
+};
+
+// Helper function to calculate property income
+const getPropertyIncome = (property) => {
+  if (!property.units || property.units.length === 0) {
+    return { potential: 0, actual: 0, vacancy: 0 };
+  }
+
+  const potential = property.units.reduce(
+    (sum, unit) => sum + (unit.monthlyRent || 0),
+    0
+  );
+
+  const actual = property.units
+    .filter((unit) => unit.status === "occupied")
+    .reduce((sum, unit) => sum + (unit.monthlyRent || 0), 0);
+
+  return {
+    potential,
+    actual,
+    vacancy: potential - actual,
+  };
 };
 
 export default PropertyDetail;
