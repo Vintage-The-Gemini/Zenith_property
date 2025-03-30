@@ -1,6 +1,6 @@
 // frontend/src/components/properties/FloorFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, Building2 } from "lucide-react";
+import { X, Building2, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 
 const FloorFormModal = ({
@@ -101,7 +101,8 @@ const FloorFormModal = ({
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
+          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
             {error}
           </div>
         )}
@@ -109,7 +110,7 @@ const FloorFormModal = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Floor Number
+              Floor Number <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
