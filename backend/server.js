@@ -22,8 +22,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import paymentRoutes from "./routes/payments.js";
 import maintenanceRoutes from "./routes/maintenance.js";
 import floorRoutes from "./routes/floors.js";
-// Remove the reports import since the file doesn't exist yet
-// import reportRoutes from "./routes/reports.js";
+import reportRoutes from './routes/reports.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,8 +93,8 @@ app.use("/api/units", unitRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
-// Remove the reports route since the file doesn't exist yet
-// app.use("/api/reports", reportRoutes);
+app.use('/api/reports', reportRoutes);
+
 
 // Error handling middleware
 app.use(errorHandler);
