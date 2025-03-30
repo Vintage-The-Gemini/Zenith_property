@@ -4,3 +4,4 @@
 {"level":"error","message":"Error creating unit: Either floorId or floorNumber must be provided","timestamp":"2025-03-27T15:36:12.203Z"}
 {"level":"error","message":"Error creating unit: Cannot mark unit as occupied without assigning a tenant","timestamp":"2025-03-29T19:41:30.100Z"}
 {"level":"error","message":"Error creating unit: Cannot mark unit as occupied without assigning a tenant","timestamp":"2025-03-29T19:51:39.826Z"}
+{"level":"error","message":"Error creating unit: Cannot mark unit as occupied without assigning a tenant","timestamp":"2025-03-30T09:58:24.738Z"}
