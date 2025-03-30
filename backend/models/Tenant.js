@@ -124,7 +124,7 @@ const tenantSchema = new mongoose.Schema(
         },
         status: {
           type: String,
-          enum: ["pending", "completed", "failed", "refunded"],
+          enum: ["pending", "completed", "failed", "refunded", "partial"], // Add "partial" to allowed values
           default: "completed",
         },
         reference: String,
