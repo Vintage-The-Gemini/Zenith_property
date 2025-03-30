@@ -1,5 +1,5 @@
 // frontend/src/components/layout/MainLayout.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -21,7 +21,7 @@ import { useAuth } from "../../context/AuthContext";
 const MainLayout = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigationItems = [
@@ -39,6 +39,20 @@ const MainLayout = ({ children }) => {
     if (sidebarOpen) {
       setSidebarOpen(false);
     }
+  };
+
+  // Get user's initials for avatar
+  const getUserInitials = () => {
+    if (!user) return "U";
+    return `${user.firstName?.charAt(0) || ""}${
+      user.lastName?.charAt(0) || ""
+    }`;
+  };
+
+  // Get user's full name
+  const getUserFullName = () => {
+    if (!user) return "Loading...";
+    return `${user.firstName || ""} ${user.lastName || ""}`;
   };
 
   return (
@@ -154,10 +168,12 @@ const MainLayout = ({ children }) => {
               <div className="ml-3 relative">
                 <div className="flex items-center">
                   <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-700 dark:text-primary-300">
-                    <span className="text-sm font-medium">JD</span>
+                    <span className="text-sm font-medium">
+                      {getUserInitials()}
+                    </span>
                   </div>
                   <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    John Doe
+                    {getUserFullName()}
                   </span>
                 </div>
               </div>
