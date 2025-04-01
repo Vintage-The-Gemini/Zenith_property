@@ -1,5 +1,4 @@
 // frontend/src/components/payments/PaymentBalanceSummary.jsx
-
 import React from 'react';
 import Card from '../ui/Card';
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
@@ -19,11 +18,11 @@ const PaymentBalanceSummary = ({ payments = [], title = "Payment Summary" }) => 
     .reduce((sum, p) => sum + (p.amount || 0), 0);
     
   const totalUnderpaid = payments
-    .filter(p => p.paymentVariance < 0)
+    .filter(p => (p.paymentVariance || 0) < 0)
     .reduce((sum, p) => sum + Math.abs(p.paymentVariance || 0), 0);
     
   const totalOverpaid = payments
-    .filter(p => p.paymentVariance > 0)
+    .filter(p => (p.paymentVariance || 0) > 0)
     .reduce((sum, p) => sum + (p.paymentVariance || 0), 0);
   
   return (
@@ -98,15 +97,15 @@ const PaymentBalanceSummary = ({ payments = [], title = "Payment Summary" }) => 
           <div className="flex h-full">
             <div 
               className="bg-green-500 h-full" 
-              style={{ width: `${totalPaid / (totalPaid + totalDue) * 100}%` }}
+              style={{ width: `${totalPaid && (totalPaid / (totalPaid + totalDue) * 100) || 0}%` }}
             ></div>
             <div 
               className="bg-yellow-500 h-full" 
-              style={{ width: `${(totalDue - totalOverdue) / (totalPaid + totalDue) * 100}%` }}
+              style={{ width: `${totalDue && ((totalDue - totalOverdue) / (totalPaid + totalDue) * 100) || 0}%` }}
             ></div>
             <div 
               className="bg-red-500 h-full" 
-              style={{ width: `${totalOverdue / (totalPaid + totalDue) * 100}%` }}
+              style={{ width: `${totalDue && (totalOverdue / (totalPaid + totalDue) * 100) || 0}%` }}
             ></div>
           </div>
         </div>
