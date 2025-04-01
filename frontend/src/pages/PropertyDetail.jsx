@@ -15,6 +15,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Download, 
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import PropertyFormModal from "../components/properties/PropertyFormModal";
@@ -35,6 +36,8 @@ import {
 } from "../services/unitService";
 import floorService from "../services/floorService";
 import { exportPropertyPaymentsToCSV } from '../utils/paymentReportExporter';
+// Move this inside the PropertyDetail component
+
 
 
 const PropertyDetail = () => {
@@ -45,9 +48,10 @@ const PropertyDetail = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [isPropertyFormModalOpen, setIsPropertyFormModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
-  const [selectedFloor, setSelectedFloor] = useState(null);
+  // Removed unused selectedFloor state
   const [deleteConfirm, setDeleteConfirm] = useState({
     show: false,
     type: "",
@@ -522,17 +526,23 @@ const PropertyDetail = () => {
         )}
 
 {activeTab === "payments" && (
-  <div className="flex justify-between mb-4">
-    <h3 className="text-lg font-medium">Property Payments</h3>
-    <button
-      onClick={handleExportPayments}
-      disabled={exporting}
-      className="inline-flex items-center px-3 py-1.5 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700"
-    >
-      <Download className="h-4 w-4 mr-1.5" />
-      {exporting ? 'Exporting...' : 'Export Payments'}
-    </button>
-  </div>
+  <>
+    <div className="flex justify-between mb-4">
+      <h3 className="text-lg font-medium">Property Payments</h3>
+      <button
+        onClick={handleExportPayments}
+        disabled={exporting}
+        className="inline-flex items-center px-3 py-1.5 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700"
+      >
+        <Download className="h-4 w-4 mr-1.5" />
+        {exporting ? 'Exporting...' : 'Export Payments'}
+      </button>
+    </div>
+    <PropertyPaymentsList
+      propertyId={property._id}
+      propertyName={property.name}
+    />
+  </>
 )}
 
         {activeTab === "expenses" && (

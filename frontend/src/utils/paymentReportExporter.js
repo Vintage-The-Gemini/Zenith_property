@@ -1,6 +1,8 @@
 // frontend/src/utils/paymentReportExporter.js
 
 import Papa from "papaparse";
+import paymentService from "../services/paymentService"; // Add this import
+import expenseService from "../services/expenseService"; // Add this import
 
 /**
  * Export property payments to CSV
