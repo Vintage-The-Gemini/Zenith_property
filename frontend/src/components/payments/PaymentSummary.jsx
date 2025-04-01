@@ -124,7 +124,7 @@ const PaymentSummary = ({ summary }) => {
           </div>
         )}
       </Card>
-    </div>
+  </div>
   );
 };
 
