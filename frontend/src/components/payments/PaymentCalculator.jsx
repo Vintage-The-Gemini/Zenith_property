@@ -1,4 +1,6 @@
-// frontend/src/components/payments/PaymentCalculator.js
+// frontend/src/components/payments/PaymentCalculator.jsx
+// Importing core utilities that were originally in the .js file
+// This file adapts the PaymentCalculator.js to a JSX format for better compatibility
 
 /**
  * Calculate summary data from payment data
@@ -58,7 +60,7 @@ export const calculatePaymentSummary = (paymentsData, tenantsData = []) => {
     (sum, payment) => sum + payment.amount,
     0
   );
-  
+
   const overdueTotal = overduePayments.reduce(
     (sum, payment) => sum + payment.amount,
     0
@@ -100,37 +102,43 @@ export const calculatePaymentSummary = (paymentsData, tenantsData = []) => {
 export const calculateMonthlyBreakdown = (paymentsData) => {
   // Group payments by month
   const groupedByMonth = {};
-  
-  paymentsData.forEach(payment => {
+
+  paymentsData.forEach((payment) => {
     if (!payment.paymentDate) return;
-    
+
     const date = new Date(payment.paymentDate);
-    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    
+    const monthYear = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}`;
+
     if (!groupedByMonth[monthYear]) {
       groupedByMonth[monthYear] = {
-        month: new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        month: new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          1
+        ).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
         completed: 0,
         pending: 0,
         overdue: 0,
-        totalPayments: 0
+        totalPayments: 0,
       };
     }
-    
-    if (payment.status === 'completed') {
+
+    if (payment.status === "completed") {
       groupedByMonth[monthYear].completed += payment.amount;
-    } else if (payment.status === 'pending') {
+    } else if (payment.status === "pending") {
       groupedByMonth[monthYear].pending += payment.amount;
-      
+
       // Check if payment is overdue
       if (payment.dueDate && new Date(payment.dueDate) < new Date()) {
         groupedByMonth[monthYear].overdue += payment.amount;
       }
     }
-    
+
     groupedByMonth[monthYear].totalPayments++;
   });
-  
+
   // Convert to array and sort by date
   return Object.entries(groupedByMonth)
     .map(([key, value]) => ({ ...value, monthKey: key }))
@@ -169,7 +177,8 @@ export const filterPayments = (payments, searchTerm, filters) => {
     if (filters.type && payment.type !== filters.type) return false;
 
     // Apply tenant filter
-    if (filters.tenantId && payment.tenant?._id !== filters.tenantId) return false;
+    if (filters.tenantId && payment.tenant?._id !== filters.tenantId)
+      return false;
 
     // Apply date range filters
     if (filters.startDate) {

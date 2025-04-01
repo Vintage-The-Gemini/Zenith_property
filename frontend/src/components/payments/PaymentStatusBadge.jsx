@@ -1,4 +1,4 @@
-// frontend/src/components/properties/payments/PaymentStatusBadge.jsx
+// frontend/src/components/payments/PaymentStatusBadge.jsx
 import React from "react";
 import { CheckCircle, Clock, XCircle, DollarSign } from "lucide-react";
 
