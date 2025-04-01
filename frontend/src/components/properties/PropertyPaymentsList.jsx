@@ -394,6 +394,7 @@ const ImprovedPropertyPaymentsList = ({ propertyId, propertyName }) => {
 
   return (
     <div className="space-y-4">
+    </div>
       {/* Payment Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">
@@ -411,19 +412,19 @@ const ImprovedPropertyPaymentsList = ({ propertyId, propertyName }) => {
           {summary.lastMonthRevenue > 0 && (
             <div className="mt-2 flex items-center text-xs">
               {summary.growthRate > 0 ? (
-                <>
+                <React.Fragment>
                   <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                   <span className="text-green-500">
                     +{Math.round(summary.growthRate)}% vs last month
                   </span>
-                </>
+                </React.Fragment>
               ) : (
-                <>
+                <React.Fragment>
                   <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
                   <span className="text-red-500">
                     {Math.round(summary.growthRate)}% vs last month
                   </span>
-                </>
+                </React.Fragment>
               )}
             </div>
           )}
@@ -1193,19 +1194,19 @@ const ImprovedPropertyPaymentsList = ({ propertyId, propertyName }) => {
           {summary.lastMonthRevenue > 0 && (
             <div className="mt-2 flex items-center text-xs">
               {summary.growthRate > 0 ? (
-                <>
+                <div>
                   <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                   <span className="text-green-500">
                     +{Math.round(summary.growthRate)}% vs last month
                   </span>
-                </>
+                </div>
               ) : (
-                <>
+                <div>
                   <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
                   <span className="text-red-500">
                     {Math.round(summary.growthRate)}% vs last month
                   </span>
-                </>
+                </div>
               )}
             </div>
           )}
@@ -1536,7 +1537,84 @@ export default ImprovedPropertyPaymentsList;
                 >
                   Tenant
                 </th>
+               <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Unit
+                </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  Amount
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredPayments.map((payment) => (
+                <tr key={payment._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {payment.tenant
+                      ? `${payment.tenant.firstName} ${payment.tenant.lastName}`
+                      : "Unknown"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {payment.unit ? `Unit ${payment.unit.unitNumber}` : "Unknown"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                    KES {payment.amount?.toLocaleString() || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(payment.paymentDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(payment.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <Link
+                      to={`/payments/${payment._id}`}
+                      className="text-primary-600 hover:text-primary-900 mr-3"
+                    >
+                      View
+                    </Link>
+                    {payment.status === "pending" && (
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(payment._id, "completed")
+                        }
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        Mark Paid
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PropertyPaymentsList;
