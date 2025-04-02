@@ -243,3 +243,204 @@ export const calculateCurrentPeriodDue = (tenant) => {
     hasCarryForward: carryForward.carryForwardAmount !== 0,
   };
 };
+
+
+export const calculateMonthlyBreakdown = (payments) => {
+  if (!payments || payments.length === 0) {
+    return [];
+  }
+
+  // Group payments by month
+  const monthlyData = {};
+
+  payments.forEach(payment => {
+    if (!payment.paymentDate) return;
+    
+    const date = new Date(payment.paymentDate);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = {
+        month: new Date(date.getFullYear(), date.getMonth(), 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        monthKey,
+        completed: 0,
+        pending: 0,
+        overdue: 0,
+        totalPayments: 0
+      };
+    }
+    
+    if (payment.status === 'completed' || payment.status === 'partial') {
+      monthlyData[monthKey].completed += payment.amount || 0;
+    } else if (payment.status === 'pending') {
+      const now = new Date();
+      const dueDate = payment.dueDate ? new Date(payment.dueDate) : null;
+      
+      if (dueDate && dueDate < now) {
+        monthlyData[monthKey].overdue += payment.amount || 0;
+      } else {
+        monthlyData[monthKey].pending += payment.amount || 0;
+      }
+    }
+    
+    monthlyData[monthKey].totalPayments++;
+  });
+
+  // Convert to array and sort by date (newest first)
+  return Object.values(monthlyData).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+};
+
+
+/**
+ * Filter payments based on search and filters
+ * @param {Array} payments - List of payments
+ * @param {string} searchTerm - Search term
+ * @param {Object} filters - Filter criteria
+ * @returns {Array} Filtered payments
+ */
+export const filterPayments = (payments, searchTerm, filters) => {
+    if (!payments) return [];
+    
+    return payments.filter(payment => {
+      // Apply search filter
+      const searchLower = searchTerm.toLowerCase();
+      const tenantName = payment.tenant
+        ? `${payment.tenant.firstName} ${payment.tenant.lastName}`.toLowerCase()
+        : "";
+      const unitNumber = payment.unit?.unitNumber?.toLowerCase() || "";
+      const reference = payment.reference?.toLowerCase() || "";
+      const propertyName = payment.property?.name?.toLowerCase() || "";
+      
+      const searchMatch =
+        tenantName.includes(searchLower) ||
+        unitNumber.includes(searchLower) ||
+        reference.includes(searchLower) ||
+        propertyName.includes(searchLower);
+      
+      if (searchTerm && !searchMatch) return false;
+      
+      // Apply tenant filter
+      if (filters.tenantId && payment.tenant?._id !== filters.tenantId) {
+        return false;
+      }
+      
+      // Apply status filter
+      if (filters.status && payment.status !== filters.status) {
+        return false;
+      }
+      
+      // Apply type filter
+      if (filters.type && payment.type !== filters.type) {
+        return false;
+      }
+      
+      // Apply date filters
+      if (filters.startDate) {
+        const startDate = new Date(filters.startDate);
+        const paymentDate = new Date(payment.paymentDate);
+        if (paymentDate < startDate) return false;
+      }
+      
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate);
+        const paymentDate = new Date(payment.paymentDate);
+        if (paymentDate > endDate) return false;
+      }
+      
+      return true;
+    });
+  };
+
+ 
+export const calculatePaymentSummary = (payments, tenants = []) => {
+  if (!payments || payments.length === 0) {
+    return {
+      monthlyTotal: 0,
+      pendingTotal: 0,
+      varianceTotal: 0,
+      lastMonthRevenue: 0,
+      growthRate: 0,
+      overdueTotal: 0,
+      netBalanceTotal: 0
+    };
+  }
+  
+  // Get current date info
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  // Last month date range
+  const lastMonthDate = new Date(now);
+  lastMonthDate.setMonth(currentMonth - 1);
+  const lastMonth = lastMonthDate.getMonth();
+  const lastMonthYear = lastMonthDate.getFullYear();
+  
+  // Calculate total by status
+  // Removed unused variable 'completed'
+    
+  const pending = payments
+    .filter(p => p.status === 'pending')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    
+  const variance = payments
+    .filter(p => p.status === 'completed' || p.status === 'partial')
+    .reduce((sum, p) => sum + (p.paymentVariance || 0), 0);
+    
+  // Calculate monthly revenue
+  const currentMonthPayments = payments.filter(p => {
+    const date = new Date(p.paymentDate);
+    return (
+      date.getMonth() === currentMonth &&
+      date.getFullYear() === currentYear &&
+      (p.status === 'completed' || p.status === 'partial')
+    );
+  });
+  
+  const monthlyTotal = currentMonthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  
+  // Calculate last month's revenue for growth rate
+  const lastMonthPayments = payments.filter(p => {
+    const date = new Date(p.paymentDate);
+    return (
+      date.getMonth() === lastMonth &&
+      date.getFullYear() === lastMonthYear &&
+      (p.status === 'completed' || p.status === 'partial')
+    );
+  });
+  
+  const lastMonthRevenue = lastMonthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  
+  // Calculate growth rate
+  const growthRate = lastMonthRevenue > 0
+    ? ((monthlyTotal - lastMonthRevenue) / lastMonthRevenue) * 100
+    : 0;
+    
+  // Calculate overdue payments
+  const overdueTotal = payments
+    .filter(p => {
+      if (p.status !== 'pending') return false;
+      const dueDate = p.dueDate ? new Date(p.dueDate) : null;
+      return dueDate && dueDate < now;
+    })
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    
+  // Calculate net balance - collect tenant balances
+  let netBalanceTotal = 0;
+  if (tenants && tenants.length > 0) {
+    netBalanceTotal = tenants.reduce((sum, tenant) => sum + (tenant.currentBalance || 0), 0);
+  } else {
+    // Fallback calculation based on payments if tenants aren't provided
+    netBalanceTotal = variance;
+  }
+  
+  return {
+    monthlyTotal,
+    pendingTotal: pending,
+    varianceTotal: variance,
+    lastMonthRevenue,
+    growthRate,
+    overdueTotal,
+    netBalanceTotal
+  };
+};

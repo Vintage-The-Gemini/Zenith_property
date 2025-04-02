@@ -1,5 +1,4 @@
 // frontend/src/components/payments/PaymentCalculator.jsx
-
 import React, { useState, useEffect } from "react";
 import { Calendar, Clock, DollarSign, AlertTriangle } from "lucide-react";
 import Card from "../ui/Card";
@@ -123,6 +122,17 @@ const PaymentCalculator = ({ tenant, onAmountSelected }) => {
           </p>
         </div>
       </div>
+
+      {calculatedAmount.currentPeriodPayments > 0 && (
+        <div className="mt-3">
+          <p className="text-sm font-medium text-gray-500">
+            Current Period Payments
+          </p>
+          <p className="text-md">
+            KES {calculatedAmount.currentPeriodPayments.toLocaleString()}
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 text-right">
         <button

@@ -1,5 +1,4 @@
 // frontend/src/components/payments/PaymentForm.jsx
-
 import { useState, useEffect } from "react";
 import { X, DollarSign, AlertCircle, Calendar } from "lucide-react";
 import Card from "../ui/Card";
@@ -36,6 +35,8 @@ const PaymentForm = ({
   const [loading, setLoading] = useState(false);
   const [units, setUnits] = useState([]);
   const [selectedTenant, setSelectedTenant] = useState(null);
+  const [previousBalance, setPreviousBalance] = useState(0);
+  const [carryForward, setCarryForward] = useState({ amount: 0, type: "none" });
 
   useEffect(() => {
     // Load properties
@@ -124,6 +125,20 @@ const PaymentForm = ({
         propertyId: propertyId || "",
       }));
 
+      // Set previous balance
+      const currentBalance = tenant.currentBalance || 0;
+      setPreviousBalance(currentBalance);
+
+      // Update carry forward status based on the current balance
+      if (currentBalance !== 0) {
+        setCarryForward({
+          amount: Math.abs(currentBalance),
+          type: currentBalance < 0 ? "credit" : "debit",
+        });
+      } else {
+        setCarryForward({ amount: 0, type: "none" });
+      }
+
       // Fetch units for this property
       if (propertyId) {
         fetchUnitsForProperty(propertyId);
@@ -171,6 +186,30 @@ const PaymentForm = ({
         [name]: value,
       });
     }
+    // Special handling for amount to automatically calculate payment variance
+    else if (name === "amount" && formData.dueAmount) {
+      const newAmount = parseFloat(value) || 0;
+      const dueAmount = parseFloat(formData.dueAmount) || 0;
+      const newVariance = newAmount - dueAmount;
+
+      setFormData({
+        ...formData,
+        [name]: value,
+        paymentVariance: newVariance,
+      });
+    }
+    // Special handling for dueAmount to automatically calculate payment variance
+    else if (name === "dueAmount" && formData.amount) {
+      const amount = parseFloat(formData.amount) || 0;
+      const newDueAmount = parseFloat(value) || 0;
+      const newVariance = amount - newDueAmount;
+
+      setFormData({
+        ...formData,
+        [name]: value,
+        paymentVariance: newVariance,
+      });
+    }
     // Handle all other fields
     else {
       setFormData({
@@ -181,12 +220,23 @@ const PaymentForm = ({
   };
 
   const handleCalculatedAmount = (calculatedData) => {
+    const amountDue = calculatedData.amountDue;
+    const baseRent = calculatedData.baseRentAmount;
+
     setFormData((prev) => ({
       ...prev,
-      amount: calculatedData.amountDue,
-      dueAmount: calculatedData.baseRentAmount,
-      dueDate: calculatedData.dueDate,
+      amount: amountDue,
+      dueAmount: baseRent,
+      dueDate: new Date(calculatedData.dueDate).toISOString().split("T")[0],
     }));
+
+    // Also update the carry forward information
+    if (calculatedData.hasCarryForward) {
+      setCarryForward({
+        amount: Math.abs(calculatedData.carryForwardAmount),
+        type: calculatedData.carryForwardAmount > 0 ? "credit" : "debit",
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -216,13 +266,36 @@ const PaymentForm = ({
     try {
       setLoading(true);
 
+      // Convert numeric string inputs to numbers
+      const amount = parseFloat(formData.amount);
+      const dueAmount = parseFloat(formData.dueAmount || formData.amount);
+
+      // Calculate payment variance (difference between amount paid and amount due)
+      const paymentVariance = amount - dueAmount;
+
+      // Calculate agency fee if percentage is set
+      const agencyFeePercentage = parseFloat(formData.agencyFeePercentage) || 0;
+      const agencyFee =
+        agencyFeePercentage > 0 ? amount * (agencyFeePercentage / 100) : 0;
+
+      // Calculate tax deduction if percentage is set
+      const taxPercentage = parseFloat(formData.taxDeductionPercentage) || 0;
+      const taxDeduction =
+        taxPercentage > 0 ? amount * (taxPercentage / 100) : 0;
+
+      // Calculate landlord amount (after deducting fees and taxes)
+      const landlordAmount = amount - agencyFee - taxDeduction;
+
+      // Calculate new balance after this payment
+      const newBalance = previousBalance + (amount - dueAmount);
+
       // Format data for API
       const paymentData = {
         tenant: formData.tenantId,
         unit: formData.unitId,
         property: formData.propertyId,
-        amount: parseFloat(formData.amount),
-        dueAmount: parseFloat(formData.dueAmount || formData.amount),
+        amount,
+        dueAmount,
         paymentDate:
           formData.paymentDate || new Date().toISOString().split("T")[0],
         dueDate: formData.dueDate || new Date().toISOString().split("T")[0],
@@ -231,8 +304,29 @@ const PaymentForm = ({
         status: formData.status || "completed",
         description: formData.description || "",
         reference: formData.reference || "",
-        agencyFeePercentage: parseFloat(formData.agencyFeePercentage) || 0,
-        taxDeductionPercentage: parseFloat(formData.taxDeductionPercentage) || 0,
+        paymentVariance,
+        previousBalance,
+        newBalance,
+        // Include agency fee details
+        agencyFee: {
+          percentage: agencyFeePercentage,
+          amount: agencyFee,
+        },
+        // Include tax deduction details
+        taxDeduction: {
+          percentage: taxPercentage,
+          amount: taxDeduction,
+        },
+        landlordAmount,
+        // Include carry forward details if applicable
+        carryForward: paymentVariance !== 0,
+        carryForwardAmount: paymentVariance,
+        carryForwardType:
+          paymentVariance > 0
+            ? "credit"
+            : paymentVariance < 0
+            ? "debit"
+            : "none",
       };
 
       await onSubmit(paymentData);
@@ -268,20 +362,20 @@ const PaymentForm = ({
         </div>
       )}
 
-      {selectedTenant && selectedTenant.currentBalance !== 0 && (
+      {selectedTenant && previousBalance !== 0 && (
         <div
           className={`p-3 rounded-md mb-4 flex items-center ${
-            selectedTenant.currentBalance < 0
+            previousBalance < 0
               ? "bg-green-50 text-green-600"
               : "bg-yellow-50 text-yellow-600"
           }`}
         >
           <AlertCircle className="h-5 w-5 mr-2" />
-          {selectedTenant.currentBalance < 0
+          {previousBalance < 0
             ? `Tenant has a credit balance of KES ${Math.abs(
-                selectedTenant.currentBalance
+                previousBalance
               ).toLocaleString()}`
-            : `Tenant has an outstanding balance of KES ${selectedTenant.currentBalance.toLocaleString()}`}
+            : `Tenant has an outstanding balance of KES ${previousBalance.toLocaleString()}`}
         </div>
       )}
 
@@ -310,9 +404,9 @@ const PaymentForm = ({
           {/* If tenant is selected, show the payment calculator */}
           {selectedTenant && (
             <div className="md:col-span-2">
-              <PaymentCalculator 
-                tenant={selectedTenant} 
-                onAmountSelected={handleCalculatedAmount} 
+              <PaymentCalculator
+                tenant={selectedTenant}
+                onAmountSelected={handleCalculatedAmount}
               />
             </div>
           )}
@@ -403,6 +497,106 @@ const PaymentForm = ({
             </p>
           </div>
 
+          {/* Payment variance calculation */}
+          {formData.amount && formData.dueAmount && (
+            <div className="md:col-span-2 bg-gray-50 p-3 rounded-md">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Payment Calculation
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Amount Paying:</span>
+                  <span className="font-medium">
+                    {" "}
+                    KES {parseFloat(formData.amount).toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Amount Due:</span>
+                  <span className="font-medium">
+                    {" "}
+                    KES {parseFloat(formData.dueAmount).toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Variance:</span>
+                  <span
+                    className={`font-medium ${
+                      parseFloat(formData.amount) >
+                      parseFloat(formData.dueAmount)
+                        ? "text-green-600"
+                        : parseFloat(formData.amount) <
+                          parseFloat(formData.dueAmount)
+                        ? "text-red-600"
+                        : ""
+                    }`}
+                  >
+                    {parseFloat(formData.amount) >
+                    parseFloat(formData.dueAmount)
+                      ? "+"
+                      : ""}
+                    KES{" "}
+                    {(
+                      parseFloat(formData.amount) -
+                      parseFloat(formData.dueAmount)
+                    ).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              {previousBalance !== 0 && (
+                <div className="mt-2">
+                  <span className="text-gray-500">Previous Balance:</span>
+                  <span
+                    className={`font-medium ${
+                      previousBalance < 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {previousBalance < 0 ? "Credit " : "Debit "}
+                    KES {Math.abs(previousBalance).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              <div className="mt-2">
+                <span className="text-gray-500">
+                  New Balance After Payment:
+                </span>
+                <span
+                  className={`font-medium ${
+                    previousBalance +
+                      (parseFloat(formData.amount) -
+                        parseFloat(formData.dueAmount)) <
+                    0
+                      ? "text-green-600"
+                      : previousBalance +
+                          (parseFloat(formData.amount) -
+                            parseFloat(formData.dueAmount)) >
+                        0
+                      ? "text-red-600"
+                      : ""
+                  }`}
+                >
+                  {previousBalance +
+                    (parseFloat(formData.amount) -
+                      parseFloat(formData.dueAmount)) <
+                  0
+                    ? "Credit "
+                    : previousBalance +
+                        (parseFloat(formData.amount) -
+                          parseFloat(formData.dueAmount)) >
+                      0
+                    ? "Debit "
+                    : ""}
+                  KES{" "}
+                  {Math.abs(
+                    previousBalance +
+                      (parseFloat(formData.amount) -
+                        parseFloat(formData.dueAmount))
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Due Date
@@ -465,7 +659,7 @@ const PaymentForm = ({
               <option value="other">Other</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Reference Number
@@ -479,7 +673,7 @@ const PaymentForm = ({
               placeholder="Receipt or Transaction ID"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Status
@@ -496,7 +690,7 @@ const PaymentForm = ({
               <option value="failed">Failed</option>
             </select>
           </div>
-          
+
           {/* Agency fees section */}
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -515,11 +709,15 @@ const PaymentForm = ({
             />
             {formData.amount && formData.agencyFeePercentage > 0 && (
               <p className="mt-1 text-xs text-gray-500">
-                Fee: KES {(formData.amount * (formData.agencyFeePercentage / 100)).toFixed(2)}
+                Fee: KES{" "}
+                {(
+                  parseFloat(formData.amount) *
+                  (parseFloat(formData.agencyFeePercentage) / 100)
+                ).toFixed(2)}
               </p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Tax Deduction (%)
@@ -537,7 +735,11 @@ const PaymentForm = ({
             />
             {formData.amount && formData.taxDeductionPercentage > 0 && (
               <p className="mt-1 text-xs text-gray-500">
-                Tax: KES {(formData.amount * (formData.taxDeductionPercentage / 100)).toFixed(2)}
+                Tax: KES{" "}
+                {(
+                  parseFloat(formData.amount) *
+                  (parseFloat(formData.taxDeductionPercentage) / 100)
+                ).toFixed(2)}
               </p>
             )}
           </div>
