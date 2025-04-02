@@ -110,6 +110,28 @@ const PaymentForm = ({
         propertyId = tenant.propertyId._id;
       }
 
+      const paymentDetails = calculateCurrentPeriodDue(tenant);
+
+      // Set the calculated values in the form
+      setFormData((prev) => ({
+        ...prev,
+        unitId: unitId || "",
+        propertyId: propertyId || "",
+        amount: paymentDetails.amountDue, // Set the calculated due amount
+        dueAmount: paymentDetails.baseRentAmount || tenant.leaseDetails?.rentAmount || 0, // Set the original rent amount as due amount
+        dueDate: paymentDetails.dueDate.toISOString().split("T")[0],
+      }));
+
+      // Fetch units for this property
+      if (propertyId) {
+        fetchUnitsForProperty(propertyId);
+      }
+    } catch (error) {
+      console.error("Error fetching tenant details:", error);
+      setError("Failed to fetch tenant details");
+    }
+  };
+
       // Calculate due amount based on tenant's current balance
       // Use lease start date to determine payment due day (or default to 1st of the month)
       const leaseStartDate = tenant.leaseDetails?.startDate
