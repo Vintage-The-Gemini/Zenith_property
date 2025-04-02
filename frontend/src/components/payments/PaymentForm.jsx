@@ -1,11 +1,13 @@
 // frontend/src/components/payments/PaymentForm.jsx
+
 import { useState, useEffect } from "react";
-import { DollarSign, AlertCircle } from "lucide-react";
+import { X, DollarSign, AlertCircle, Calendar } from "lucide-react";
 import Card from "../ui/Card";
 import propertyService from "../../services/propertyService";
 import unitService from "../../services/unitService";
 import tenantService from "../../services/tenantService";
-import { calculateDueAmount } from "../../utils/paymentCalculator";
+import PaymentCalculator from "./PaymentCalculator";
+import { calculateCurrentPeriodDue } from "../../utils/paymentCalculator";
 
 const PaymentForm = ({
   onSubmit,
@@ -26,6 +28,9 @@ const PaymentForm = ({
     type: "rent",
     description: "",
     status: "completed",
+    reference: "",
+    agencyFeePercentage: 0,
+    taxDeductionPercentage: 0,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,6 +73,9 @@ const PaymentForm = ({
         type: initialData.type || "rent",
         description: initialData.description || "",
         status: initialData.status || "completed",
+        reference: initialData.reference || "",
+        agencyFeePercentage: initialData.agencyFee?.percentage || 0,
+        taxDeductionPercentage: initialData.taxDeduction?.percentage || 0,
       });
 
       // If property is selected, load its units
@@ -110,56 +118,10 @@ const PaymentForm = ({
         propertyId = tenant.propertyId._id;
       }
 
-      const paymentDetails = calculateCurrentPeriodDue(tenant);
-
-      // Set the calculated values in the form
       setFormData((prev) => ({
         ...prev,
         unitId: unitId || "",
         propertyId: propertyId || "",
-        amount: paymentDetails.amountDue, // Set the calculated due amount
-        dueAmount: paymentDetails.baseRentAmount || tenant.leaseDetails?.rentAmount || 0, // Set the original rent amount as due amount
-        dueDate: paymentDetails.dueDate.toISOString().split("T")[0],
-      }));
-
-      // Fetch units for this property
-      if (propertyId) {
-        fetchUnitsForProperty(propertyId);
-      }
-    } catch (error) {
-      console.error("Error fetching tenant details:", error);
-      setError("Failed to fetch tenant details");
-    }
-  };
-
-      // Calculate due amount based on tenant's current balance
-      // Use lease start date to determine payment due day (or default to 1st of the month)
-      const leaseStartDate = tenant.leaseDetails?.startDate
-        ? new Date(tenant.leaseDetails.startDate)
-        : new Date();
-
-      const dueDay = leaseStartDate.getDate();
-      const today = new Date();
-      const dueDateForMonth = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        dueDay
-      );
-
-      // If we're past the due date for this month, use next month's due date
-      if (today > dueDateForMonth) {
-        dueDateForMonth.setMonth(dueDateForMonth.getMonth() + 1);
-      }
-
-      const { dueAmount } = calculateDueAmount(tenant, dueDateForMonth);
-
-      setFormData((prev) => ({
-        ...prev,
-        unitId: unitId || "",
-        propertyId: propertyId || "",
-        amount: dueAmount, // Set the calculated due amount
-        dueAmount: tenant.leaseDetails?.rentAmount || dueAmount, // Set the original rent amount as due amount
-        dueDate: dueDateForMonth.toISOString().split("T")[0],
       }));
 
       // Fetch units for this property
@@ -218,6 +180,15 @@ const PaymentForm = ({
     }
   };
 
+  const handleCalculatedAmount = (calculatedData) => {
+    setFormData((prev) => ({
+      ...prev,
+      amount: calculatedData.amountDue,
+      dueAmount: calculatedData.baseRentAmount,
+      dueDate: calculatedData.dueDate,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -247,9 +218,9 @@ const PaymentForm = ({
 
       // Format data for API
       const paymentData = {
-        tenant: formData.tenantId, // Change tenantId to tenant to match API
-        unit: formData.unitId, // Change unitId to unit to match API
-        property: formData.propertyId, // Change propertyId to property to match API
+        tenant: formData.tenantId,
+        unit: formData.unitId,
+        property: formData.propertyId,
         amount: parseFloat(formData.amount),
         dueAmount: parseFloat(formData.dueAmount || formData.amount),
         paymentDate:
@@ -260,11 +231,8 @@ const PaymentForm = ({
         status: formData.status || "completed",
         description: formData.description || "",
         reference: formData.reference || "",
-        // Add carryForward information if tenant exists
-        carryForward: selectedTenant
-          ? selectedTenant.currentBalance !== 0
-          : false,
-        carryForwardAmount: selectedTenant ? -selectedTenant.currentBalance : 0,
+        agencyFeePercentage: parseFloat(formData.agencyFeePercentage) || 0,
+        taxDeductionPercentage: parseFloat(formData.taxDeductionPercentage) || 0,
       };
 
       await onSubmit(paymentData);
@@ -285,6 +253,12 @@ const PaymentForm = ({
             {initialData ? "Edit Payment" : "Record Payment"}
           </h2>
         </div>
+        <button
+          onClick={onCancel}
+          className="text-gray-400 hover:text-gray-500"
+        >
+          <X className="h-6 w-6" />
+        </button>
       </div>
 
       {error && (
@@ -332,6 +306,16 @@ const PaymentForm = ({
               ))}
             </select>
           </div>
+
+          {/* If tenant is selected, show the payment calculator */}
+          {selectedTenant && (
+            <div className="md:col-span-2">
+              <PaymentCalculator 
+                tenant={selectedTenant} 
+                onAmountSelected={handleCalculatedAmount} 
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -480,6 +464,82 @@ const PaymentForm = ({
               <option value="maintenance">Maintenance</option>
               <option value="other">Other</option>
             </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Reference Number
+            </label>
+            <input
+              type="text"
+              name="reference"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.reference}
+              onChange={handleChange}
+              placeholder="Receipt or Transaction ID"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Status
+            </label>
+            <select
+              name="status"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.status}
+              onChange={handleChange}
+            >
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+          
+          {/* Agency fees section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Agency Fee (%)
+            </label>
+            <input
+              type="number"
+              name="agencyFeePercentage"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.agencyFeePercentage}
+              onChange={handleChange}
+              min="0"
+              max="100"
+              step="0.01"
+              placeholder="0"
+            />
+            {formData.amount && formData.agencyFeePercentage > 0 && (
+              <p className="mt-1 text-xs text-gray-500">
+                Fee: KES {(formData.amount * (formData.agencyFeePercentage / 100)).toFixed(2)}
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Tax Deduction (%)
+            </label>
+            <input
+              type="number"
+              name="taxDeductionPercentage"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              value={formData.taxDeductionPercentage}
+              onChange={handleChange}
+              min="0"
+              max="100"
+              step="0.01"
+              placeholder="0"
+            />
+            {formData.amount && formData.taxDeductionPercentage > 0 && (
+              <p className="mt-1 text-xs text-gray-500">
+                Tax: KES {(formData.amount * (formData.taxDeductionPercentage / 100)).toFixed(2)}
+              </p>
+            )}
           </div>
 
           <div className="md:col-span-2">

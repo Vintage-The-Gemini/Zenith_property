@@ -1,198 +1,139 @@
 // frontend/src/components/payments/PaymentCalculator.jsx
-// Importing core utilities that were originally in the .js file
-// This file adapts the PaymentCalculator.js to a JSX format for better compatibility
 
-/**
- * Calculate summary data from payment data
- * @param {Array} paymentsData - List of payments
- * @param {Array} tenantsData - List of tenants
- * @returns {Object} Summary statistics
- */
-export const calculatePaymentSummary = (paymentsData, tenantsData = []) => {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+import React, { useState, useEffect } from "react";
+import { Calendar, Clock, DollarSign, AlertTriangle } from "lucide-react";
+import Card from "../ui/Card";
+import { calculateCurrentPeriodDue } from "../../utils/paymentCalculator";
 
-  // Current month completed payments
-  const monthlyPayments = paymentsData.filter((payment) => {
-    const paymentDate = new Date(payment.paymentDate);
-    return (
-      payment.status === "completed" &&
-      paymentDate.getMonth() === currentMonth &&
-      paymentDate.getFullYear() === currentYear
-    );
-  });
+const PaymentCalculator = ({ tenant, onAmountSelected }) => {
+  const [calculatedAmount, setCalculatedAmount] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Last month payments
-  const lastMonthPayments = paymentsData.filter((payment) => {
-    const paymentDate = new Date(payment.paymentDate);
-    return (
-      payment.status === "completed" &&
-      paymentDate.getMonth() === lastMonth &&
-      paymentDate.getFullYear() === lastMonthYear
-    );
-  });
+  useEffect(() => {
+    if (tenant) {
+      calculatePayment();
+    }
+  }, [tenant]);
 
-  // Pending payments
-  const pendingPayments = paymentsData.filter(
-    (payment) => payment.status === "pending"
-  );
+  const calculatePayment = () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Overdue payments
-  const overduePayments = pendingPayments.filter(
-    (payment) => payment.dueDate && new Date(payment.dueDate) < now
-  );
+      // Calculate due amount based on tenant's lease details and payment history
+      const paymentDetails = calculateCurrentPeriodDue(tenant);
 
-  // Calculate totals
-  const monthlyTotal = monthlyPayments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0
-  );
-
-  const lastMonthTotal = lastMonthPayments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0
-  );
-
-  const pendingTotal = pendingPayments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0
-  );
-
-  const overdueTotal = overduePayments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0
-  );
-
-  // Calculate payment variance (total of all payment variances)
-  const varianceTotal = paymentsData
-    .filter((payment) => payment.status === "completed")
-    .reduce((sum, payment) => sum + (payment.paymentVariance || 0), 0);
-
-  // Calculate growth rate
-  const growthRate =
-    lastMonthTotal > 0
-      ? ((monthlyTotal - lastMonthTotal) / lastMonthTotal) * 100
-      : 0;
-
-  // Calculate net balance (from tenant current balances)
-  const netBalanceTotal = tenantsData.reduce(
-    (sum, tenant) => sum + (tenant.currentBalance || 0),
-    0
-  );
-
-  return {
-    monthlyTotal,
-    pendingTotal,
-    lastMonthRevenue: lastMonthTotal,
-    varianceTotal,
-    growthRate,
-    overdueTotal,
-    netBalanceTotal,
+      setCalculatedAmount(paymentDetails);
+    } catch (err) {
+      console.error("Error calculating payment:", err);
+      setError("Failed to calculate payment amount");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleUseAmount = () => {
+    if (calculatedAmount && onAmountSelected) {
+      onAmountSelected(calculatedAmount);
+    }
+  };
+
+  if (!tenant) {
+    return null;
+  }
+
+  if (loading) {
+    return <div className="text-center py-4">Calculating payment...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 flex items-center">
+        <AlertTriangle className="h-5 w-5 mr-2" />
+        {error}
+      </div>
+    );
+  }
+
+  if (!calculatedAmount) {
+    return null;
+  }
+
+  return (
+    <Card className="p-4 mb-4">
+      <h3 className="text-md font-medium mb-2 flex items-center">
+        <Calendar className="h-5 w-5 mr-2 text-primary-600" />
+        Payment Calculation for Current Period
+      </h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p className="text-sm font-medium text-gray-500">Base Rent Amount</p>
+          <p className="text-lg font-bold">
+            KES {calculatedAmount.baseRentAmount.toLocaleString()}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-gray-500">Amount Due</p>
+          <p className="text-lg font-bold">
+            KES {calculatedAmount.amountDue.toLocaleString()}
+          </p>
+          {calculatedAmount.amountDue !== calculatedAmount.baseRentAmount && (
+            <p className="text-xs text-gray-500">
+              {calculatedAmount.amountDue < calculatedAmount.baseRentAmount
+                ? "Reduced due to previous overpayment"
+                : "Increased due to previous underpayment"}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-gray-500">Due Date</p>
+          <p className="text-md">
+            {new Date(calculatedAmount.dueDate).toLocaleDateString()}
+          </p>
+          {calculatedAmount.isOverdue && (
+            <p className="text-xs text-red-500 flex items-center">
+              <Clock className="h-3 w-3 mr-1" />
+              Payment is overdue
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-gray-500">Carry Forward</p>
+          <p
+            className={`text-md ${
+              calculatedAmount.carryForwardAmount > 0
+                ? "text-green-600"
+                : calculatedAmount.carryForwardAmount < 0
+                ? "text-red-600"
+                : ""
+            }`}
+          >
+            {calculatedAmount.carryForwardAmount > 0
+              ? `KES ${calculatedAmount.carryForwardAmount.toLocaleString()} (Credit)`
+              : calculatedAmount.carryForwardAmount < 0
+              ? `KES ${Math.abs(
+                  calculatedAmount.carryForwardAmount
+                ).toLocaleString()} (Debit)`
+              : "None"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 text-right">
+        <button
+          onClick={handleUseAmount}
+          className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
+        >
+          Use Calculated Amount
+        </button>
+      </div>
+    </Card>
+  );
 };
 
-/**
- * Calculate monthly breakdown of payment data
- * @param {Array} paymentsData - List of payments
- * @returns {Array} Monthly breakdown data
- */
-export const calculateMonthlyBreakdown = (paymentsData) => {
-  // Group payments by month
-  const groupedByMonth = {};
-
-  paymentsData.forEach((payment) => {
-    if (!payment.paymentDate) return;
-
-    const date = new Date(payment.paymentDate);
-    const monthYear = `${date.getFullYear()}-${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}`;
-
-    if (!groupedByMonth[monthYear]) {
-      groupedByMonth[monthYear] = {
-        month: new Date(
-          date.getFullYear(),
-          date.getMonth(),
-          1
-        ).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-        completed: 0,
-        pending: 0,
-        overdue: 0,
-        totalPayments: 0,
-      };
-    }
-
-    if (payment.status === "completed") {
-      groupedByMonth[monthYear].completed += payment.amount;
-    } else if (payment.status === "pending") {
-      groupedByMonth[monthYear].pending += payment.amount;
-
-      // Check if payment is overdue
-      if (payment.dueDate && new Date(payment.dueDate) < new Date()) {
-        groupedByMonth[monthYear].overdue += payment.amount;
-      }
-    }
-
-    groupedByMonth[monthYear].totalPayments++;
-  });
-
-  // Convert to array and sort by date
-  return Object.entries(groupedByMonth)
-    .map(([key, value]) => ({ ...value, monthKey: key }))
-    .sort((a, b) => b.monthKey.localeCompare(a.monthKey)); // Sort newest first
-};
-
-/**
- * Filter payments based on search and filters
- * @param {Array} payments - List of payments
- * @param {string} searchTerm - Search term
- * @param {Object} filters - Filter criteria
- * @returns {Array} Filtered payments
- */
-export const filterPayments = (payments, searchTerm, filters) => {
-  return payments.filter((payment) => {
-    const searchLower = searchTerm.toLowerCase();
-
-    // Search in tenant name, unit number, or reference
-    const tenantName = payment.tenant
-      ? `${payment.tenant.firstName} ${payment.tenant.lastName}`.toLowerCase()
-      : "";
-    const unitNumber = payment.unit?.unitNumber?.toLowerCase() || "";
-    const reference = payment.reference?.toLowerCase() || "";
-
-    const matchesSearch =
-      tenantName.includes(searchLower) ||
-      unitNumber.includes(searchLower) ||
-      reference.includes(searchLower);
-
-    if (searchTerm && !matchesSearch) return false;
-
-    // Apply status filter
-    if (filters.status && payment.status !== filters.status) return false;
-
-    // Apply type filter
-    if (filters.type && payment.type !== filters.type) return false;
-
-    // Apply tenant filter
-    if (filters.tenantId && payment.tenant?._id !== filters.tenantId)
-      return false;
-
-    // Apply date range filters
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
-      const paymentDate = new Date(payment.paymentDate);
-      if (paymentDate < startDate) return false;
-    }
-
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      const paymentDate = new Date(payment.paymentDate);
-      if (paymentDate > endDate) return false;
-    }
-
-    return true;
-  });
-};
+export default PaymentCalculator;
