@@ -4,6 +4,8 @@ import { DollarSign, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 import propertyService from "../../services/propertyService";
 import unitService from "../../services/unitService";
+import tenantService from "../../services/tenantService";
+import { calculateDueAmount } from "../../utils/paymentCalculator";
 
 const PaymentForm = ({
   onSubmit,
@@ -28,6 +30,7 @@ const PaymentForm = ({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [units, setUnits] = useState([]);
+  const [selectedTenant, setSelectedTenant] = useState(null);
 
   useEffect(() => {
     // Load properties
@@ -73,51 +76,79 @@ const PaymentForm = ({
           initialData.property?._id || initialData.propertyId
         );
       }
+
+      // Fetch selected tenant details
+      if (initialData.tenant?._id || initialData.tenantId) {
+        fetchTenantDetails(initialData.tenant?._id || initialData.tenantId);
+      }
     }
   }, [initialData]);
 
-  // When tenant changes, populate the unit if available
+  // When tenant changes, populate the unit and due amount if available
   useEffect(() => {
     if (formData.tenantId && tenantOptions) {
-      const selectedTenant = tenantOptions.find(
-        (t) => t._id === formData.tenantId
-      );
-
-      if (selectedTenant) {
-        // Update unit and property
-        let unitId = selectedTenant.unitId;
-        let propertyId = selectedTenant.propertyId;
-
-        // Handle if unitId and propertyId are objects instead of strings
-        if (
-          selectedTenant.unitId &&
-          typeof selectedTenant.unitId === "object"
-        ) {
-          unitId = selectedTenant.unitId._id;
-        }
-
-        if (
-          selectedTenant.propertyId &&
-          typeof selectedTenant.propertyId === "object"
-        ) {
-          propertyId = selectedTenant.propertyId._id;
-        }
-
-        setFormData((prev) => ({
-          ...prev,
-          unitId: unitId || "",
-          propertyId: propertyId || "",
-          amount: selectedTenant.leaseDetails?.rentAmount || prev.amount,
-          dueAmount: selectedTenant.leaseDetails?.rentAmount || prev.dueAmount,
-        }));
-
-        // Fetch units for this property to populate the dropdown
-        if (propertyId) {
-          fetchUnitsForProperty(propertyId);
-        }
-      }
+      fetchTenantDetails(formData.tenantId);
     }
   }, [formData.tenantId, tenantOptions]);
+
+  const fetchTenantDetails = async (tenantId) => {
+    try {
+      // Get full tenant details including payment history
+      const tenant = await tenantService.getTenantById(tenantId);
+      setSelectedTenant(tenant);
+
+      // Update unit and property
+      let unitId = tenant.unitId;
+      let propertyId = tenant.propertyId;
+
+      // Handle if unitId and propertyId are objects instead of strings
+      if (tenant.unitId && typeof tenant.unitId === "object") {
+        unitId = tenant.unitId._id;
+      }
+
+      if (tenant.propertyId && typeof tenant.propertyId === "object") {
+        propertyId = tenant.propertyId._id;
+      }
+
+      // Calculate due amount based on tenant's current balance
+      // Use lease start date to determine payment due day (or default to 1st of the month)
+      const leaseStartDate = tenant.leaseDetails?.startDate
+        ? new Date(tenant.leaseDetails.startDate)
+        : new Date();
+
+      const dueDay = leaseStartDate.getDate();
+      const today = new Date();
+      const dueDateForMonth = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        dueDay
+      );
+
+      // If we're past the due date for this month, use next month's due date
+      if (today > dueDateForMonth) {
+        dueDateForMonth.setMonth(dueDateForMonth.getMonth() + 1);
+      }
+
+      const { dueAmount } = calculateDueAmount(tenant, dueDateForMonth);
+
+      setFormData((prev) => ({
+        ...prev,
+        unitId: unitId || "",
+        propertyId: propertyId || "",
+        amount: dueAmount, // Set the calculated due amount
+        dueAmount: tenant.leaseDetails?.rentAmount || dueAmount, // Set the original rent amount as due amount
+        dueDate: dueDateForMonth.toISOString().split("T")[0],
+      }));
+
+      // Fetch units for this property
+      if (propertyId) {
+        fetchUnitsForProperty(propertyId);
+      }
+    } catch (error) {
+      console.error("Error fetching tenant details:", error);
+      setError("Failed to fetch tenant details");
+    }
+  };
 
   const fetchUnitsForProperty = async (propertyId) => {
     try {
@@ -207,6 +238,11 @@ const PaymentForm = ({
         status: formData.status || "completed",
         description: formData.description || "",
         reference: formData.reference || "",
+        // Add carryForward information if tenant exists
+        carryForward: selectedTenant
+          ? selectedTenant.currentBalance !== 0
+          : false,
+        carryForwardAmount: selectedTenant ? -selectedTenant.currentBalance : 0,
       };
 
       await onSubmit(paymentData);
@@ -233,6 +269,23 @@ const PaymentForm = ({
         <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 flex items-center">
           <AlertCircle className="h-5 w-5 mr-2" />
           {error}
+        </div>
+      )}
+
+      {selectedTenant && selectedTenant.currentBalance !== 0 && (
+        <div
+          className={`p-3 rounded-md mb-4 flex items-center ${
+            selectedTenant.currentBalance < 0
+              ? "bg-green-50 text-green-600"
+              : "bg-yellow-50 text-yellow-600"
+          }`}
+        >
+          <AlertCircle className="h-5 w-5 mr-2" />
+          {selectedTenant.currentBalance < 0
+            ? `Tenant has a credit balance of KES ${Math.abs(
+                selectedTenant.currentBalance
+              ).toLocaleString()}`
+            : `Tenant has an outstanding balance of KES ${selectedTenant.currentBalance.toLocaleString()}`}
         </div>
       )}
 

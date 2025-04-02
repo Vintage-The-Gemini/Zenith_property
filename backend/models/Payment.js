@@ -36,6 +36,24 @@ const paymentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    paymentPeriod: {
+      startDate: {
+        type: Date,
+        default: function () {
+          // Default to first day of current month
+          const now = new Date();
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+        },
+      },
+      endDate: {
+        type: Date,
+        default: function () {
+          // Default to last day of current month
+          const now = new Date();
+          return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        },
+      },
+    },
     paymentMethod: {
       type: String,
       enum: ["cash", "bank_transfer", "check", "mobile_money", "card", "other"],
@@ -81,6 +99,37 @@ const paymentSchema = new mongoose.Schema(
       type: Number,
       default: 0, // Amount carried forward (could be positive or negative)
     },
+    // Recurring expense calculation fields
+    agencyFee: {
+      amount: {
+        type: Number,
+        default: 0,
+      },
+      percentage: {
+        type: Number,
+        default: 0, // e.g., 10% of rent
+      },
+    },
+    taxDeduction: {
+      amount: {
+        type: Number,
+        default: 0,
+      },
+      percentage: {
+        type: Number,
+        default: 0, // e.g., 5% of rent
+      },
+    },
+    landlordAmount: {
+      type: Number,
+      default: function () {
+        return (
+          this.amount -
+          (this.agencyFee?.amount || 0) -
+          (this.taxDeduction?.amount || 0)
+        );
+      },
+    },
   },
   {
     timestamps: true,
@@ -110,7 +159,7 @@ paymentSchema.pre("save", function (next) {
   // Calculate payment variance if it's a completed payment
   if (this.status === "completed" || this.status === "partial") {
     this.paymentVariance = this.amount - this.dueAmount;
-    
+
     // Set carryForward flag if there's a variance
     this.carryForward = this.paymentVariance !== 0;
     this.carryForwardAmount = this.paymentVariance;
@@ -119,6 +168,22 @@ paymentSchema.pre("save", function (next) {
     if (this.amount < this.dueAmount) {
       this.status = "partial";
     }
+
+    // Calculate agency fee and tax deduction if percentages are set
+    if (this.agencyFee && this.agencyFee.percentage > 0) {
+      this.agencyFee.amount = (this.amount * this.agencyFee.percentage) / 100;
+    }
+
+    if (this.taxDeduction && this.taxDeduction.percentage > 0) {
+      this.taxDeduction.amount =
+        (this.amount * this.taxDeduction.percentage) / 100;
+    }
+
+    // Calculate amount due to landlord
+    this.landlordAmount =
+      this.amount -
+      (this.agencyFee?.amount || 0) -
+      (this.taxDeduction?.amount || 0);
   }
 
   next();

@@ -21,7 +21,6 @@ const unitSchema = new mongoose.Schema(
       type: String,
       enum: ["rental", "bnb", "commercial"],
       default: "rental",
-      required: true,
     },
     status: {
       type: String,
@@ -65,19 +64,50 @@ const unitSchema = new mongoose.Schema(
     },
 
     // BnB specific fields
-    nightlyRate: {
-      type: Number,
+    bnbSettings: {
+      isActive: {
+        type: Boolean,
+        default: false,
+      },
+      nightlyRate: {
+        type: Number,
+      },
+      weeklyRate: {
+        type: Number,
+      },
+      monthlyRate: {
+        type: Number,
+      },
+      minimumStay: {
+        type: Number,
+        default: 1,
+      },
+      checkInTime: {
+        type: String,
+        default: "14:00", // 2 PM
+      },
+      checkOutTime: {
+        type: String,
+        default: "11:00", // 11 AM
+      },
+      // Availability calendar
+      unavailableDates: [
+        {
+          startDate: Date,
+          endDate: Date,
+          reason: String,
+        },
+      ],
+      amenities: [String],
     },
-    weeklyRate: {
-      type: Number,
-    },
-    monthlyRate: {
-      type: Number,
-    },
-    minimumStay: {
-      type: Number,
-      default: 1,
-    },
+
+    // Bookings (for BnB units)
+    bookings: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Booking",
+      },
+    ],
 
     amenities: [
       {
@@ -113,7 +143,7 @@ const unitSchema = new mongoose.Schema(
     // Financial tracking
     balance: {
       type: Number,
-      default: 0, // Positive means tenant owes, negative means tenant has credit
+      default: 0, // Mirrors the tenant's currentBalance
     },
     lastPaymentDate: {
       type: Date,
@@ -163,6 +193,18 @@ unitSchema.pre("save", async function (next) {
     this.currentTenant = null;
   }
 
+  // If this is a BnB unit, make sure the BnB settings are activated
+  if (this.isModified("type") && this.type === "bnb") {
+    this.bnbSettings = {
+      ...this.bnbSettings,
+      isActive: true,
+      nightlyRate: this.bnbSettings?.nightlyRate || this.monthlyRent / 30,
+      weeklyRate:
+        this.bnbSettings?.weeklyRate || (this.monthlyRent / 30) * 7 * 0.9, // 10% discount
+      monthlyRate: this.bnbSettings?.monthlyRate || this.monthlyRent,
+    };
+  }
+
   next();
 });
 
@@ -172,6 +214,16 @@ unitSchema.pre("save", function (next) {
 
   this._original = this.toObject();
   next();
+});
+
+// Calculate daily rate for BnB
+unitSchema.virtual("dailyRate").get(function () {
+  if (this.type === "bnb" && this.bnbSettings?.nightlyRate) {
+    return this.bnbSettings.nightlyRate;
+  }
+
+  // Default calculation from monthly rent
+  return this.monthlyRent / 30;
 });
 
 export default mongoose.model("Unit", unitSchema);

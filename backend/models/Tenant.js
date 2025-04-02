@@ -65,6 +65,13 @@ const tenantSchema = new mongoose.Schema(
         enum: ["monthly", "weekly", "daily"],
         default: "monthly",
       },
+      // New field to set custom due date within month (e.g., 5th of each month)
+      paymentDueDay: {
+        type: Number,
+        min: 1,
+        max: 31,
+        default: 1, // Default to 1st of the month
+      },
       agreementDocument: {
         path: String,
         uploadDate: Date,
@@ -124,12 +131,14 @@ const tenantSchema = new mongoose.Schema(
         },
         status: {
           type: String,
-          enum: ["pending", "completed", "failed", "refunded", "partial"], // Add "partial" to allowed values
+          enum: ["pending", "completed", "failed", "refunded", "partial"],
           default: "completed",
         },
         reference: String,
         balance: Number, // Remaining balance after this payment
         description: String,
+        carryForward: Boolean, // Whether this payment has carry forward
+        carryForwardAmount: Number, // Amount of carry forward (positive or negative)
       },
     ],
     // Current balance
@@ -148,8 +157,27 @@ const tenantSchema = new mongoose.Schema(
         },
         totalAmount: Number,
         status: String,
+        // BnB specific fields
+        nightlyRate: Number,
+        totalNights: Number,
       },
     ],
+    // BnB settings
+    bnbSettings: {
+      isActive: {
+        type: Boolean,
+        default: false,
+      },
+      nightlyRate: Number,
+      weeklyRate: Number,
+      monthlyRate: Number,
+      minimumStay: {
+        type: Number,
+        default: 1,
+      },
+      checkInTime: String,
+      checkOutTime: String,
+    },
   },
   {
     timestamps: true,
@@ -177,7 +205,7 @@ tenantSchema.pre("save", async function (next) {
 // Calculate total paid amount
 tenantSchema.methods.getTotalPaid = function () {
   return this.paymentHistory.reduce((total, payment) => {
-    if (payment.status === "completed") {
+    if (payment.status === "completed" || payment.status === "partial") {
       return total + payment.amount;
     }
     return total;
@@ -219,6 +247,37 @@ tenantSchema.methods.getTotalDue = function () {
     (now.getDate() >= start.getDate() ? 1 : 0);
 
   return monthsElapsed * this.leaseDetails.rentAmount;
+};
+
+// Calculate next due date based on lease settings
+tenantSchema.methods.getNextDueDate = function () {
+  if (!this.leaseDetails.startDate) return null;
+
+  const now = new Date();
+  const dueDay = this.leaseDetails.paymentDueDay || 1;
+
+  // Start with current month's due date
+  let nextDueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
+
+  // If we've passed this month's due date, move to next month
+  if (now > nextDueDate) {
+    nextDueDate = new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
+  }
+
+  return nextDueDate;
+};
+
+// Get next due amount (considering carry forwards)
+tenantSchema.methods.getNextDueAmount = function () {
+  const baseRent = this.leaseDetails?.rentAmount || 0;
+
+  // If there's a negative balance (credit), reduce the due amount
+  if (this.currentBalance < 0) {
+    return Math.max(0, baseRent + this.currentBalance);
+  }
+
+  // If there's a positive balance (debt), increase the due amount
+  return baseRent + this.currentBalance;
 };
 
 export default mongoose.model("Tenant", tenantSchema);
