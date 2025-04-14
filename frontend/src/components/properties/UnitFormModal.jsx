@@ -1,6 +1,6 @@
 // frontend/src/components/properties/UnitFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, Home } from "lucide-react";
+import { X, Home, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 
 const UnitFormModal = ({
@@ -9,85 +9,83 @@ const UnitFormModal = ({
   onSubmit,
   initialData = null,
   propertyId,
+  propertyType = "residential",
   floors = [],
-  propertyType = "apartment", // Default property type
 }) => {
-  const isEditMode = !!initialData;
-  const isCommercial =
-    propertyType === "commercial" || propertyType === "mixed-use";
-  const isBnB = propertyType === "bnb";
-
   const [formData, setFormData] = useState({
     unitNumber: "",
-    type: "rental",
+    floorId: "",
     status: "available",
-    bedrooms: isCommercial ? 0 : 1,
-    bathrooms: isCommercial ? 0 : 1,
-    squareFootage: "",
+    description: "",
     monthlyRent: "",
     securityDeposit: "",
+    size: "",
+    bedrooms: "",
+    bathrooms: "",
+    amenities: [],
     furnished: false,
-    description: "",
-    // Commercial specific fields
-    commercialUnitType: isCommercial ? "office" : "",
-    // BnB specific fields
+    unitType: "rental",
     nightlyRate: "",
     weeklyRate: "",
     monthlyRate: "",
     checkInTime: "14:00",
     checkOutTime: "11:00",
-    // Floor relationship
-    floorId: "",
   });
 
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [useDefaultAmenities, setUseDefaultAmenities] = useState(true);
+  const [customAmenity, setCustomAmenity] = useState("");
+
+  // Default amenities based on property type
+  const defaultAmenities =
+    propertyType === "residential"
+      ? ["Wi-Fi", "Water", "Security", "Parking"]
+      : propertyType === "commercial"
+      ? ["Reception", "Meeting Room", "Elevator", "Parking"]
+      : ["Wi-Fi", "Parking", "Security"];
 
   useEffect(() => {
     if (initialData) {
+      // Format the data for the form
+      const amenitiesList = Array.isArray(initialData.amenities)
+        ? initialData.amenities
+        : initialData.amenities?.split(",").map((a) => a.trim()) || [];
+
       setFormData({
         unitNumber: initialData.unitNumber || "",
-        type: initialData.type || "rental",
+        floorId: initialData.floorId || initialData.floor?._id || "",
         status: initialData.status || "available",
-        bedrooms: initialData.bedrooms ?? (isCommercial ? 0 : 1),
-        bathrooms: initialData.bathrooms ?? (isCommercial ? 0 : 1),
-        squareFootage: initialData.squareFootage || "",
+        description: initialData.description || "",
         monthlyRent: initialData.monthlyRent || "",
         securityDeposit: initialData.securityDeposit || "",
+        size: initialData.size || "",
+        bedrooms: initialData.bedrooms || "",
+        bathrooms: initialData.bathrooms || "",
+        amenities: amenitiesList,
         furnished: initialData.furnished || false,
-        description: initialData.description || "",
-        commercialUnitType:
-          initialData.commercialUnitType || (isCommercial ? "office" : ""),
+        unitType: initialData.unitType || "rental",
         nightlyRate: initialData.nightlyRate || "",
         weeklyRate: initialData.weeklyRate || "",
         monthlyRate: initialData.monthlyRate || "",
         checkInTime: initialData.checkInTime || "14:00",
         checkOutTime: initialData.checkOutTime || "11:00",
-        floorId: initialData.floorId || "",
       });
+
+      // If the unit has custom amenities, switch to custom mode
+      setUseDefaultAmenities(
+        amenitiesList.length === 0 ||
+          amenitiesList.every((a) => defaultAmenities.includes(a))
+      );
     } else {
-      // Reset form for new unit, but populate floorId if floors are available
-      setFormData({
-        unitNumber: "",
-        type: "rental",
-        status: "available",
-        bedrooms: isCommercial ? 0 : 1,
-        bathrooms: isCommercial ? 0 : 1,
-        squareFootage: "",
-        monthlyRent: "",
-        securityDeposit: "",
-        furnished: false,
-        description: "",
-        commercialUnitType: isCommercial ? "office" : "",
-        nightlyRate: "",
-        weeklyRate: "",
-        monthlyRate: "",
-        checkInTime: "14:00",
-        checkOutTime: "11:00",
-        floorId: floors.length > 0 ? floors[0]._id : "",
-      });
+      // For new units, initialize with default amenities
+      setFormData((prev) => ({
+        ...prev,
+        amenities: [...defaultAmenities],
+        propertyId,
+      }));
     }
-  }, [initialData, floors, isCommercial, isBnB]);
+  }, [initialData, propertyId, defaultAmenities]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -97,72 +95,92 @@ const UnitFormModal = ({
     });
   };
 
+  const handleAmenityChange = (amenity) => {
+    const updatedAmenities = [...formData.amenities];
+    if (updatedAmenities.includes(amenity)) {
+      // Remove the amenity
+      const index = updatedAmenities.indexOf(amenity);
+      updatedAmenities.splice(index, 1);
+    } else {
+      // Add the amenity
+      updatedAmenities.push(amenity);
+    }
+    setFormData({
+      ...formData,
+      amenities: updatedAmenities,
+    });
+  };
+
+  const handleAddCustomAmenity = () => {
+    if (!customAmenity.trim()) return;
+
+    if (!formData.amenities.includes(customAmenity)) {
+      setFormData({
+        ...formData,
+        amenities: [...formData.amenities, customAmenity],
+      });
+    }
+
+    setCustomAmenity("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Basic validation
-    if (!formData.unitNumber.trim()) {
+    // Validate required fields
+    if (!formData.unitNumber) {
       setError("Unit number is required");
       return;
     }
 
-    if (!formData.monthlyRent && !formData.nightlyRate) {
-      setError(isBnB ? "Nightly rate is required" : "Monthly rent is required");
-      return;
-    }
-
-    if (!formData.floorId) {
+    if (!formData.floorId && floors.length > 0) {
       setError("Please select a floor");
       return;
     }
 
-    try {
-      setIsLoading(true);
+    if (formData.unitType === "bnb" && !formData.nightlyRate) {
+      setError("Nightly rate is required for BnB units");
+      return;
+    }
 
-      // Format data for API
+    try {
+      setLoading(true);
+
+      // Create data object to submit
       const unitData = {
         ...formData,
         propertyId,
-        monthlyRent: parseFloat(formData.monthlyRent) || 0,
+        // Convert numeric fields to numbers
+        monthlyRent: formData.monthlyRent
+          ? parseFloat(formData.monthlyRent)
+          : undefined,
         securityDeposit: formData.securityDeposit
           ? parseFloat(formData.securityDeposit)
-          : 0,
-        bedrooms: parseInt(formData.bedrooms || 0),
-        bathrooms: parseFloat(formData.bathrooms || 0),
-        squareFootage: formData.squareFootage
-          ? parseInt(formData.squareFootage)
-          : null,
+          : undefined,
+        size: formData.size ? parseFloat(formData.size) : undefined,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+        bathrooms: formData.bathrooms
+          ? parseFloat(formData.bathrooms)
+          : undefined,
+        nightlyRate: formData.nightlyRate
+          ? parseFloat(formData.nightlyRate)
+          : undefined,
+        weeklyRate: formData.weeklyRate
+          ? parseFloat(formData.weeklyRate)
+          : undefined,
+        monthlyRate: formData.monthlyRate
+          ? parseFloat(formData.monthlyRate)
+          : undefined,
       };
 
-      // Add BnB specific fields if applicable
-      if (isBnB) {
-        unitData.nightlyRate = parseFloat(formData.nightlyRate) || 0;
-        unitData.weeklyRate = parseFloat(formData.weeklyRate) || 0;
-        unitData.monthlyRate = parseFloat(formData.monthlyRate) || 0;
-        unitData.checkInTime = formData.checkInTime;
-        unitData.checkOutTime = formData.checkOutTime;
-      }
-
-      // Remove any fields that shouldn't be sent for the property type
-      if (isCommercial) {
-        // Commercial units don't need residential specifics
-        unitData.bedrooms = 0;
-        unitData.bathrooms = 0;
-        unitData.furnished = false;
-      } else {
-        // Residential units don't need commercial specifics
-        delete unitData.commercialUnitType;
-      }
-
-      console.log("Submitting unit data:", unitData);
+      // Submit the data
       await onSubmit(unitData);
-      onClose();
-    } catch (error) {
-      console.error("Error saving unit:", error);
-      setError(error.message || "Failed to save unit");
+    } catch (err) {
+      console.error("Error saving unit:", err);
+      setError(err.message || "Failed to save unit");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -170,17 +188,17 @@ const UnitFormModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Home className="h-6 w-6 text-primary-600" />
             <h2 className="text-xl font-medium">
-              {isEditMode ? "Edit Unit" : "Add New Unit"}
+              {initialData ? "Edit Unit" : "Add Unit"}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
+            className="text-gray-500 hover:text-gray-700"
           >
             <X className="h-6 w-6" />
           </button>
@@ -188,126 +206,184 @@ const UnitFormModal = ({
 
         <div className="p-6">
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm">
-              {error}
+            <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Floor <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="floorId"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.floorId}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select Floor</option>
-                {floors.map((floor) => (
-                  <option key={floor._id} value={floor._id}>
-                    {floor.name || `Floor ${floor.number}`}
-                  </option>
-                ))}
-              </select>
-              {floors.length === 0 && (
-                <p className="mt-1 text-xs text-red-500">
-                  No floors available. Please add a floor first.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Unit Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="unitNumber"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.unitNumber}
-                onChange={handleChange}
-                placeholder="101"
-                required
-              />
-            </div>
-
-            {isBnB ? (
-              // BnB pricing fields
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Basic Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Nightly Rate (KES) <span className="text-red-500">*</span>
+                    Unit Number <span className="text-red-500">*</span>
                   </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">KES</span>
-                    </div>
+                  <input
+                    type="text"
+                    name="unitNumber"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.unitNumber}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                {floors.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Floor <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="floorId"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      value={formData.floorId}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Floor</option>
+                      {floors.map((floor) => (
+                        <option key={floor._id} value={floor._id}>
+                          {floor.name || `Floor ${floor.number}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Unit Type
+                  </label>
+                  <select
+                    name="unitType"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.unitType}
+                    onChange={handleChange}
+                  >
+                    <option value="rental">Regular Rental</option>
+                    <option value="bnb">BnB/Short Stay</option>
+                    <option value="office">Office Space</option>
+                    <option value="retail">Retail Space</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.status}
+                    onChange={handleChange}
+                  >
+                    <option value="available">Available</option>
+                    <option value="occupied">Occupied</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="reserved">Reserved</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Details */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Financial Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Monthly Rent (KES)
+                  </label>
+                  <input
+                    type="number"
+                    name="monthlyRent"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.monthlyRent}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Security Deposit (KES)
+                  </label>
+                  <input
+                    type="number"
+                    name="securityDeposit"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.securityDeposit}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* BnB Rates (Show only for BnB units) */}
+            {formData.unitType === "bnb" && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  BnB/Short Stay Rates
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nightly Rate (KES) <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="number"
                       name="nightlyRate"
-                      className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       value={formData.nightlyRate}
                       onChange={handleChange}
-                      placeholder="2500"
                       min="0"
                       step="0.01"
-                      required
+                      required={formData.unitType === "bnb"}
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Weekly Rate (KES)
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">KES</span>
-                    </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Weekly Rate (KES)
+                    </label>
                     <input
                       type="number"
                       name="weeklyRate"
-                      className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       value={formData.weeklyRate}
                       onChange={handleChange}
-                      placeholder="15000"
                       min="0"
                       step="0.01"
+                      placeholder="Optional discount rate"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Optional discounted rate for weekly stays
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Monthly Rate (KES)
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">KES</span>
-                    </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Monthly Rate (KES)
+                    </label>
                     <input
                       type="number"
                       name="monthlyRate"
-                      className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       value={formData.monthlyRate}
                       onChange={handleChange}
-                      placeholder="60000"
                       min="0"
                       step="0.01"
+                      placeholder="Optional discount rate"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Optional discounted rate for monthly stays
-                  </p>
-                </div>
-                
-                <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Check-in Time
@@ -320,7 +396,7 @@ const UnitFormModal = ({
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Check-out Time
@@ -335,40 +411,216 @@ const UnitFormModal = ({
                   </div>
                 </div>
               </div>
-            ) : (
-              // Normal rental unit pricing
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Monthly Rent (KES) <span className="text-red-500">*</span>
-                </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">KES</span>
-                  </div>
-                  <input
-                    type="number"
-                    name="monthlyRent"
-                    className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    value={formData.monthlyRent}
-                    onChange={handleChange}
-                    placeholder="15000"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Unit Type
-                </label>
-                <select
-                  name="type"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  value={formData.type}
-                  onChange={handleChange}
+            {/* Property Details (based on type) */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Unit Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Size (sq. m)
+                  </label>
+                  <input
+                    type="number"
+                    name="size"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={formData.size}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                {propertyType === "residential" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Bedrooms
+                      </label>
+                      <input
+                        type="number"
+                        name="bedrooms"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        value={formData.bedrooms}
+                        onChange={handleChange}
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Bathrooms
+                      </label>
+                      <input
+                        type="number"
+                        name="bathrooms"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        value={formData.bathrooms}
+                        onChange={handleChange}
+                        min="0"
+                        step="0.5"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="md:col-span-3">
+                  <div className="flex items-center mb-2">
+                    <input
+                      id="furnished"
+                      name="furnished"
+                      type="checkbox"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      checked={formData.furnished}
+                      onChange={handleChange}
+                    />
+                    <label
+                      htmlFor="furnished"
+                      className="ml-2 block text-sm text-gray-700"
+                    >
+                      Furnished
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Amenities */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Amenities
+              </h3>
+
+              <div className="flex items-center mb-4">
+                <input
+                  id="useDefaultAmenities"
+                  name="useDefaultAmenities"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  checked={useDefaultAmenities}
+                  onChange={() => setUseDefaultAmenities(!useDefaultAmenities)}
+                />
+                <label
+                  htmlFor="useDefaultAmenities"
+                  className="ml-2 block text-sm text-gray-700"
                 >
-                  <option value="rental
+                  Use standard amenities
+                </label>
+              </div>
+
+              {useDefaultAmenities ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {defaultAmenities.map((amenity) => (
+                    <div key={amenity} className="flex items-center">
+                      <input
+                        id={`amenity-${amenity}`}
+                        type="checkbox"
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        checked={formData.amenities.includes(amenity)}
+                        onChange={() => handleAmenityChange(amenity)}
+                      />
+                      <label
+                        htmlFor={`amenity-${amenity}`}
+                        className="ml-2 block text-sm text-gray-700"
+                      >
+                        {amenity}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-3">
+                    {formData.amenities.map((amenity, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2 mb-2"
+                      >
+                        {amenity}
+                        <button
+                          type="button"
+                          className="ml-1.5 h-3.5 w-3.5 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500"
+                          onClick={() => handleAmenityChange(amenity)}
+                        >
+                          <span className="sr-only">Remove</span>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex">
+                    <input
+                      type="text"
+                      placeholder="Add amenity"
+                      className="flex-grow rounded-l-md border-r-0 border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      value={customAmenity}
+                      onChange={(e) => setCustomAmenity(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomAmenity();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="bg-primary-600 text-white px-3 py-1 rounded-r-md hover:bg-primary-700"
+                      onClick={handleAddCustomAmenity}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Description
+              </label>
+              <textarea
+                name="description"
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe the unit..."
+              />
+            </div>
+
+            {/* Submit buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                disabled={loading}
+              >
+                {loading
+                  ? "Saving..."
+                  : initialData
+                  ? "Update Unit"
+                  : "Add Unit"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UnitFormModal;

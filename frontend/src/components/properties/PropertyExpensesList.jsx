@@ -663,7 +663,8 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
         </div>
       )}
     </div>
-  );
+);
+
 };
 
 export default PropertyExpensesList;
