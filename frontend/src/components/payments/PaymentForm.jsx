@@ -1,221 +1,235 @@
 // frontend/src/components/payments/PaymentForm.jsx
 import { useState, useEffect } from "react";
-import { DollarSign, AlertCircle } from "lucide-react";
+import { X, DollarSign, AlertCircle, Calculator, Info } from "lucide-react";
 import Card from "../ui/Card";
-import propertyService from "../../services/propertyService";
-import unitService from "../../services/unitService";
 
-const PaymentForm = ({
-  onSubmit,
-  onCancel,
-  tenantOptions,
-  initialData = null,
-}) => {
-  const [properties, setProperties] = useState([]);
+const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = null }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  
   const [formData, setFormData] = useState({
-    tenantId: "",
-    unitId: "",
-    propertyId: "",
-    amount: "",
-    dueAmount: "",
-    dueDate: new Date().toISOString().split("T")[0],
+    tenant: "",
+    unit: "",
+    property: "",
+    amountPaid: "",
     paymentDate: new Date().toISOString().split("T")[0],
+    dueDate: new Date().toISOString().split("T")[0],
     paymentMethod: "cash",
     type: "rent",
     description: "",
-    status: "completed",
+    reference: "",
   });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [units, setUnits] = useState([]);
+  
+  // Balance calculation state
+  const [balanceInfo, setBalanceInfo] = useState({
+    baseRentAmount: 0,
+    previousBalance: 0,
+    totalAmountDue: 0,
+    appliedToPreviousBalance: 0,
+    appliedToCurrentRent: 0,
+    overpayment: 0,
+    underpayment: 0,
+    paymentVariance: 0,
+    newBalance: 0,
+    willBeOverpayment: false,
+    willBeUnderpayment: false,
+    isWithinPaymentPeriod: true,
+  });
 
   useEffect(() => {
-    // Load properties
-    const fetchProperties = async () => {
-      try {
-        const data = await propertyService.getAllProperties();
-        setProperties(data);
-      } catch (err) {
-        console.error("Error loading properties:", err);
-        setError("Failed to load properties");
+    if (formData.tenant) {
+      // Find selected tenant from the provided options
+      const tenant = tenantOptions.find(t => t._id === formData.tenant);
+      if (tenant) {
+        setSelectedTenant(tenant);
+        calculatePaymentAllocation(tenant);
       }
-    };
-
-    fetchProperties();
-
-    // Set initial form data if provided
-    if (initialData) {
-      const paymentDate = initialData.paymentDate
-        ? new Date(initialData.paymentDate).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
-
-      const dueDate = initialData.dueDate
-        ? new Date(initialData.dueDate).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
-
-      setFormData({
-        tenantId: initialData.tenant?._id || initialData.tenantId || "",
-        unitId: initialData.unit?._id || initialData.unitId || "",
-        propertyId: initialData.property?._id || initialData.propertyId || "",
-        amount: initialData.amount || "",
-        dueAmount: initialData.dueAmount || initialData.amount || "",
-        dueDate,
-        paymentDate,
-        paymentMethod: initialData.paymentMethod || "cash",
-        type: initialData.type || "rent",
-        description: initialData.description || "",
-        status: initialData.status || "completed",
-      });
-
-      // If property is selected, load its units
-      if (initialData.property?._id || initialData.propertyId) {
-        fetchUnitsForProperty(
-          initialData.property?._id || initialData.propertyId
-        );
-      }
+    } else {
+      setSelectedTenant(null);
+      resetBalanceInfo();
     }
-  }, [initialData]);
+  }, [formData.tenant, tenantOptions]);
 
-  // When tenant changes, populate the unit if available
   useEffect(() => {
-    if (formData.tenantId && tenantOptions) {
-      const selectedTenant = tenantOptions.find(
-        (t) => t._id === formData.tenantId
-      );
+    calculatePaymentAllocation();
+  }, [formData.amountPaid, selectedTenant, formData.type, formData.paymentDate]);
 
-      if (selectedTenant) {
-        // Update unit and property
-        let unitId = selectedTenant.unitId;
-        let propertyId = selectedTenant.propertyId;
+  const isWithinCurrentPaymentPeriod = (paymentDate = new Date()) => {
+    const today = new Date(paymentDate);
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // Check if we're still in the current month
+    const now = new Date();
+    return now.getMonth() === currentMonth && now.getFullYear() === currentYear;
+  };
 
-        // Handle if unitId and propertyId are objects instead of strings
-        if (
-          selectedTenant.unitId &&
-          typeof selectedTenant.unitId === "object"
-        ) {
-          unitId = selectedTenant.unitId._id;
-        }
+  const resetBalanceInfo = () => {
+    setBalanceInfo({
+      baseRentAmount: 0,
+      previousBalance: 0,
+      totalAmountDue: 0,
+      appliedToPreviousBalance: 0,
+      appliedToCurrentRent: 0,
+      overpayment: 0,
+      underpayment: 0,
+      paymentVariance: 0,
+      newBalance: 0,
+      willBeOverpayment: false,
+      willBeUnderpayment: false,
+      isWithinPaymentPeriod: true,
+    });
+  };
 
-        if (
-          selectedTenant.propertyId &&
-          typeof selectedTenant.propertyId === "object"
-        ) {
-          propertyId = selectedTenant.propertyId._id;
-        }
-
-        setFormData((prev) => ({
+  const calculatePaymentAllocation = (tenant = selectedTenant) => {
+    if (!tenant || !formData.amountPaid) {
+      if (tenant) {
+        // Show initial state even without payment amount
+        const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
+        const previousBalance = tenant.currentBalance || 0;
+        const isWithinPeriod = isWithinCurrentPaymentPeriod(formData.paymentDate);
+        
+        // Only previous balance is due if within payment period
+        const totalAmountDue = previousBalance > 0 ? previousBalance : 0;
+        
+        setBalanceInfo(prev => ({
           ...prev,
-          unitId: unitId || "",
-          propertyId: propertyId || "",
-          amount: selectedTenant.leaseDetails?.rentAmount || prev.amount,
-          dueAmount: selectedTenant.leaseDetails?.rentAmount || prev.dueAmount,
+          baseRentAmount,
+          previousBalance,
+          totalAmountDue,
+          isWithinPaymentPeriod: isWithinPeriod,
         }));
-
-        // Fetch units for this property to populate the dropdown
-        if (propertyId) {
-          fetchUnitsForProperty(propertyId);
-        }
       }
+      return;
     }
-  }, [formData.tenantId, tenantOptions]);
-
-  const fetchUnitsForProperty = async (propertyId) => {
-    try {
-      if (!propertyId) return;
-
-      console.log("Fetching units for property:", propertyId);
-      const data = await unitService.getUnits({ propertyId: propertyId });
-      console.log("Units fetched:", data);
-      setUnits(data);
-    } catch (err) {
-      console.error("Error loading units:", err);
+    
+    const amountPaid = parseFloat(formData.amountPaid) || 0;
+    const previousBalance = tenant.currentBalance || 0;
+    const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
+    const isWithinPeriod = isWithinCurrentPaymentPeriod(formData.paymentDate);
+    
+    // Calculate total amount due based on payment period and type
+    let totalAmountDue = 0;
+    
+    if (formData.type === 'rent') {
+      if (isWithinPeriod) {
+        // Within payment period: only previous balance is due
+        totalAmountDue = previousBalance > 0 ? previousBalance : 0;
+      } else {
+        // Past payment period: previous balance + current rent
+        totalAmountDue = previousBalance + baseRentAmount;
+      }
+    } else {
+      // For non-rent payments, only previous balance (if positive) is due
+      totalAmountDue = previousBalance > 0 ? previousBalance : 0;
     }
+    
+    let appliedToPreviousBalance = 0;
+    let appliedToCurrentRent = 0;
+    let remainingPayment = amountPaid;
+    
+    // Apply payment to previous balance first (if any debt exists)
+    if (previousBalance > 0 && remainingPayment > 0) {
+      appliedToPreviousBalance = Math.min(previousBalance, remainingPayment);
+      remainingPayment -= appliedToPreviousBalance;
+    }
+    
+    // Only apply to current rent if payment period has ended and this is a rent payment
+    if (formData.type === 'rent' && !isWithinPeriod && remainingPayment > 0) {
+      appliedToCurrentRent = Math.min(baseRentAmount, remainingPayment);
+      remainingPayment -= appliedToCurrentRent;
+    }
+    
+    // Calculate overpayment/underpayment
+    const paymentVariance = amountPaid - totalAmountDue;
+    const overpayment = paymentVariance > 0 ? paymentVariance : 0;
+    const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
+    
+    // Calculate new balance
+    const newBalance = previousBalance - amountPaid;
+    
+    setBalanceInfo({
+      baseRentAmount,
+      previousBalance,
+      totalAmountDue,
+      appliedToPreviousBalance,
+      appliedToCurrentRent,
+      overpayment,
+      underpayment,
+      paymentVariance,
+      newBalance,
+      willBeOverpayment: overpayment > 0,
+      willBeUnderpayment: underpayment > 0,
+      isWithinPaymentPeriod: isWithinPeriod,
+    });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
 
-    // Special handling for property change
-    if (name === "propertyId") {
-      setFormData({
-        ...formData,
-        [name]: value,
-        unitId: "", // Reset unit when property changes
-      });
-
-      if (value) {
-        fetchUnitsForProperty(value);
-      } else {
-        setUnits([]);
+    // When tenant changes, update property and unit from selected tenant
+    if (name === 'tenant' && value) {
+      const tenant = tenantOptions.find(t => t._id === value);
+      if (tenant) {
+        setFormData(prev => ({
+          ...prev,
+          unit: tenant.unitId?._id || tenant.unitId || "",
+          property: tenant.propertyId?._id || tenant.propertyId || "",
+        }));
       }
-    }
-    // Special handling for tenant change
-    else if (name === "tenantId") {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
-    // Handle all other fields
-    else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    // Basic validation
-    if (!formData.tenantId) {
+    
+    // Validation
+    if (!formData.tenant) {
       setError("Please select a tenant");
       return;
     }
-
-    if (!formData.unitId) {
-      setError("Please select a unit");
+    
+    if (!formData.amountPaid || parseFloat(formData.amountPaid) <= 0) {
+      setError("Please enter a valid payment amount");
       return;
     }
-
-    if (
-      !formData.amount ||
-      isNaN(formData.amount) ||
-      parseFloat(formData.amount) <= 0
-    ) {
-      setError("Please enter a valid amount");
-      return;
-    }
-
+    
     try {
       setLoading(true);
-
-      // Format data for API
+      
+      // Prepare payment data with all balance information
       const paymentData = {
-        tenant: formData.tenantId, // Change tenantId to tenant to match API
-        unit: formData.unitId, // Change unitId to unit to match API
-        property: formData.propertyId, // Change propertyId to property to match API
-        amount: parseFloat(formData.amount),
-        dueAmount: parseFloat(formData.dueAmount || formData.amount),
-        paymentDate:
-          formData.paymentDate || new Date().toISOString().split("T")[0],
-        dueDate: formData.dueDate || new Date().toISOString().split("T")[0],
-        paymentMethod: formData.paymentMethod || "cash",
-        type: formData.type || "rent",
-        status: formData.status || "completed",
-        description: formData.description || "",
-        reference: formData.reference || "",
+        tenant: formData.tenant,
+        unit: formData.unit,
+        property: formData.property,
+        amountPaid: parseFloat(formData.amountPaid),
+        paymentDate: formData.paymentDate,
+        dueDate: formData.dueDate,
+        paymentMethod: formData.paymentMethod,
+        type: formData.type,
+        description: formData.description,
+        reference: formData.reference,
+        // Include all calculated balance information
+        ...balanceInfo,
       };
-
+      
       await onSubmit(paymentData);
     } catch (err) {
-      console.error("Error saving payment:", err);
-      setError(err.message || "Failed to save payment");
+      console.error("Error submitting payment:", err);
+      setError(err.message || "Failed to record payment");
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatCurrency = (amount) => {
+    return `KES ${(amount || 0).toLocaleString()}`;
   };
 
   return (
@@ -223,10 +237,14 @@ const PaymentForm = ({
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <DollarSign className="h-6 w-6 text-primary-600" />
-          <h2 className="text-xl font-medium">
-            {initialData ? "Edit Payment" : "Record Payment"}
-          </h2>
+          <h2 className="text-xl font-medium">Record Payment</h2>
         </div>
+        <button
+          onClick={onCancel}
+          className="text-gray-400 hover:text-gray-500"
+        >
+          <X className="h-6 w-6" />
+        </button>
       </div>
 
       {error && (
@@ -236,23 +254,25 @@ const PaymentForm = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Tenant and Payment Type Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Tenant <span className="text-red-500">*</span>
             </label>
             <select
-              name="tenantId"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.tenantId}
+              name="tenant"
+              value={formData.tenant}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               required
             >
               <option value="">Select Tenant</option>
-              {tenantOptions?.map((tenant) => (
+              {tenantOptions.map(tenant => (
                 <option key={tenant._id} value={tenant._id}>
-                  {tenant.firstName} {tenant.lastName}
+                  {tenant.firstName} {tenant.lastName} - Unit {tenant.unitId?.unitNumber || 'N/A'}
+                  {tenant.currentBalance ? ` (Balance: KES ${tenant.currentBalance.toLocaleString()})` : ''}
                 </option>
               ))}
             </select>
@@ -260,47 +280,104 @@ const PaymentForm = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Property
+              Payment Type
             </label>
             <select
-              name="propertyId"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.propertyId}
+              name="type"
+              value={formData.type}
               onChange={handleChange}
-              disabled={formData.tenantId !== ""}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             >
-              <option value="">Select Property</option>
-              {properties.map((property) => (
-                <option key={property._id} value={property._id}>
-                  {property.name}
-                </option>
-              ))}
+              <option value="rent">Rent</option>
+              <option value="deposit">Security Deposit</option>
+              <option value="fee">Late Fee</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="other">Other</option>
             </select>
           </div>
+        </div>
 
+        {/* Balance Information Card */}
+        {selectedTenant && (
+          <Card className="p-4 bg-gray-50">
+            <h3 className="text-lg font-medium mb-4 flex items-center">
+              <Calculator className="h-5 w-5 mr-2 text-primary-600" />
+              Current Balance Information
+            </h3>
+            
+            {/* Payment Period Notice */}
+            <div className={`mb-4 p-3 rounded-md ${
+              balanceInfo.isWithinPaymentPeriod 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              <p className="text-sm font-medium">
+                {balanceInfo.isWithinPaymentPeriod 
+                  ? `Currently within payment period (${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})`
+                  : 'Payment period has ended - new rent charges apply'}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Previous Balance</p>
+                <p className={`text-lg font-semibold ${
+                  balanceInfo.previousBalance > 0 ? 'text-red-600' : 
+                  balanceInfo.previousBalance < 0 ? 'text-green-600' : 
+                  'text-gray-900'
+                }`}>
+                  {formatCurrency(balanceInfo.previousBalance)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {balanceInfo.previousBalance > 0 ? 'Amount owed' : 
+                   balanceInfo.previousBalance < 0 ? 'Credit balance' : 'No balance'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">
+                  Monthly Rent
+                </p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatCurrency(balanceInfo.baseRentAmount)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {balanceInfo.isWithinPaymentPeriod ? 'Not yet due' : 'Now due'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Amount Due Now</p>
+                <p className="text-lg font-semibold text-primary-600">
+                  {formatCurrency(balanceInfo.totalAmountDue)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {balanceInfo.isWithinPaymentPeriod && formData.type === 'rent' 
+                    ? 'Previous balance only' 
+                    : 'Total due'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">New Balance After Payment</p>
+                <p className={`text-lg font-semibold ${
+                  balanceInfo.newBalance < 0 ? 'text-green-600' : 
+                  balanceInfo.newBalance > 0 ? 'text-red-600' : 
+                  'text-gray-900'
+                }`}>
+                  {formatCurrency(Math.abs(balanceInfo.newBalance))}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {balanceInfo.newBalance < 0 ? 'Credit' : 
+                   balanceInfo.newBalance > 0 ? 'Outstanding' : 'Balanced'}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Rest of the form remains the same... */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Unit <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="unitId"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.unitId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Unit</option>
-              {units.map((unit) => (
-                <option key={unit._id} value={unit._id}>
-                  Unit {unit.unitNumber}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Amount (KES) <span className="text-red-500">*</span>
+              Amount Paid (KES) <span className="text-red-500">*</span>
             </label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -308,10 +385,10 @@ const PaymentForm = ({
               </div>
               <input
                 type="number"
-                name="amount"
-                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.amount}
+                name="amountPaid"
+                value={formData.amountPaid}
                 onChange={handleChange}
+                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 placeholder="0.00"
                 min="0"
                 step="0.01"
@@ -322,63 +399,13 @@ const PaymentForm = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Due Amount (KES)
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">KES</span>
-              </div>
-              <input
-                type="number"
-                name="dueAmount"
-                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={formData.dueAmount}
-                onChange={handleChange}
-                placeholder="Same as Amount"
-                min="0"
-                step="0.01"
-              />
-            </div>
-            <p className="mt-1 text-xs text-gray-500">
-              If left blank, will default to Amount
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Due Date
-            </label>
-            <input
-              type="date"
-              name="dueDate"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.dueDate}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Payment Date
-            </label>
-            <input
-              type="date"
-              name="paymentDate"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.paymentDate}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
               Payment Method
             </label>
             <select
               name="paymentMethod"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               value={formData.paymentMethod}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             >
               <option value="cash">Cash</option>
               <option value="bank_transfer">Bank Transfer</option>
@@ -391,56 +418,126 @@ const PaymentForm = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Payment Type
+              Payment Date
             </label>
-            <select
-              name="type"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.type}
+            <input
+              type="date"
+              name="paymentDate"
+              value={formData.paymentDate}
               onChange={handleChange}
-            >
-              <option value="rent">Rent</option>
-              <option value="deposit">Security Deposit</option>
-              <option value="fee">Late Fee</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="other">Other</option>
-            </select>
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            />
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700">
-              Description
+              Due Date
             </label>
-            <textarea
-              name="description"
-              rows="3"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              value={formData.description}
+            <input
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
               onChange={handleChange}
-              placeholder="Payment description"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             />
           </div>
         </div>
 
-        <div className="flex justify-end space-x-4 mt-6">
+        {/* Payment Allocation Preview */}
+        {formData.amountPaid && selectedTenant && (
+          <Card className="p-4 bg-blue-50">
+            <h4 className="text-sm font-medium mb-3 flex items-center">
+              <Info className="h-4 w-4 mr-2 text-blue-600" />
+              Payment Allocation Preview
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Amount to be Paid:</span>
+                <span className="font-medium">{formatCurrency(parseFloat(formData.amountPaid) || 0)}</span>
+              </div>
+              
+              {balanceInfo.appliedToPreviousBalance > 0 && (
+                <div className="flex justify-between text-orange-600">
+                  <span>Applied to Previous Balance:</span>
+                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToPreviousBalance)}</span>
+                </div>
+              )}
+              
+              {balanceInfo.appliedToCurrentRent > 0 && (
+                <div className="flex justify-between text-blue-600">
+                  <span>Applied to Current Rent:</span>
+                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToCurrentRent)}</span>
+                </div>
+              )}
+              
+              {formData.type === 'rent' && balanceInfo.isWithinPaymentPeriod && balanceInfo.appliedToCurrentRent === 0 && (
+                <div className="text-sm text-gray-600 italic">
+                  * Current rent not applied - still within payment period
+                </div>
+              )}
+              
+              {balanceInfo.overpayment > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Overpayment (Credit):</span>
+                  <span className="font-medium">{formatCurrency(balanceInfo.overpayment)}</span>
+                </div>
+              )}
+              
+              {balanceInfo.underpayment > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Underpayment (Still Due):</span>
+                  <span className="font-medium">{formatCurrency(balanceInfo.underpayment)}</span>
+                </div>
+              )}
+              
+              <div className="border-t border-blue-200 pt-2 mt-2">
+                <div className="flex justify-between font-medium">
+                  <span>New Balance After Payment:</span>
+                  <span className={
+                    balanceInfo.newBalance < 0 ? 'text-green-600' : 
+                    balanceInfo.newBalance > 0 ? 'text-red-600' : 
+                    'text-gray-900'
+                  }>
+                    {formatCurrency(Math.abs(balanceInfo.newBalance))}
+                    {balanceInfo.newBalance < 0 ? ' (Credit)' : 
+                     balanceInfo.newBalance > 0 ? ' (Owed)' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            rows="3"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            placeholder="Additional payment details or notes..."
+          />
+        </div>
+
+        {/* Form Actions */}
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             disabled={loading}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+            disabled={loading || !formData.tenant || !formData.amountPaid}
           >
-            {loading
-              ? "Processing..."
-              : initialData
-              ? "Update Payment"
-              : "Record Payment"}
+            {loading ? 'Processing...' : 'Record Payment'}
           </button>
         </div>
       </form>

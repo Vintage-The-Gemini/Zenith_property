@@ -18,16 +18,62 @@ const paymentSchema = new mongoose.Schema(
       ref: "Property",
       required: true,
     },
-    amount: {
+    
+    // Basic Amount Information
+    baseRentAmount: {
       type: Number,
       required: true,
     },
-    dueAmount: {
+    amountDue: {
       type: Number,
-      default: function () {
-        return this.amount;
-      },
+      required: true,
     },
+    amountPaid: {
+      type: Number,
+      required: true,
+    },
+    
+    // Payment Allocation
+    appliedToPreviousBalance: {
+      type: Number,
+      default: 0,
+    },
+    appliedToCurrentRent: {
+      type: Number,
+      default: 0,
+    },
+    overpayment: {
+      type: Number,
+      default: 0,
+    },
+    underpayment: {
+      type: Number,
+      default: 0,
+    },
+    
+    // Balance Tracking
+    previousBalance: {
+      type: Number,
+      default: 0,
+    },
+    paymentVariance: {
+      type: Number,
+      default: 0, // amountPaid - amountDue
+    },
+    newBalance: {
+      type: Number,
+      default: 0,
+    },
+    isOverpayment: {
+      type: Boolean,
+      default: false,
+    },
+    isUnderpayment: {
+      type: Boolean,
+      default: false,
+    },
+    
+    // Payment Details
     paymentDate: {
       type: Date,
       default: Date.now,
@@ -60,67 +106,31 @@ const paymentSchema = new mongoose.Schema(
     receiptNumber: {
       type: String,
     },
-    // Balance tracking
-    previousBalance: {
-      type: Number,
-      default: 0, // Balance before this payment
-    },
-    paymentVariance: {
-      type: Number,
-      default: 0, // Negative means underpaid, positive means overpaid
-    },
-    newBalance: {
-      type: Number,
-      default: 0, // Balance after this payment
-    },
-    carryForward: {
-      type: Boolean,
-      default: false, // Whether this payment has a carry forward amount
-    },
-    carryForwardAmount: {
-      type: Number,
-      default: 0, // Amount carried forward (could be positive or negative)
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Generate receipt number on completed payments if not present
+// Auto-generate reference and receipt numbers
 paymentSchema.pre("save", function (next) {
-  if (this.status === "completed" && !this.receiptNumber) {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
-    this.receiptNumber = `RCPT-${year}${month}-${random}`;
-  }
-
-  // Generate reference if not present
   if (!this.reference) {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    const random = Math.floor(100 + Math.random() * 900); // 3-digit random number
+    const random = Math.floor(100 + Math.random() * 900);
     this.reference = `PAY-${year}${month}${day}-${random}`;
   }
-
-  // Calculate payment variance if it's a completed payment
-  if (this.status === "completed" || this.status === "partial") {
-    this.paymentVariance = this.amount - this.dueAmount;
-    
-    // Set carryForward flag if there's a variance
-    this.carryForward = this.paymentVariance !== 0;
-    this.carryForwardAmount = this.paymentVariance;
-
-    // Set status to partial if amount is less than due amount
-    if (this.amount < this.dueAmount) {
-      this.status = "partial";
-    }
+  
+  if (this.status === "completed" && !this.receiptNumber) {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const random = Math.floor(1000 + Math.random() * 9000);
+    this.receiptNumber = `RCPT-${year}${month}-${random}`;
   }
-
+  
   next();
 });
 

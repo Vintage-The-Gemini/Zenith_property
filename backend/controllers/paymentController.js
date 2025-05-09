@@ -2,153 +2,158 @@
 import Payment from "../models/Payment.js";
 import Tenant from "../models/Tenant.js";
 import Unit from "../models/Unit.js";
-import Property from "../models/Property.js";
 import mongoose from "mongoose";
 import logger from "../utils/logger.js";
 
-// Get all payments with optional filtering
-export const getPayments = async (req, res) => {
-  try {
-    // Apply filters if provided
-    const filter = {};
-    if (req.query.tenantId) filter.tenant = req.query.tenantId;
-    if (req.query.unitId) filter.unit = req.query.unitId;
-    if (req.query.propertyId) filter.property = req.query.propertyId;
-    if (req.query.status) filter.status = req.query.status;
-    if (req.query.type) filter.type = req.query.type;
-
-    // Date range filters
-    if (req.query.startDate && req.query.endDate) {
-      filter.paymentDate = {
-        $gte: new Date(req.query.startDate),
-        $lte: new Date(req.query.endDate),
-      };
-    } else if (req.query.startDate) {
-      filter.paymentDate = { $gte: new Date(req.query.startDate) };
-    } else if (req.query.endDate) {
-      filter.paymentDate = { $lte: new Date(req.query.endDate) };
-    }
-
-    const payments = await Payment.find(filter)
-      .populate("tenant", "firstName lastName email")
-      .populate("unit", "unitNumber")
-      .populate("property", "name")
-      .sort("-paymentDate");
-
-    res.json(payments);
-  } catch (error) {
-    logger.error(`Error fetching payments: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
+// Check if a payment date is within the current payment period
+const isWithinCurrentPaymentPeriod = (paymentDate = new Date()) => {
+  const today = new Date(paymentDate);
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Check if we're still in the current month
+  const now = new Date();
+  return now.getMonth() === currentMonth && now.getFullYear() === currentYear;
 };
 
-// Get a single payment by ID
-export const getPayment = async (req, res) => {
-  try {
-    const payment = await Payment.findById(req.params.id)
-      .populate("tenant", "firstName lastName email phone")
-      .populate("unit", "unitNumber propertyId")
-      .populate("property", "name address");
-
-    if (!payment) {
-      return res.status(404).json({ error: "Payment not found" });
-    }
-    res.json(payment);
-  } catch (error) {
-    logger.error(`Error fetching payment: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Create a new payment
+// backend/controllers/paymentController.js - Corrected createPayment function
 export const createPayment = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const {
-      tenant,
-      unit,
-      property,
-      amount,
-      dueAmount,
+      tenant: tenantId,
+      unit: unitId,
+      property: propertyId,
+      amountPaid,
       paymentDate,
       dueDate,
       paymentMethod,
       type,
-      status,
       description,
-      reference,
     } = req.body;
 
-    // Verify tenant exists
-    const tenantExists = await Tenant.findById(tenant).session(session);
-    if (!tenantExists) {
-      await session.abortTransaction();
-      return res.status(404).json({ error: "Tenant not found" });
+    // Fetch tenant with unit data
+    const tenant = await Tenant.findById(tenantId)
+      .populate('unitId')
+      .session(session);
+      
+    if (!tenant) {
+      throw new Error("Tenant not found");
     }
 
-    // Get the previous balance from tenant
-    const previousBalance = tenantExists.currentBalance || 0;
+    // Get base rent amount from tenant's lease
+    const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
     
-    // Calculate the actual due amount (use provided or default to amount)
-    const actualDueAmount = dueAmount || amount;
+    // Get previous balance
+    const previousBalance = tenant.currentBalance || 0;
     
-    // Calculate variance (positive means overpaid, negative means underpaid)
-    const paymentVariance = amount - actualDueAmount;
+    // Parse amount paid
+    const paidAmount = parseFloat(amountPaid);
+    
+    // Calculate amount due
+    let amountDue = 0;
+    
+    if (type === 'rent') {
+      // For rent payments, always include both previous balance and current rent
+      amountDue = previousBalance + baseRentAmount;
+    } else {
+      // For other payments, only previous balance if positive
+      amountDue = previousBalance > 0 ? previousBalance : 0;
+    }
+    
+    // Calculate payment allocation
+    let appliedToPreviousBalance = 0;
+    let appliedToCurrentRent = 0;
+    let remainingPayment = paidAmount;
+    
+    // First apply to previous balance (if positive)
+    if (previousBalance > 0 && remainingPayment > 0) {
+      appliedToPreviousBalance = Math.min(previousBalance, remainingPayment);
+      remainingPayment -= appliedToPreviousBalance;
+    }
+    
+    // Then apply to current rent (if this is a rent payment)
+    if (type === 'rent' && remainingPayment > 0) {
+      appliedToCurrentRent = Math.min(baseRentAmount, remainingPayment);
+      remainingPayment -= appliedToCurrentRent;
+    }
+    
+    // Calculate overpayment/underpayment
+    const paymentVariance = paidAmount - amountDue;
+    const overpayment = paymentVariance > 0 ? paymentVariance : 0;
+    const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
     
     // Calculate new balance
-    const newBalance = status === "completed" ? 
-      previousBalance - amount : previousBalance;
+    // For rent payments: previous balance + current rent - payment
+    // For other payments: previous balance - payment
+    let newBalance;
+    if (type === 'rent') {
+      newBalance = previousBalance + baseRentAmount - paidAmount;
+    } else {
+      newBalance = previousBalance - paidAmount;
+    }
     
-    // Create payment with balance information
+    // Determine payment status
+    let status = 'completed';
+    if (paidAmount < amountDue) {
+      status = 'partial';
+    }
+    
+    // Create payment record
     const payment = new Payment({
-      tenant,
-      unit,
-      property,
-      amount,
-      dueAmount: actualDueAmount,
-      paymentDate: paymentDate || new Date(),
-      dueDate: dueDate || new Date(),
-      paymentMethod: paymentMethod || "cash",
-      type: type || "rent",
-      status: status || "completed",
-      description,
-      reference,
+      tenant: tenantId,
+      unit: unitId,
+      property: propertyId,
+      baseRentAmount,
+      amountDue,
+      amountPaid: paidAmount,
+      appliedToPreviousBalance,
+      appliedToCurrentRent,
+      overpayment,
+      underpayment,
       previousBalance,
       paymentVariance,
       newBalance,
-      carryForward: paymentVariance !== 0,
-      carryForwardAmount: paymentVariance,
+      isOverpayment: overpayment > 0,
+      isUnderpayment: underpayment > 0,
+      paymentDate: paymentDate || new Date(),
+      dueDate: dueDate || new Date(),
+      paymentMethod: paymentMethod || "cash",
+      status,
+      type: type || "rent",
+      description,
     });
 
     await payment.save({ session });
 
-    // Update tenant balance if payment is completed
-    if (status === "completed" || status === "partial") {
-      tenantExists.currentBalance = newBalance;
-      
-      // Add to payment history
-      if (!tenantExists.paymentHistory) {
-        tenantExists.paymentHistory = [];
-      }
-      
-      tenantExists.paymentHistory.push({
-        date: payment.paymentDate,
-        amount: payment.amount,
-        type: payment.type,
-        status: payment.status,
-        reference: payment.reference,
-        balance: newBalance,
-        description: payment.description
-      });
+    // Update tenant balance
+    tenant.currentBalance = newBalance;
+    
+    // Add to payment history
+    if (!tenant.paymentHistory) {
+      tenant.paymentHistory = [];
+    }
+    
+    tenant.paymentHistory.push({
+      date: payment.paymentDate,
+      amount: payment.amountPaid,
+      type: payment.type,
+      status: payment.status,
+      reference: payment.reference,
+      balance: newBalance,
+      description: payment.description || `${payment.type} payment`,
+    });
 
-      await tenantExists.save({ session });
-      
-      // Also update the unit's last payment date
-      const unit = await Unit.findById(payment.unit).session(session);
+    await tenant.save({ session });
+    
+    // Update unit's last payment date if applicable
+    if (status === 'completed' || status === 'partial') {
+      const unit = await Unit.findById(unitId).session(session);
       if (unit) {
         unit.lastPaymentDate = payment.paymentDate;
+        unit.balance = newBalance;
         await unit.save({ session });
       }
     }
@@ -164,9 +169,67 @@ export const createPayment = async (req, res) => {
     res.status(201).json(populatedPayment);
   } catch (error) {
     await session.abortTransaction();
+    logger.error(`Error creating payment: ${error.message}`);
     res.status(400).json({ error: error.message });
   } finally {
     session.endSession();
+  }
+};
+// Get a single payment by ID
+export const getPayment = async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id)
+      .populate("tenant", "firstName lastName email phone currentBalance")
+      .populate("unit", "unitNumber")
+      .populate("property", "name address");
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+    res.json(payment);
+  } catch (error) {
+    logger.error(`Error fetching payment: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get payments with enhanced filtering
+export const getPayments = async (req, res) => {
+  try {
+    const filter = {};
+    
+    // Apply filters
+    if (req.query.tenantId) filter.tenant = req.query.tenantId;
+    if (req.query.unitId) filter.unit = req.query.unitId;
+    if (req.query.propertyId) filter.property = req.query.propertyId;
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.type) filter.type = req.query.type;
+    
+    // Balance filters
+    if (req.query.hasOverpayment === 'true') filter.isOverpayment = true;
+    if (req.query.hasUnderpayment === 'true') filter.isUnderpayment = true;
+    
+    // Date range filters
+    if (req.query.startDate || req.query.endDate) {
+      filter.paymentDate = {};
+      if (req.query.startDate) {
+        filter.paymentDate.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        filter.paymentDate.$lte = new Date(req.query.endDate);
+      }
+    }
+
+    const payments = await Payment.find(filter)
+      .populate("tenant", "firstName lastName email currentBalance")
+      .populate("unit", "unitNumber")
+      .populate("property", "name")
+      .sort("-paymentDate");
+
+    res.json(payments);
+  } catch (error) {
+    logger.error(`Error fetching payments: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -198,27 +261,20 @@ export const updatePaymentStatus = async (req, res) => {
 
     await payment.save({ session });
 
-    // If status changed to completed, update tenant balance
+    // If status changed to completed, update balance tracking
     if (status === "completed" && oldStatus !== "completed") {
       const tenant = await Tenant.findById(payment.tenant).session(session);
       if (tenant) {
-        // Update tenant balance
-        tenant.currentBalance = (tenant.currentBalance || 0) - payment.amount;
+        // Recalculate balance
+        tenant.currentBalance = payment.newBalance;
 
-        // Add to payment history
-        if (!tenant.paymentHistory) {
-          tenant.paymentHistory = [];
+        // Update payment history
+        const historyEntry = tenant.paymentHistory.find(
+          h => h.reference === payment.reference
+        );
+        if (historyEntry) {
+          historyEntry.status = status;
         }
-
-        tenant.paymentHistory.push({
-          date: payment.paymentDate || new Date(),
-          amount: payment.amount,
-          type: payment.type,
-          status: payment.status,
-          reference: payment.reference,
-          balance: tenant.currentBalance,
-          description: payment.description || "Payment status updated",
-        });
 
         await tenant.save({ session });
 
@@ -226,6 +282,7 @@ export const updatePaymentStatus = async (req, res) => {
         const unit = await Unit.findById(payment.unit).session(session);
         if (unit) {
           unit.lastPaymentDate = payment.paymentDate || new Date();
+          unit.balance = payment.newBalance;
           await unit.save({ session });
         }
       }
@@ -268,7 +325,7 @@ export const getPaymentsByTenant = async (req, res) => {
 export const getPaymentsByProperty = async (req, res) => {
   try {
     const payments = await Payment.find({ property: req.params.propertyId })
-      .populate("tenant", "firstName lastName")
+      .populate("tenant", "firstName lastName currentBalance")
       .populate("unit", "unitNumber")
       .sort("-paymentDate");
 
@@ -293,64 +350,94 @@ export const getPaymentsByUnit = async (req, res) => {
   }
 };
 
-// Get payment summary statistics
+// Get payment summary with balance information
 export const getPaymentSummary = async (req, res) => {
   try {
-    // Get current month's start and end dates
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59
-    );
-
-    // Get completed payments for current month
-    const completedPayments = await Payment.find({
-      status: "completed",
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    
+    // Get all payments for the current month
+    const monthlyPayments = await Payment.find({
       paymentDate: { $gte: startOfMonth, $lte: endOfMonth },
     });
-
-    // Get pending payments
-    const pendingPayments = await Payment.find({
-      status: "pending",
+    
+    // Calculate statistics
+    const collected = monthlyPayments
+      .filter(p => p.status === 'completed')
+      .reduce((sum, p) => sum + p.amountPaid, 0);
+      
+    const pending = monthlyPayments
+      .filter(p => p.status === 'pending')
+      .reduce((sum, p) => sum + p.amountDue, 0);
+      
+    const overdue = monthlyPayments
+      .filter(p => p.status === 'pending' && p.dueDate < now)
+      .reduce((sum, p) => sum + p.amountDue, 0);
+    
+    // YTD total
+    const ytdPayments = await Payment.find({
+      paymentDate: { $gte: startOfYear },
+      status: 'completed',
     });
-
-    // Calculate totals
-    const totalCollected = completedPayments.reduce(
-      (sum, payment) => sum + payment.amount,
-      0
-    );
-    const totalPending = pendingPayments.reduce(
-      (sum, payment) => sum + payment.amount,
-      0
-    );
-
-    // Overdue payments
-    const overduePayments = pendingPayments.filter(
-      (payment) => payment.dueDate && new Date() > new Date(payment.dueDate)
-    );
-    const totalOverdue = overduePayments.reduce(
-      (sum, payment) => sum + payment.amount,
-      0
-    );
-
+    
+    const ytdTotal = ytdPayments.reduce((sum, p) => sum + p.amountPaid, 0);
+    
+    // Payment methods breakdown
+    const paymentMethods = {};
+    monthlyPayments
+      .filter(p => p.status === 'completed')
+      .forEach(payment => {
+        if (!paymentMethods[payment.paymentMethod]) {
+          paymentMethods[payment.paymentMethod] = 0;
+        }
+        paymentMethods[payment.paymentMethod] += payment.amountPaid;
+      });
+    
+    // Get all payments to calculate balance statistics
+    const allPayments = await Payment.find({});
+    
+    // Balance statistics
+    const totalOverpayments = allPayments
+      .filter(p => p.isOverpayment)
+      .reduce((sum, p) => sum + (p.overpayment || 0), 0);
+      
+    const totalUnderpayments = allPayments
+      .filter(p => p.isUnderpayment)
+      .reduce((sum, p) => sum + (p.underpayment || 0), 0);
+    
     res.json({
       currentMonth: {
-        name: startOfMonth.toLocaleString("default", { month: "long" }),
+        name: startOfMonth.toLocaleString('default', { month: 'long' }),
         year: startOfMonth.getFullYear(),
       },
-      collected: totalCollected,
-      pending: totalPending,
-      overdue: totalOverdue,
-      overdueCount: overduePayments.length,
-      totalCount: completedPayments.length + pendingPayments.length,
+      collected,
+      pending,
+      overdue,
+      overdueCount: monthlyPayments.filter(p => p.status === 'pending' && p.dueDate < now).length,
+      totalCount: monthlyPayments.length,
+      ytdTotal,
+      paymentMethods,
+      balanceStatistics: {
+        totalOverpayments,
+        totalUnderpayments,
+        netBalance: totalUnderpayments - totalOverpayments,
+      },
     });
   } catch (error) {
     logger.error(`Error fetching payment summary: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
+};
+
+export default {
+  createPayment,
+  getPayment,
+  getPayments,
+  updatePaymentStatus,
+  getPaymentsByTenant,
+  getPaymentsByProperty,
+  getPaymentsByUnit,
+  getPaymentSummary,
 };
