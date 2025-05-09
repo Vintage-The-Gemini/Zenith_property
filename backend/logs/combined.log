@@ -311,3 +311,17 @@
 {"level":"info","message":"Successfully reset all payments and balances","timestamp":"2025-05-09T12:33:02.346Z"}
 {"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T12:37:16.771Z"}
 {"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T12:37:17.827Z"}
+{"level":"info","message":"Starting payment and balance reset process...","timestamp":"2025-05-09T12:44:57.579Z"}
+{"level":"info","message":"Deleted 3 payments","timestamp":"2025-05-09T12:44:58.073Z"}
+{"level":"info","message":"Reset balances for 23 tenants","timestamp":"2025-05-09T12:44:58.381Z"}
+{"level":"info","message":"Reset balances for 40 units","timestamp":"2025-05-09T12:44:58.690Z"}
+{"level":"info","message":"Successfully reset all payments and balances","timestamp":"2025-05-09T12:44:58.895Z"}
+{"level":"info","message":"Starting payment and balance reset process...","timestamp":"2025-05-09T12:48:36.515Z"}
+{"level":"info","message":"Deleted 4 payments","timestamp":"2025-05-09T12:48:37.045Z"}
+{"level":"info","message":"Reset balances for 23 tenants","timestamp":"2025-05-09T12:48:37.276Z"}
+{"level":"info","message":"Reset balances for 40 units","timestamp":"2025-05-09T12:48:37.551Z"}
+{"level":"info","message":"Successfully reset all payments and balances","timestamp":"2025-05-09T12:48:37.756Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T12:59:47.590Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-05-09T12:59:49.797Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:00:44.868Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-05-09T13:00:47.861Z"}

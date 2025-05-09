@@ -1,17 +1,10 @@
 // frontend/src/components/properties/PropertyExpensesList.jsx
-import { useState, useEffect } from "react";
-import {
-  Plus,
-  Search,
-  Loader2,
-  AlertTriangle,
-  Filter,
-  DollarSign,
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Plus, AlertTriangle, Loader2, Download } from 'lucide-react';
 import Card from "../ui/Card";
 import ExpenseForm from "../payments/ExpenseForm";
 import expenseService from "../../services/expenseService";
-import { formatCurrency } from "../../utils/formatters";
+import { exportToCSV } from "../../utils/csvExporter";
 
 const PropertyExpensesList = ({ propertyId, propertyName }) => {
   const [expenses, setExpenses] = useState([]);
@@ -20,17 +13,18 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     category: "",
+    status: "",
     startDate: "",
     endDate: "",
   });
 
   const [summary, setSummary] = useState({
-    totalExpenses: 0,
-    monthlyExpenses: 0,
-    recurringExpenses: 0,
+    total: 0,
+    pending: 0,
+    paid: 0,
+    byCategory: {},
   });
 
   useEffect(() => {
@@ -44,50 +38,66 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
       setLoading(true);
       setError(null);
 
-      const expensesData = await expenseService.getExpensesByProperty(
-        propertyId
-      );
-      setExpenses(expensesData);
+      const data = await expenseService.getExpensesByProperty(propertyId);
+      setExpenses(data);
 
-      // Calculate summary data
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      // Calculate monthly expenses
-      const monthlyExpenses = expensesData.filter((expense) => {
-        const expenseDate = new Date(expense.date);
-        return (
-          expenseDate.getMonth() === currentMonth &&
-          expenseDate.getFullYear() === currentYear
-        );
-      });
-
-      // Calculate recurring expenses
-      const recurring = expensesData.filter(
-        (expense) => expense.recurring && expense.recurring.isRecurring
-      );
-
-      setSummary({
-        totalExpenses: expensesData.reduce(
-          (sum, expense) => sum + expense.amount,
-          0
-        ),
-        monthlyExpenses: monthlyExpenses.reduce(
-          (sum, expense) => sum + expense.amount,
-          0
-        ),
-        recurringExpenses: recurring.reduce(
-          (sum, expense) => sum + expense.amount,
-          0
-        ),
-      });
+      // Calculate summary
+      calculateSummary(data);
     } catch (err) {
       console.error("Error loading expenses:", err);
-      setError("Failed to load expenses. Please try again.");
+      setError("Failed to load expense data");
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateSummary = (expensesData) => {
+    // Total expenses
+    const total = expensesData.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    
+    // Expenses by status
+    const pending = expensesData
+      .filter(expense => expense.paymentStatus === 'pending')
+      .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    
+    const paid = expensesData
+      .filter(expense => expense.paymentStatus === 'paid')
+      .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    
+    // Expenses by category
+    const byCategory = {};
+    expensesData.forEach(expense => {
+      const category = expense.category === 'custom' ? expense.customCategory : expense.category;
+      if (!byCategory[category]) {
+        byCategory[category] = 0;
+      }
+      byCategory[category] += expense.amount || 0;
+    });
+
+    setSummary({
+      total,
+      pending,
+      paid,
+      byCategory,
+    });
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      category: "",
+      status: "",
+      startDate: "",
+      endDate: "",
+    });
+    setSearchTerm("");
   };
 
   const handleAddExpense = () => {
@@ -102,21 +112,11 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
 
   const handleSubmitExpense = async (expenseData) => {
     try {
-      // Ensure property ID is included
-      const expenseWithProperty = {
-        ...expenseData,
-        property: propertyId,
-      };
-
       if (selectedExpense) {
-        await expenseService.updateExpense(
-          selectedExpense._id,
-          expenseWithProperty
-        );
+        await expenseService.updateExpense(selectedExpense._id, expenseData);
       } else {
-        await expenseService.createExpense(expenseWithProperty);
+        await expenseService.createExpense(expenseData);
       }
-
       setShowForm(false);
       await loadExpenses();
     } catch (err) {
@@ -125,69 +125,114 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
     }
   };
 
+  const handleExportCSV = () => {
+    try {
+      const exportData = filteredExpenses.map(expense => ({
+        Date: new Date(expense.date).toLocaleDateString(),
+        Category: expense.category === 'custom' ? expense.customCategory : expense.category,
+        Amount: expense.amount,
+        Status: expense.paymentStatus,
+        Description: expense.description,
+        Vendor: expense.vendor?.name || 'N/A',
+        Invoice: expense.vendor?.invoiceNumber || 'N/A',
+        Unit: expense.unit ? `Unit ${expense.unit.unitNumber}` : 'N/A',
+        Recurring: expense.recurring?.isRecurring ? 'Yes' : 'No',
+        Frequency: expense.recurring?.isRecurring ? expense.recurring.frequency : 'N/A',
+      }));
+
+      const fileName = `${propertyName}_expenses_${new Date().toISOString().split('T')[0]}.csv`;
+      exportToCSV(exportData, fileName);
+    } catch (err) {
+      console.error("Error exporting expenses:", err);
+      setError("Failed to export expense data");
+    }
+  };
+
   // Filter expenses based on search and filters
-  const filteredExpenses = expenses.filter((expense) => {
+  const filteredExpenses = expenses.filter(expense => {
+    // Apply text search
     const searchLower = searchTerm.toLowerCase();
-
-    // Search in description, category, vendor name
-    const description = expense.description?.toLowerCase() || "";
-    const category = expense.category?.toLowerCase() || "";
-    const vendorName = expense.vendor?.name?.toLowerCase() || "";
-
-    const matchesSearch =
-      description.includes(searchLower) ||
-      category.includes(searchLower) ||
-      vendorName.includes(searchLower);
-
-    if (searchTerm && !matchesSearch) return false;
+    const descriptionMatch = expense.description?.toLowerCase().includes(searchLower) || false;
+    const categoryMatch = expense.category?.toLowerCase().includes(searchLower) || 
+                         expense.customCategory?.toLowerCase().includes(searchLower) || false;
+    const vendorMatch = expense.vendor?.name?.toLowerCase().includes(searchLower) || false;
+    
+    if (searchTerm && !descriptionMatch && !categoryMatch && !vendorMatch) {
+      return false;
+    }
 
     // Apply category filter
-    if (filters.category && expense.category !== filters.category) return false;
+    if (filters.category && expense.category !== filters.category) {
+      return false;
+    }
+
+    // Apply status filter
+    if (filters.status && expense.paymentStatus !== filters.status) {
+      return false;
+    }
 
     // Apply date range filters
     if (filters.startDate) {
       const startDate = new Date(filters.startDate);
       const expenseDate = new Date(expense.date);
-      if (expenseDate < startDate) return false;
+      if (expenseDate < startDate) {
+        return false;
+      }
     }
 
     if (filters.endDate) {
       const endDate = new Date(filters.endDate);
+      endDate.setHours(23, 59, 59);
       const expenseDate = new Date(expense.date);
-      if (expenseDate > endDate) return false;
+      if (expenseDate > endDate) {
+        return false;
+      }
     }
 
     return true;
   });
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+  const formatCurrency = (amount) => {
+    return `KES ${(amount || 0).toLocaleString()}`;
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-      </div>
-    );
-  }
-
+  // Show expense form when requested
   if (showForm) {
     return (
       <ExpenseForm
         onSubmit={handleSubmitExpense}
         onCancel={() => setShowForm(false)}
         initialData={selectedExpense}
+        defaultPropertyId={propertyId}
       />
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center gap-2">
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-sm underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">
-          Expenses for {propertyName}
-        </h3>
+        <h2 className="text-xl font-semibold">Property Expenses</h2>
         <button
           onClick={handleAddExpense}
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
@@ -197,277 +242,202 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-2">
-          <AlertTriangle size={18} />
-          <span>{error}</span>
-          <button
-            onClick={loadExpenses}
-            className="ml-2 text-red-700 underline"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
       {/* Expense Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h4 className="text-sm text-gray-500 mb-1">Total Expenses</h4>
-              <p className="text-2xl font-bold text-gray-900">
-                KES {summary.totalExpenses.toLocaleString()}
-              </p>
-            </div>
-            <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-red-600" />
-            </div>
+      <Card className="p-4">
+        <h3 className="font-medium mb-3">Expense Summary</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Expenses</p>
+            <p className="text-xl font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(summary.total)}
+            </p>
           </div>
-        </Card>
+          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Pending</p>
+            <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+              {formatCurrency(summary.pending)}
+            </p>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Paid</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">
+              {formatCurrency(summary.paid)}
+            </p>
+          </div>
+        </div>
 
-        <Card className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h4 className="text-sm text-gray-500 mb-1">Monthly Expenses</h4>
-              <p className="text-2xl font-bold text-gray-900">
-                KES {summary.monthlyExpenses.toLocaleString()}
-              </p>
-            </div>
-            <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h4 className="text-sm text-gray-500 mb-1">Recurring Expenses</h4>
-              <p className="text-2xl font-bold text-gray-900">
-                KES {summary.recurringExpenses.toLocaleString()}
-              </p>
-            </div>
-            <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-blue-600" />
+        {/* Category Breakdown */}
+        {Object.keys(summary.byCategory).length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium mb-2">Expenses by Category</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.entries(summary.byCategory).map(([category, amount]) => (
+                <div key={category} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                  <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{category}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(amount)}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </Card>
-      </div>
+        )}
+      </Card>
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
             placeholder="Search expenses..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <Filter className="h-5 w-5 mr-2" />
-          Filters
-        </button>
+        <div className="flex gap-2">
+          <select
+            name="category"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            value={filters.category}
+            onChange={handleFilterChange}
+          >
+            <option value="">All Categories</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="utilities">Utilities</option>
+            <option value="taxes">Taxes</option>
+            <option value="insurance">Insurance</option>
+            <option value="mortgage">Mortgage</option>
+            <option value="payroll">Payroll</option>
+            <option value="marketing">Marketing</option>
+            <option value="custom">Custom</option>
+          </select>
+          <select
+            name="status"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            value={filters.status}
+            onChange={handleFilterChange}
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="overdue">Overdue</option>
+          </select>
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Export
+          </button>
+        </div>
       </div>
 
-      {/* Filter panel */}
-      {showFilters && (
-        <Card className="p-4">
-          <h3 className="font-medium mb-3">Filter Expenses</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Category
-              </label>
-              <select
-                name="category"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={filters.category}
-                onChange={(e) =>
-                  setFilters({ ...filters, category: e.target.value })
-                }
-              >
-                <option value="">All Categories</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="utilities">Utilities</option>
-                <option value="taxes">Taxes</option>
-                <option value="insurance">Insurance</option>
-                <option value="mortgage">Mortgage</option>
-                <option value="payroll">Payroll</option>
-                <option value="marketing">Marketing</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                From Date
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={filters.startDate}
-                onChange={(e) =>
-                  setFilters({ ...filters, startDate: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                To Date
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={filters.endDate}
-                onChange={(e) =>
-                  setFilters({ ...filters, endDate: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={() => {
-                setFilters({
-                  category: "",
-                  startDate: "",
-                  endDate: "",
-                });
-                setSearchTerm("");
-              }}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Reset Filters
-            </button>
-          </div>
-        </Card>
-      )}
+      {/* Date Filter */}
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-700 dark:text-gray-300">From:</label>
+          <input
+            type="date"
+            name="startDate"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+            value={filters.startDate}
+            onChange={handleFilterChange}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-700 dark:text-gray-300">To:</label>
+          <input
+            type="date"
+            name="endDate"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+            value={filters.endDate}
+            onChange={handleFilterChange}
+          />
+        </div>
+        {(filters.category || filters.status || filters.startDate || filters.endDate || searchTerm) && (
+          <button
+            onClick={resetFilters}
+            className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+          >
+            Reset Filters
+          </button>
+        )}
+      </div>
 
       {/* Expenses Table */}
       {expenses.length === 0 ? (
-        <Card className="text-center py-12">
-          <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">
-            No expenses found
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by adding your first expense
+        <Card className="p-8 text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No expenses found</h3>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            You haven't recorded any expenses for this property yet
           </p>
-          <div className="mt-6">
-            <button
-              onClick={handleAddExpense}
-              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Expense
-            </button>
-          </div>
+          <button
+            onClick={handleAddExpense}
+            className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Expense
+          </button>
         </Card>
       ) : filteredExpenses.length === 0 ? (
-        <Card className="text-center py-12">
-          <h3 className="text-sm font-medium text-gray-900">
-            No matching expenses
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your search or filter criteria
+        <Card className="p-8 text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No matching expenses</h3>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Try adjusting your filters to find what you're looking for
           </p>
+          <button
+            onClick={resetFilters}
+            className="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Reset Filters
+          </button>
         </Card>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg shadow">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Category
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Amount
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Date
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Vendor
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendor</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredExpenses.map((expense) => (
-                <tr key={expense._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                    {expense.category === "custom"
-                      ? expense.customCategory
-                      : expense.category}
+                <tr key={expense._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    {new Date(expense.date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {expense.description?.slice(0, 30)}
-                    {expense.description?.length > 30 ? "..." : ""}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 capitalize">
+                    {expense.category === 'custom' ? expense.customCategory : expense.category}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    KES {expense.amount?.toLocaleString() || 0}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    {formatCurrency(expense.amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(expense.date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {expense.vendor?.name || "N/A"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full 
-                      ${
-                        expense.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : expense.paymentStatus === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {expense.paymentStatus || "pending"}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      expense.paymentStatus === 'paid' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                        : expense.paymentStatus === 'overdue'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                    }`}>
+                      {expense.paymentStatus}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate">
+                    {expense.description}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    {expense.vendor?.name || 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                     <button
                       onClick={() => handleEditExpense(expense)}
-                      className="text-primary-600 hover:text-primary-900"
+                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
                     >
                       Edit
                     </button>

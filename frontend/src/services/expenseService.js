@@ -4,13 +4,14 @@ import { getErrorMessage } from "../utils/errorHandling";
 
 /**
  * Get all expenses with optional filters
- * @param {Object} filters - Filter criteria like category, date range, propertyId
+ * @param {Object} filters - Filter options
  * @returns {Promise<Array>} Array of expenses
  */
 export const getAllExpenses = async (filters = {}) => {
   try {
-    // Convert filters to query params
     const queryParams = new URLSearchParams();
+
+    // Add filters to query params
     Object.keys(filters).forEach((key) => {
       if (filters[key]) {
         queryParams.append(key, filters[key]);
@@ -31,7 +32,7 @@ export const getAllExpenses = async (filters = {}) => {
 /**
  * Get expense by ID
  * @param {string} id - Expense ID
- * @returns {Promise<Object>} Expense details
+ * @returns {Promise<Object>} Expense data
  */
 export const getExpenseById = async (id) => {
   try {
@@ -39,6 +40,36 @@ export const getExpenseById = async (id) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching expense details:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+/**
+ * Get expenses by property
+ * @param {string} propertyId - Property ID
+ * @returns {Promise<Array>} Array of expenses for the property
+ */
+export const getExpensesByProperty = async (propertyId) => {
+  try {
+    const response = await api.get(`/expenses/property/${propertyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching property expenses:", error);
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+/**
+ * Get expenses by unit
+ * @param {string} unitId - Unit ID
+ * @returns {Promise<Array>} Array of expenses for the unit
+ */
+export const getExpensesByUnit = async (unitId) => {
+  try {
+    const response = await api.get(`/expenses/unit/${unitId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching unit expenses:", error);
     throw new Error(getErrorMessage(error));
   }
 };
@@ -59,7 +90,7 @@ export const createExpense = async (expenseData) => {
 };
 
 /**
- * Update an existing expense
+ * Update an expense
  * @param {string} id - Expense ID
  * @param {Object} expenseData - Updated expense data
  * @returns {Promise<Object>} Updated expense
@@ -77,7 +108,7 @@ export const updateExpense = async (id, expenseData) => {
 /**
  * Delete an expense
  * @param {string} id - Expense ID
- * @returns {Promise<Object>} Deletion confirmation
+ * @returns {Promise<Object>} Response data
  */
 export const deleteExpense = async (id) => {
   try {
@@ -89,41 +120,12 @@ export const deleteExpense = async (id) => {
   }
 };
 
-/**
- * Get recurring expenses
- * @returns {Promise<Array>} Array of recurring expenses
- */
-export const getRecurringExpenses = async () => {
-  try {
-    const response = await api.get("/expenses/recurring");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching recurring expenses:", error);
-    throw new Error(getErrorMessage(error));
-  }
-};
-
-/**
- * Get expenses for a specific property
- * @param {string} propertyId - Property ID
- * @returns {Promise<Array>} Array of expenses for the property
- */
-export const getExpensesByProperty = async (propertyId) => {
-  try {
-    const response = await api.get(`/expenses/property/${propertyId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching property expenses:", error);
-    throw new Error(getErrorMessage(error));
-  }
-};
-
 export default {
   getAllExpenses,
   getExpenseById,
+  getExpensesByProperty,
+  getExpensesByUnit,
   createExpense,
   updateExpense,
   deleteExpense,
-  getRecurringExpenses,
-  getExpensesByProperty,
 };
