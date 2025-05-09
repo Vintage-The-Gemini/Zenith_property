@@ -73,6 +73,12 @@ const paymentSchema = new mongoose.Schema(
       default: false,
     },
     
+    // Track if payment is in same period
+    inSamePeriod: {
+      type: Boolean,
+      default: false,
+    },
+    
     // Payment Details
     paymentDate: {
       type: Date,

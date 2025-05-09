@@ -20,6 +20,7 @@ export const createPayment = async (req, res) => {
       paymentMethod,
       type,
       description,
+      inSamePeriod,
     } = req.body;
 
     // Fetch tenant with unit data
@@ -40,48 +41,33 @@ export const createPayment = async (req, res) => {
     // Parse amount paid
     const paidAmount = parseFloat(amountPaid);
     
-    // Calculate amount due based on payment type
-    let amountDue = 0;
+    // Calculate amount due based on payment period
+    let amountDue;
     
-    if (type === 'rent') {
-      // For rent payments, always include previous balance + current rent
-      amountDue = previousBalance + baseRentAmount;
+    if (inSamePeriod) {
+      // If same payment period, use the previous balance as the amount due
+      amountDue = previousBalance;
     } else {
-      // For other payments, only previous balance if positive
-      amountDue = previousBalance > 0 ? previousBalance : 0;
+      // If new payment period, add base rent to previous balance
+      amountDue = previousBalance + baseRentAmount;
     }
     
     // Calculate payment allocation
-    let appliedToPreviousBalance = 0;
+    let appliedToPreviousBalance = Math.min(previousBalance, paidAmount);
     let appliedToCurrentRent = 0;
-    let remainingPayment = paidAmount;
     
-    // First apply to previous balance (if positive)
-    if (previousBalance > 0 && remainingPayment > 0) {
-      appliedToPreviousBalance = Math.min(previousBalance, remainingPayment);
-      remainingPayment -= appliedToPreviousBalance;
+    // Apply to current rent only if in new period and there's remaining payment
+    if (!inSamePeriod && paidAmount > previousBalance) {
+      appliedToCurrentRent = Math.min(baseRentAmount, paidAmount - previousBalance);
     }
     
-    // Then apply to current rent (if this is a rent payment)
-    if (type === 'rent' && remainingPayment > 0) {
-      appliedToCurrentRent = Math.min(baseRentAmount, remainingPayment);
-      remainingPayment -= appliedToCurrentRent;
-    }
-    
-    // Calculate overpayment/underpayment
+    // Calculate payment variance
     const paymentVariance = paidAmount - amountDue;
     const overpayment = paymentVariance > 0 ? paymentVariance : 0;
     const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
     
     // Calculate new balance
-    let newBalance;
-    if (type === 'rent') {
-      // For rent payments: previous balance + current rent - payment
-      newBalance = previousBalance + baseRentAmount - paidAmount;
-    } else {
-      // For other payments: previous balance - payment
-      newBalance = previousBalance - paidAmount;
-    }
+    const newBalance = amountDue - paidAmount;
     
     // Determine payment status
     let status = 'completed';
@@ -104,6 +90,7 @@ export const createPayment = async (req, res) => {
       previousBalance,
       paymentVariance,
       newBalance,
+      inSamePeriod: !!inSamePeriod,
       isOverpayment: overpayment > 0,
       isUnderpayment: underpayment > 0,
       paymentDate: paymentDate || new Date(),
@@ -325,6 +312,7 @@ export const getPaymentsByProperty = async (req, res) => {
   }
 };
 
+// Get payments by unit
 // Get payments by unit
 export const getPaymentsByUnit = async (req, res) => {
   try {
