@@ -8,13 +8,19 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
   const [error, setError] = useState("");
   const [selectedTenant, setSelectedTenant] = useState(null);
   
+  // Get end of current month as default due date
+  const getEndOfMonth = () => {
+    const date = new Date();
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split("T")[0];
+  };
+  
   const [formData, setFormData] = useState({
     tenant: "",
     unit: "",
     property: "",
     amountPaid: "",
     paymentDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date().toISOString().split("T")[0],
+    dueDate: getEndOfMonth(),
     paymentMethod: "cash",
     type: "rent",
     description: "",
@@ -34,12 +40,10 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
     newBalance: 0,
     willBeOverpayment: false,
     willBeUnderpayment: false,
-    isWithinPaymentPeriod: true,
   });
 
   useEffect(() => {
     if (formData.tenant) {
-      // Find selected tenant from the provided options
       const tenant = tenantOptions.find(t => t._id === formData.tenant);
       if (tenant) {
         setSelectedTenant(tenant);
@@ -53,17 +57,7 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
 
   useEffect(() => {
     calculatePaymentAllocation();
-  }, [formData.amountPaid, selectedTenant, formData.type, formData.paymentDate]);
-
-  const isWithinCurrentPaymentPeriod = (paymentDate = new Date()) => {
-    const today = new Date(paymentDate);
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    // Check if we're still in the current month
-    const now = new Date();
-    return now.getMonth() === currentMonth && now.getFullYear() === currentYear;
-  };
+  }, [formData.amountPaid, selectedTenant, formData.type]);
 
   const resetBalanceInfo = () => {
     setBalanceInfo({
@@ -78,50 +72,27 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
       newBalance: 0,
       willBeOverpayment: false,
       willBeUnderpayment: false,
-      isWithinPaymentPeriod: true,
     });
   };
 
   const calculatePaymentAllocation = (tenant = selectedTenant) => {
-    if (!tenant || !formData.amountPaid) {
-      if (tenant) {
-        // Show initial state even without payment amount
-        const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
-        const previousBalance = tenant.currentBalance || 0;
-        const isWithinPeriod = isWithinCurrentPaymentPeriod(formData.paymentDate);
-        
-        // Only previous balance is due if within payment period
-        const totalAmountDue = previousBalance > 0 ? previousBalance : 0;
-        
-        setBalanceInfo(prev => ({
-          ...prev,
-          baseRentAmount,
-          previousBalance,
-          totalAmountDue,
-          isWithinPaymentPeriod: isWithinPeriod,
-        }));
-      }
+    if (!tenant) {
+      resetBalanceInfo();
       return;
     }
     
-    const amountPaid = parseFloat(formData.amountPaid) || 0;
-    const previousBalance = tenant.currentBalance || 0;
     const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
-    const isWithinPeriod = isWithinCurrentPaymentPeriod(formData.paymentDate);
+    const previousBalance = tenant.currentBalance || 0;
+    const amountPaid = parseFloat(formData.amountPaid) || 0;
     
-    // Calculate total amount due based on payment period and type
+    // Calculate total amount due based on payment type
     let totalAmountDue = 0;
     
     if (formData.type === 'rent') {
-      if (isWithinPeriod) {
-        // Within payment period: only previous balance is due
-        totalAmountDue = previousBalance > 0 ? previousBalance : 0;
-      } else {
-        // Past payment period: previous balance + current rent
-        totalAmountDue = previousBalance + baseRentAmount;
-      }
+      // For rent payments: always include previous balance + current rent
+      totalAmountDue = previousBalance + baseRentAmount;
     } else {
-      // For non-rent payments, only previous balance (if positive) is due
+      // For non-rent payments: only previous balance if positive
       totalAmountDue = previousBalance > 0 ? previousBalance : 0;
     }
     
@@ -129,25 +100,32 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
     let appliedToCurrentRent = 0;
     let remainingPayment = amountPaid;
     
-    // Apply payment to previous balance first (if any debt exists)
+    // Apply payment to previous balance first (if positive)
     if (previousBalance > 0 && remainingPayment > 0) {
       appliedToPreviousBalance = Math.min(previousBalance, remainingPayment);
       remainingPayment -= appliedToPreviousBalance;
     }
     
-    // Only apply to current rent if payment period has ended and this is a rent payment
-    if (formData.type === 'rent' && !isWithinPeriod && remainingPayment > 0) {
+    // Apply to current rent if this is a rent payment
+    if (formData.type === 'rent' && remainingPayment > 0) {
       appliedToCurrentRent = Math.min(baseRentAmount, remainingPayment);
       remainingPayment -= appliedToCurrentRent;
     }
     
-    // Calculate overpayment/underpayment
+    // Calculate payment variance
     const paymentVariance = amountPaid - totalAmountDue;
     const overpayment = paymentVariance > 0 ? paymentVariance : 0;
     const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
     
     // Calculate new balance
-    const newBalance = previousBalance - amountPaid;
+    let newBalance;
+    if (formData.type === 'rent') {
+      // For rent payments: previous balance + current rent - payment
+      newBalance = previousBalance + baseRentAmount - amountPaid;
+    } else {
+      // For non-rent: previous balance - payment
+      newBalance = previousBalance - amountPaid;
+    }
     
     setBalanceInfo({
       baseRentAmount,
@@ -161,7 +139,6 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
       newBalance,
       willBeOverpayment: overpayment > 0,
       willBeUnderpayment: underpayment > 0,
-      isWithinPaymentPeriod: isWithinPeriod,
     });
   };
 
@@ -203,7 +180,7 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
     try {
       setLoading(true);
       
-      // Prepare payment data with all balance information
+      // Prepare payment data
       const paymentData = {
         tenant: formData.tenant,
         unit: formData.unit,
@@ -215,8 +192,6 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
         type: formData.type,
         description: formData.description,
         reference: formData.reference,
-        // Include all calculated balance information
-        ...balanceInfo,
       };
       
       await onSubmit(paymentData);
@@ -305,19 +280,6 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
               Current Balance Information
             </h3>
             
-            {/* Payment Period Notice */}
-            <div className={`mb-4 p-3 rounded-md ${
-              balanceInfo.isWithinPaymentPeriod 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'bg-yellow-100 text-yellow-700'
-            }`}>
-              <p className="text-sm font-medium">
-                {balanceInfo.isWithinPaymentPeriod 
-                  ? `Currently within payment period (${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})`
-                  : 'Payment period has ended - new rent charges apply'}
-              </p>
-            </div>
-            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Previous Balance</p>
@@ -334,14 +296,12 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">
-                  Monthly Rent
-                </p>
+                <p className="text-sm text-gray-500">Monthly Rent</p>
                 <p className="text-lg font-semibold text-gray-900">
                   {formatCurrency(balanceInfo.baseRentAmount)}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {balanceInfo.isWithinPaymentPeriod ? 'Not yet due' : 'Now due'}
+                  {formData.type === 'rent' ? 'To be charged' : 'For reference'}
                 </p>
               </div>
               <div>
@@ -350,9 +310,7 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
                   {formatCurrency(balanceInfo.totalAmountDue)}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {balanceInfo.isWithinPaymentPeriod && formData.type === 'rent' 
-                    ? 'Previous balance only' 
-                    : 'Total due'}
+                  {formData.type === 'rent' ? 'Previous + current rent' : 'Total due'}
                 </p>
               </div>
               <div>
@@ -373,7 +331,7 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
           </Card>
         )}
 
-        {/* Rest of the form remains the same... */}
+        {/* Payment Amount and Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -446,103 +404,97 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
         {/* Payment Allocation Preview */}
         {formData.amountPaid && selectedTenant && (
           <Card className="p-4 bg-blue-50">
-            <h4 className="text-sm font-medium mb-3 flex items-center">
-              <Info className="h-4 w-4 mr-2 text-blue-600" />
-              Payment Allocation Preview
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Amount to be Paid:</span>
-                <span className="font-medium">{formatCurrency(parseFloat(formData.amountPaid) || 0)}</span>
-              </div>
-              
-              {balanceInfo.appliedToPreviousBalance > 0 && (
-                <div className="flex justify-between text-orange-600">
-                  <span>Applied to Previous Balance:</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToPreviousBalance)}</span>
-                </div>
-              )}
-              
-              {balanceInfo.appliedToCurrentRent > 0 && (
-                <div className="flex justify-between text-blue-600">
-                  <span>Applied to Current Rent:</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToCurrentRent)}</span>
-                </div>
-              )}
-              
-              {formData.type === 'rent' && balanceInfo.isWithinPaymentPeriod && balanceInfo.appliedToCurrentRent === 0 && (
-                <div className="text-sm text-gray-600 italic">
-                  * Current rent not applied - still within payment period
-                </div>
-              )}
-              
-              {balanceInfo.overpayment > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Overpayment (Credit):</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.overpayment)}</span>
-                </div>
-              )}
-              
-              {balanceInfo.underpayment > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>Underpayment (Still Due):</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.underpayment)}</span>
-                </div>
-              )}
-              
-              <div className="border-t border-blue-200 pt-2 mt-2">
-                <div className="flex justify-between font-medium">
-                  <span>New Balance After Payment:</span>
-                  <span className={
-                    balanceInfo.newBalance < 0 ? 'text-green-600' : 
-                    balanceInfo.newBalance > 0 ? 'text-red-600' : 
-                    'text-gray-900'
-                  }>
-                    {formatCurrency(Math.abs(balanceInfo.newBalance))}
-                    {balanceInfo.newBalance < 0 ? ' (Credit)' : 
-                     balanceInfo.newBalance > 0 ? ' (Owed)' : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
+<h4 className="text-sm font-medium mb-3 flex items-center">
+             <Info className="h-4 w-4 mr-2 text-blue-600" />
+             Payment Allocation Preview
+           </h4>
+           <div className="space-y-2 text-sm">
+             <div className="flex justify-between">
+               <span>Amount to be Paid:</span>
+               <span className="font-medium">{formatCurrency(parseFloat(formData.amountPaid) || 0)}</span>
+             </div>
+             
+             {balanceInfo.appliedToPreviousBalance > 0 && (
+               <div className="flex justify-between text-orange-600">
+                 <span>Applied to Previous Balance:</span>
+                 <span className="font-medium">{formatCurrency(balanceInfo.appliedToPreviousBalance)}</span>
+               </div>
+             )}
+             
+             {balanceInfo.appliedToCurrentRent > 0 && (
+               <div className="flex justify-between text-blue-600">
+                 <span>Applied to Current Rent:</span>
+                 <span className="font-medium">{formatCurrency(balanceInfo.appliedToCurrentRent)}</span>
+               </div>
+             )}
+             
+             {balanceInfo.overpayment > 0 && (
+               <div className="flex justify-between text-green-600">
+                 <span>Overpayment (Credit):</span>
+                 <span className="font-medium">{formatCurrency(balanceInfo.overpayment)}</span>
+               </div>
+             )}
+             
+             {balanceInfo.underpayment > 0 && (
+               <div className="flex justify-between text-red-600">
+                 <span>Underpayment (Still Due):</span>
+                 <span className="font-medium">{formatCurrency(balanceInfo.underpayment)}</span>
+               </div>
+             )}
+             
+             <div className="border-t border-blue-200 pt-2 mt-2">
+               <div className="flex justify-between font-medium">
+                 <span>New Balance After Payment:</span>
+                 <span className={
+                   balanceInfo.newBalance < 0 ? 'text-green-600' : 
+                   balanceInfo.newBalance > 0 ? 'text-red-600' : 
+                   'text-gray-900'
+                 }>
+                   {formatCurrency(Math.abs(balanceInfo.newBalance))}
+                   {balanceInfo.newBalance < 0 ? ' (Credit)' : 
+                    balanceInfo.newBalance > 0 ? ' (Owed)' : ''}
+                 </span>
+               </div>
+             </div>
+           </div>
+         </Card>
+       )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows="3"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            placeholder="Additional payment details or notes..."
-          />
-        </div>
+       <div>
+         <label className="block text-sm font-medium text-gray-700">
+           Description
+         </label>
+         <textarea
+           name="description"
+           value={formData.description}
+           onChange={handleChange}
+           rows="3"
+           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+           placeholder="Additional payment details or notes..."
+         />
+       </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
-            disabled={loading || !formData.tenant || !formData.amountPaid}
-          >
-            {loading ? 'Processing...' : 'Record Payment'}
-          </button>
-        </div>
-      </form>
-    </Card>
-  );
+       {/* Form Actions */}
+       <div className="flex justify-end gap-3">
+         <button
+           type="button"
+           onClick={onCancel}
+           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+           disabled={loading}
+         >
+           Cancel
+         </button>
+         <button
+           type="submit"
+           className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+           disabled={loading || !formData.tenant || !formData.amountPaid}
+         >
+           {loading ? 'Processing...' : 'Record Payment'}
+         </button>
+       </div>
+     </form>
+   </Card>
+ );
 };
 
 export default PaymentForm;

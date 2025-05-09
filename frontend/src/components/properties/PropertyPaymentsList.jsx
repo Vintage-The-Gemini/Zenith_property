@@ -16,12 +16,12 @@ import {
   TrendingDown,
   Calculator,
   Download,
-  Info,
 } from "lucide-react";
 import Card from "../ui/Card";
 import PaymentForm from "../payments/PaymentForm";
 import paymentService from "../../services/paymentService";
 import tenantService from "../../services/tenantService";
+import { exportPropertyPaymentsToCSV } from "../../utils/paymentReportExporter";
 
 const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const [payments, setPayments] = useState([]);
@@ -51,6 +51,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     totalUnderpayments: 0,
     netBalance: 0,
     criticalAccounts: 0,
+    collectionRate: 0,
   });
 
   useEffect(() => {
@@ -64,17 +65,15 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       setLoading(true);
       setError(null);
 
-      // Load payments and tenants FOR THIS SPECIFIC PROPERTY ONLY
       const [paymentsData, propertyTenantsData] = await Promise.all([
         paymentService.getPaymentsByProperty(propertyId),
-        tenantService.getTenantsByProperty(propertyId), // This should filter by property
+        tenantService.getTenantsByProperty(propertyId),
       ]);
 
       setPayments(paymentsData);
-      setTenants(propertyTenantsData); // Set only tenants from this property
+      setTenants(propertyTenantsData);
 
-      // Calculate comprehensive summary
-      calculatePaymentSummary(paymentsData);
+      calculatePaymentSummary(paymentsData, propertyTenantsData);
     } catch (err) {
       console.error("Error fetching payment data:", err);
       setError("Failed to load payments. Please try again.");
@@ -83,7 +82,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     }
   };
 
-  const calculatePaymentSummary = (paymentsData) => {
+  const calculatePaymentSummary = (paymentsData, tenantsData) => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -140,7 +139,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       0
     );
 
-    // Calculate balance statistics from the actual payment records
+    // Calculate balance statistics
     const totalOverpayments = paymentsData
       .filter(p => p.isOverpayment)
       .reduce((sum, p) => sum + (p.overpayment || 0), 0);
@@ -151,9 +150,9 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
     const netBalance = totalUnderpayments - totalOverpayments;
 
-    // Count critical accounts (tenants with significant outstanding balance)
-    const criticalAccounts = tenants.filter(
-      tenant => tenant.currentBalance > 100000 // KES 100,000 threshold
+    // Count critical accounts
+    const criticalAccounts = tenantsData.filter(
+      tenant => tenant.currentBalance > 100000
     ).length;
 
     // Calculate growth rate
@@ -161,6 +160,16 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       lastMonthTotalAmount > 0
         ? ((monthlyTotalAmount - lastMonthTotalAmount) / lastMonthTotalAmount) * 100
         : 0;
+
+    // Calculate collection rate
+    const totalExpected = tenantsData.reduce(
+      (sum, tenant) => sum + (tenant.leaseDetails?.rentAmount || 0),
+      0
+    );
+    
+    const collectionRate = totalExpected > 0 
+      ? (monthlyTotalAmount / totalExpected) * 100 
+      : 0;
 
     setSummary({
       monthlyTotal: monthlyTotalAmount,
@@ -172,12 +181,12 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       totalUnderpayments,
       netBalance,
       criticalAccounts,
+      collectionRate,
     });
   };
 
   const handleCreatePayment = async (paymentData) => {
     try {
-      // Add property ID to the payment data
       const paymentWithProperty = {
         ...paymentData,
         property: propertyId,
@@ -185,7 +194,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
       await paymentService.createPayment(paymentWithProperty);
       setShowForm(false);
-      await loadData(); // Refresh data
+      await loadData();
     } catch (err) {
       console.error("Error creating payment:", err);
       setError(err.message || "Failed to create payment");
@@ -195,7 +204,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   const handleUpdateStatus = async (id, status) => {
     try {
       await paymentService.updatePaymentStatus(id, { status });
-      await loadData(); // Refresh data
+      await loadData();
     } catch (err) {
       setError("Failed to update payment status");
     }
@@ -203,50 +212,17 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
   const handleExportCSV = async () => {
     try {
-      // Prepare comprehensive report data
-      const reportData = {
-        propertyInfo: {
-          name: propertyName,
-          type: 'Residential', // You might want to make this dynamic
-          address: 'Property Address', // You might want to fetch this
-          totalUnits: tenants.length,
-          occupiedUnits: tenants.filter(t => t.status === 'active').length,
-        },
-        summary: {
-          totalRevenue: payments
-            .filter(p => p.status === 'completed')
-            .reduce((sum, p) => sum + p.amountPaid, 0),
-          totalExpenses: 0, // You'll need to fetch expenses
-          netProfit: 0,
-          totalUnderpayments: summary.totalUnderpayments,
-          totalOverpayments: summary.totalOverpayments,
-          netBalance: summary.netBalance,
-        },
-        payments: filteredPayments,
-        tenants: tenants.map(tenant => ({
-          name: `${tenant.firstName} ${tenant.lastName}`,
-          unit: tenant.unitId?.unitNumber || 'Unknown',
-          currentBalance: tenant.currentBalance || 0,
-          monthlyRent: tenant.leaseDetails?.rentAmount || 0,
-          status: tenant.currentBalance > 0 ? 'Outstanding' : 
-                 tenant.currentBalance < 0 ? 'Credit' : 'Balanced',
-        })),
-      };
-
-      // TODO: Implement CSV export function
-      console.log("Export data:", reportData);
-      alert("CSV export will be implemented");
+      await exportPropertyPaymentsToCSV(propertyId, payments, null, propertyName);
     } catch (err) {
       console.error("Error exporting data:", err);
       setError("Failed to export data");
     }
   };
 
-  // Filter payments based on search and filters
+  // Filter payments
   const filteredPayments = payments.filter((payment) => {
     const searchLower = searchTerm.toLowerCase();
 
-    // Search in tenant name, unit number, or reference
     const tenantName = payment.tenant
       ? `${payment.tenant.firstName} ${payment.tenant.lastName}`.toLowerCase()
       : "";
@@ -260,13 +236,11 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
     if (searchTerm && !matchesSearch) return false;
 
-    // Apply filters
     if (filters.status && payment.status !== filters.status) return false;
     if (filters.type && payment.type !== filters.type) return false;
     if (filters.hasOverpayment && !payment.isOverpayment) return false;
     if (filters.hasUnderpayment && !payment.isUnderpayment) return false;
 
-    // Date range filters
     if (filters.startDate) {
       const startDate = new Date(filters.startDate);
       const paymentDate = new Date(payment.paymentDate);
@@ -290,14 +264,6 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     return `KES ${(amount || 0).toLocaleString()}`;
   };
 
-  const isWithinCurrentPaymentPeriod = (paymentDate) => {
-    const payment = new Date(paymentDate);
-    const now = new Date();
-    return payment.getMonth() === now.getMonth() && 
-           payment.getFullYear() === now.getFullYear();
-  };
-
-  // Status badge component
   const getStatusBadge = (status) => {
     switch (status) {
       case "completed":
@@ -359,7 +325,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       <PaymentForm
         onSubmit={handleCreatePayment}
         onCancel={() => setShowForm(false)}
-        tenantOptions={tenants}  // Now this will only be tenants from this property
+        tenantOptions={tenants}
         initialData={selectedPayment}
       />
     );
@@ -390,7 +356,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
         </div>
       )}
 
-      {/* Enhanced Payment Summary with Balance Information */}
+      {/* Enhanced Payment Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex justify-between items-center">
@@ -404,25 +370,28 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
               <DollarSign className="h-6 w-6 text-green-600" />
             </div>
           </div>
-          {summary.lastMonthRevenue > 0 && (
-            <div className="mt-2 flex items-center text-xs">
-              {summary.growthRate > 0 ? (
-                <>
-                  <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                  <span className="text-green-500">
-                    +{Math.round(summary.growthRate)}% vs last month
-                  </span>
-                </>
-              ) : (
-                <>
-                  <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-                  <span className="text-red-500">
-                    {Math.round(summary.growthRate)}% vs last month
-                  </span>
-                </>
-              )}
-            </div>
-          )}
+          <div className="mt-2 text-xs">
+            <p className="text-gray-500">Collection Rate: {Math.round(summary.collectionRate)}%</p>
+            {summary.lastMonthRevenue > 0 && (
+              <div className="flex items-center mt-1">
+                {summary.growthRate > 0 ? (
+                  <>
+                    <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                    <span className="text-green-500">
+                      +{Math.round(summary.growthRate)}% vs last month
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                    <span className="text-red-500">
+                      {Math.round(summary.growthRate)}% vs last month
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </Card>
 
         <Card className="p-4">
@@ -483,7 +452,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
             </div>
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Tenants with high outstanding balance
+            Balance &gt; KES 100,000
           </div>
         </Card>
       </div>
@@ -516,7 +485,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
         </button>
       </div>
 
-      {/* Enhanced Filter panel */}
+      {/* Filter panel */}
       {showFilters && (
         <Card className="p-4">
           <h3 className="font-medium mb-3">Filter Payments</h3>
@@ -556,50 +525,22 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Balance Type
+                Date Range
               </label>
-              <div className="mt-2 space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
-                    checked={filters.hasOverpayment}
-                    onChange={(e) => setFilters({ ...filters, hasOverpayment: e.target.checked })}
-                  />
-                  <span className="ml-2 text-sm">Show Overpayments</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
-                    checked={filters.hasUnderpayment}
-                    onChange={(e) => setFilters({ ...filters, hasUnderpayment: e.target.checked })}
-                  />
-                  <span className="ml-2 text-sm">Show Underpayments</span>
-                </label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={filters.startDate}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                />
+                <input
+                  type="date"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  value={filters.endDate}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                />
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                From Date
-              </label>
-              <input
-                type="date"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                To Date
-              </label>
-              <input
-                type="date"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
@@ -623,7 +564,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
         </Card>
       )}
 
-      {/* Enhanced Payments Table with Balance Information */}
+      {/* Payments Table */}
       {payments.length === 0 ? (
         <Card className="text-center py-12">
           <CreditCard className="mx-auto h-12 w-12 text-gray-400" />
@@ -643,99 +584,61 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
             </button>
           </div>
         </Card>
-      ) : filteredPayments.length === 0 ? (
-        <Card className="text-center py-12">
-          <h3 className="text-sm font-medium text-gray-900">
-            No matching payments
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your search criteria
-          </p>
-        </Card>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 bg-white">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Tenant
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Base Rent
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Previous Balance
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Amount Due
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Amount Paid
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Applied to Previous
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Applied to Current
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Variance
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   New Balance
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
               {filteredPayments.map((payment) => (
                 <tr key={payment._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-gray-900">
                     {formatDate(payment.paymentDate)}
-                    {isWithinCurrentPaymentPeriod(payment.paymentDate) && (
-                      <span className="ml-1 text-xs text-blue-600">(Current Period)</span>
-                    )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {payment.tenant
-                        ? `${payment.tenant.firstName} ${payment.tenant.lastName}`
-                        : "Unknown"}
-                    </div>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    {payment.tenant
+                      ? `${payment.tenant.firstName} ${payment.tenant.lastName}`
+                      : "Unknown"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Unit {payment.unit?.unitNumber || "Unknown"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatCurrency(payment.baseRentAmount)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-3 text-sm text-gray-500">
                     {formatCurrency(payment.previousBalance)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {formatCurrency(payment.amountDue)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {formatCurrency(payment.amountPaid)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatCurrency(payment.appliedToPreviousBalance)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatCurrency(payment.appliedToCurrentRent)}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                  <td className={`px-4 py-3 text-sm font-medium ${
                     payment.paymentVariance > 0
                       ? "text-green-600"
                       : payment.paymentVariance < 0
@@ -744,11 +647,9 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
                   }`}>
                     {payment.paymentVariance > 0 ? "+" : ""}
                     {formatCurrency(Math.abs(payment.paymentVariance || 0))}
-                    {payment.paymentVariance > 0 ? " (Overpaid)" :
-                     payment.paymentVariance < 0 ? " (Underpaid)" : ""}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
                       <span className={`text-sm font-medium ${
                         payment.newBalance < 0
                           ? "text-green-600"
@@ -758,183 +659,114 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
                       }`}>
                         {formatCurrency(Math.abs(payment.newBalance || 0))}
                       </span>
-                      <span className="ml-1">
-                        {getBalanceIndicator(payment.newBalance)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {payment.newBalance < 0 ? "Credit" : 
-                       payment.newBalance > 0 ? "Outstanding" : "Balanced"}
+                      {getBalanceIndicator(payment.newBalance)}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-3">
                     {getStatusBadge(payment.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <Link
-                      to={`/payments/${payment._id}`}
-                      className="text-primary-600 hover:text-primary-900 mr-3"
-                    >
-                      View
-                    </Link>
-                    {payment.status === "pending" && (
-                      <button
-                        onClick={() => handleUpdateStatus(payment._id, "completed")}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Mark Paid
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  <td className="px-4 py-3 text-sm">
+                   <Link
+                     to={`/payments/${payment._id}`}
+                     className="text-primary-600 hover:text-primary-900 mr-3"
+                   >
+                     View
+                   </Link>
+                   {payment.status === "pending" && (
+                     <button
+                       onClick={() => handleUpdateStatus(payment._id, "completed")}
+                       className="text-green-600 hover:text-green-900"
+                     >
+                       Mark Paid
+                     </button>
+                   )}
+                 </td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+       </div>
+     )}
 
-      {/* Balance Summary Section */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4 flex items-center">
-          <Calculator className="h-5 w-5 mr-2 text-primary-600" />
-          Balance Summary
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Total Overpayments</h4>
-            <p className="text-xl font-bold text-green-600">
-              {formatCurrency(summary.totalOverpayments)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Credit balance from tenants</p>
-          </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Total Underpayments</h4>
-            <p className="text-xl font-bold text-red-600">
-              {formatCurrency(summary.totalUnderpayments)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Outstanding from tenants</p>
-          </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Net Balance Position</h4>
-            <p className={`text-xl font-bold ${
-              summary.netBalance > 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
-              {formatCurrency(Math.abs(summary.netBalance))}
-              {summary.netBalance > 0 ? ' (Owed)' : ' (Credit)'}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Overall balance status
-            </p>
-          </div>
-        </div>
-
-        {/* Payment Allocation Visualization */}
-        <div className="mt-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Collection Progress</h4>
-          <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500"
-              style={{ 
-                width: `${
-                  payments.length > 0 
-                    ? (payments.filter(p => p.status === 'completed').length / payments.length) * 100 
-                    : 0
-                }%` 
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>{payments.filter(p => p.status === 'completed').length} completed</span>
-            <span>{payments.filter(p => p.status === 'pending').length} pending</span>
-            <span>{payments.filter(p => p.status === 'partial').length} partial</span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Tenant Balance Table */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Tenant Current Balances</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tenant Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Current Balance
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Monthly Rent
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tenants
-                .sort((a, b) => (b.currentBalance || 0) - (a.currentBalance || 0))
-                .map((tenant) => (
-                  <tr key={tenant._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {tenant.firstName} {tenant.lastName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      Unit {tenant.unitId?.unitNumber || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className={`text-sm font-medium ${
-                          tenant.currentBalance < 0
-                            ? "text-green-600"
-                            : tenant.currentBalance > 0
-                            ? "text-red-600"
-                            : "text-gray-500"
-                        }`}>
-                          {formatCurrency(Math.abs(tenant.currentBalance || 0))}
-                        </span>
-                        <span className="ml-1">
-                          {getBalanceIndicator(tenant.currentBalance)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        tenant.currentBalance > 100000
-                          ? "bg-red-100 text-red-800"
-                          : tenant.currentBalance > 0
-                          ? "bg-yellow-100 text-yellow-800"
-                          : tenant.currentBalance < 0
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {tenant.currentBalance > 100000
-                          ? "Critical"
-                          : tenant.currentBalance > 0
-                          ? "Outstanding"
-                          : tenant.currentBalance < 0
-                          ? "Credit"
-                          : "Balanced"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(tenant.leaseDetails?.rentAmount || 0)}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
+     {/* Tenant Balance Summary */}
+     <Card className="p-6">
+       <h3 className="text-lg font-medium mb-4">Tenant Current Balances</h3>
+       <div className="overflow-x-auto">
+         <table className="min-w-full divide-y divide-gray-200">
+           <thead className="bg-gray-50">
+             <tr>
+               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Tenant Name
+               </th>
+               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Unit
+               </th>
+               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Current Balance
+               </th>
+               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Status
+               </th>
+               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                 Monthly Rent
+               </th>
+             </tr>
+           </thead>
+           <tbody className="bg-white divide-y divide-gray-200">
+             {tenants
+               .sort((a, b) => (b.currentBalance || 0) - (a.currentBalance || 0))
+               .map((tenant) => (
+                 <tr key={tenant._id} className="hover:bg-gray-50">
+                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                     {tenant.firstName} {tenant.lastName}
+                   </td>
+                   <td className="px-4 py-3 text-sm text-gray-500">
+                     Unit {tenant.unitId?.unitNumber || 'Unknown'}
+                   </td>
+                   <td className="px-4 py-3">
+                     <div className="flex items-center gap-1">
+                       <span className={`text-sm font-medium ${
+                         tenant.currentBalance < 0
+                           ? "text-green-600"
+                           : tenant.currentBalance > 0
+                           ? "text-red-600"
+                           : "text-gray-500"
+                       }`}>
+                         {formatCurrency(Math.abs(tenant.currentBalance || 0))}
+                       </span>
+                       {getBalanceIndicator(tenant.currentBalance)}
+                     </div>
+                   </td>
+                   <td className="px-4 py-3">
+                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                       tenant.currentBalance > 100000
+                         ? "bg-red-100 text-red-800"
+                         : tenant.currentBalance > 0
+                         ? "bg-yellow-100 text-yellow-800"
+                         : tenant.currentBalance < 0
+                         ? "bg-green-100 text-green-800"
+                         : "bg-gray-100 text-gray-800"
+                     }`}>
+                       {tenant.currentBalance > 100000
+                         ? "Critical"
+                         : tenant.currentBalance > 0
+                         ? "Outstanding"
+                         : tenant.currentBalance < 0
+                         ? "Credit"
+                         : "Balanced"}
+                     </span>
+                   </td>
+                   <td className="px-4 py-3 text-sm text-gray-500">
+                     {formatCurrency(tenant.leaseDetails?.rentAmount || 0)}
+                   </td>
+                 </tr>
+               ))}
+           </tbody>
+         </table>
+       </div>
+     </Card>
+   </div>
+ );
 };
 
 export default PropertyPaymentsList;

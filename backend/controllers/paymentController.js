@@ -5,18 +5,6 @@ import Unit from "../models/Unit.js";
 import mongoose from "mongoose";
 import logger from "../utils/logger.js";
 
-// Check if a payment date is within the current payment period
-const isWithinCurrentPaymentPeriod = (paymentDate = new Date()) => {
-  const today = new Date(paymentDate);
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  
-  // Check if we're still in the current month
-  const now = new Date();
-  return now.getMonth() === currentMonth && now.getFullYear() === currentYear;
-};
-
-// backend/controllers/paymentController.js - Corrected createPayment function
 export const createPayment = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -52,11 +40,11 @@ export const createPayment = async (req, res) => {
     // Parse amount paid
     const paidAmount = parseFloat(amountPaid);
     
-    // Calculate amount due
+    // Calculate amount due based on payment type
     let amountDue = 0;
     
     if (type === 'rent') {
-      // For rent payments, always include both previous balance and current rent
+      // For rent payments, always include previous balance + current rent
       amountDue = previousBalance + baseRentAmount;
     } else {
       // For other payments, only previous balance if positive
@@ -86,12 +74,12 @@ export const createPayment = async (req, res) => {
     const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
     
     // Calculate new balance
-    // For rent payments: previous balance + current rent - payment
-    // For other payments: previous balance - payment
     let newBalance;
     if (type === 'rent') {
+      // For rent payments: previous balance + current rent - payment
       newBalance = previousBalance + baseRentAmount - paidAmount;
     } else {
+      // For other payments: previous balance - payment
       newBalance = previousBalance - paidAmount;
     }
     
@@ -175,6 +163,7 @@ export const createPayment = async (req, res) => {
     session.endSession();
   }
 };
+
 // Get a single payment by ID
 export const getPayment = async (req, res) => {
   try {

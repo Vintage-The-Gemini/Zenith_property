@@ -263,3 +263,10 @@
 {"level":"info","message":"Successfully reset all payments and balances","timestamp":"2025-05-09T09:47:14.930Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T09:49:19.705Z"}
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-09T09:49:22.224Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T10:21:36.957Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-05-09T10:21:39.542Z"}
+{"level":"info","message":"Starting payment and balance reset process...","timestamp":"2025-05-09T10:26:27.646Z"}
+{"level":"info","message":"Deleted 2 payments","timestamp":"2025-05-09T10:26:28.089Z"}
+{"level":"info","message":"Reset balances for 23 tenants","timestamp":"2025-05-09T10:26:28.309Z"}
+{"level":"info","message":"Reset balances for 40 units","timestamp":"2025-05-09T10:26:28.533Z"}
+{"level":"info","message":"Successfully reset all payments and balances","timestamp":"2025-05-09T10:26:28.731Z"}
