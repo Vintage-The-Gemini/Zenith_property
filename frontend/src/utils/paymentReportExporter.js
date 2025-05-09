@@ -1,8 +1,8 @@
 // frontend/src/utils/paymentReportExporter.js
 
 import Papa from "papaparse";
-import paymentService from "../services/paymentService"; // Add this import
-import expenseService from "../services/expenseService"; // Add this import
+import paymentService from "../services/paymentService"; 
+import expenseService from "../services/expenseService"; 
 
 /**
  * Export property payments to CSV
@@ -39,11 +39,11 @@ export const exportPropertyPaymentsToCSV = async (
         ? `${payment.tenant.firstName} ${payment.tenant.lastName}`
         : "Unknown",
       Unit: payment.unit ? `Unit ${payment.unit.unitNumber}` : "Unknown",
-      Amount: payment.amount,
-      Due_Amount: payment.dueAmount || payment.amount,
+      Amount: payment.amountPaid,
+      Due_Amount: payment.amountDue || payment.amountPaid,
       Variance:
         payment.paymentVariance ||
-        payment.amount - (payment.dueAmount || payment.amount),
+        payment.amountPaid - (payment.amountDue || payment.amountPaid),
       Previous_Balance: payment.previousBalance || 0,
       New_Balance: payment.newBalance || 0,
       Status: payment.status,
@@ -100,6 +100,11 @@ export const exportPropertyPaymentsToCSV = async (
     combinedData.push({
       Date: "Total Expenses",
       Amount: totalExpenses,
+      Description: "",
+    });
+    combinedData.push({
+      Date: "Net Income",
+      Amount: totalRevenue - totalExpenses,
       Description: "",
     });
     combinedData.push({

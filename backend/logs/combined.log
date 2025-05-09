@@ -325,3 +325,15 @@
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-05-09T12:59:49.797Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:00:44.868Z"}
 {"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-05-09T13:00:47.861Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:07:53.744Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-09T13:07:56.039Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:25:37.991Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-05-09T13:25:40.237Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:34:17.505Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-05-09T13:34:20.240Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:35:52.256Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:35:53.133Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:14.414Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:15.232Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:37.427Z"}
+{"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:39.553Z"}

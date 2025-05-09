@@ -8,15 +8,15 @@ const PaymentBalanceSummary = ({ payments = [], title = "Payment Summary" }) => 
   // Calculate totals and balances
   const totalPaid = payments
     .filter(p => p.status === 'completed')
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
     
   const totalDue = payments
     .filter(p => p.status === 'pending')
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    .reduce((sum, p) => sum + (p.amountDue || 0), 0);
     
   const totalOverdue = payments
     .filter(p => p.status === 'pending' && new Date(p.dueDate) < new Date())
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    .reduce((sum, p) => sum + (p.amountDue || 0), 0);
     
   const totalUnderpaid = payments
     .filter(p => p.paymentVariance < 0)
