@@ -337,3 +337,26 @@
 {"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:15.232Z"}
 {"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:37.427Z"}
 {"level":"error","message":"Error in getRecentActivities: Cannot read properties of undefined (reading 'toLocaleString')","timestamp":"2025-05-09T13:36:39.553Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T13:45:17.660Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-09T13:45:20.020Z"}
+{"level":"error","message":"Error creating expense: Expense validation failed: unit: Cast to ObjectId failed for value \"\" (type string) at path \"unit\" because of \"BSONError\"","timestamp":"2025-05-09T14:08:08.717Z"}
+{"level":"error","message":"Error creating expense: Expense validation failed: unit: Cast to ObjectId failed for value \"\" (type string) at path \"unit\" because of \"BSONError\"","timestamp":"2025-05-09T14:08:10.447Z"}
+{"level":"error","message":"Error creating expense: Expense validation failed: unit: Cast to ObjectId failed for value \"\" (type string) at path \"unit\" because of \"BSONError\"","timestamp":"2025-05-09T14:08:22.985Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T14:10:25.958Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-09T14:10:28.891Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-09T14:21:11.188Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-05-09T14:21:13.271Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-10T11:29:25.989Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-05-10T11:29:29.039Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-18T08:09:17.673Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-18T08:09:19.880Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-23T08:40:40.982Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-05-23T08:40:47.553Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-05-29T13:24:59.832Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-05-29T13:25:02.393Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-06-04T13:16:15.760Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-01.qteiz.mongodb.net","timestamp":"2025-06-04T13:16:16.960Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-06-07T12:19:17.496Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-00.qteiz.mongodb.net","timestamp":"2025-06-07T12:19:18.578Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-06-14T12:20:23.052Z"}
+{"level":"info","message":"MongoDB Connected: cluster0-shard-00-02.qteiz.mongodb.net","timestamp":"2025-06-14T12:20:24.402Z"}

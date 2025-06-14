@@ -11,18 +11,33 @@ const expenseSchema = new mongoose.Schema(
     unit: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
+      // Make unit optional - it can be null for property-wide expenses
+      required: false,
     },
     category: {
       type: String,
-      enum: ["maintenance", "utilities", "taxes", "insurance", "mortgage", "payroll", "marketing", "custom"],
+      enum: [
+        "maintenance",
+        "utilities",
+        "taxes",
+        "insurance",
+        "mortgage",
+        "payroll",
+        "marketing",
+        "custom",
+      ],
       required: true,
     },
     customCategory: {
       type: String,
+      required: function () {
+        return this.category === "custom";
+      },
     },
     amount: {
       type: Number,
       required: true,
+      min: 0,
     },
     date: {
       type: Date,
@@ -51,61 +66,17 @@ const expenseSchema = new mongoose.Schema(
       frequency: {
         type: String,
         enum: ["weekly", "monthly", "quarterly", "annually"],
-        default: "monthly",
       },
-      nextDue: Date,
     },
-    // Optional attachments/receipts
-    attachments: [
-      {
-        name: String,
-        path: String,
-        uploadDate: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Pre-save hook to set nextDue date for recurring expenses
-expenseSchema.pre("save", function (next) {
-  if (this.isModified("recurring.isRecurring") || this.isModified("recurring.frequency") || this.isNew) {
-    if (this.recurring.isRecurring) {
-      const baseDate = this.date;
-      let nextDue;
-      
-      switch (this.recurring.frequency) {
-        case "weekly":
-          nextDue = new Date(baseDate);
-          nextDue.setDate(nextDue.getDate() + 7);
-          break;
-        case "monthly":
-          nextDue = new Date(baseDate);
-          nextDue.setMonth(nextDue.getMonth() + 1);
-          break;
-        case "quarterly":
-          nextDue = new Date(baseDate);
-          nextDue.setMonth(nextDue.getMonth() + 3);
-          break;
-        case "annually":
-          nextDue = new Date(baseDate);
-          nextDue.setFullYear(nextDue.getFullYear() + 1);
-          break;
-        default:
-          nextDue = new Date(baseDate);
-          nextDue.setMonth(nextDue.getMonth() + 1);
-      }
-      
-      this.recurring.nextDue = nextDue;
-    }
-  }
-  
-  next();
-});
+// Index for efficient queries
+expenseSchema.index({ property: 1, date: -1 });
+expenseSchema.index({ unit: 1, date: -1 });
+expenseSchema.index({ category: 1 });
 
 export default mongoose.model("Expense", expenseSchema);

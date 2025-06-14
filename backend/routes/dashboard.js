@@ -1,20 +1,14 @@
 // backend/routes/dashboard.js
 import express from "express";
-import {
-  getDashboardStats,
-  getRecentActivities,
-} from "../controllers/dashboardController.js";
 import auth from "../middleware/auth.js";
+import { getDashboardSummary } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
-// Apply authentication to all routes
+// Apply authentication to all dashboard routes
 router.use(auth);
 
-// Get dashboard statistics
-router.get("/stats", getDashboardStats);
-
-// Get recent activities
-router.get("/activities", getRecentActivities);
+// Dashboard routes
+router.get("/summary", getDashboardSummary);
 
 export default router;

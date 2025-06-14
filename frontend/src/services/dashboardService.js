@@ -1,36 +1,21 @@
 // frontend/src/services/dashboardService.js
 import api from "./api";
+import { getErrorMessage } from "../utils/errorHandling";
 
 /**
- * Get dashboard summary statistics
- * @returns {Promise<Object>} Dashboard stats
+ * Get dashboard summary data
+ * @returns {Promise<Object>} Dashboard summary
  */
-export const getDashboardStats = async () => {
+export const getDashboardSummary = async () => {
   try {
-    const response = await api.get("/dashboard/stats");
+    const response = await api.get("/dashboard/summary");
     return response.data;
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
-    throw error;
-  }
-};
-
-/**
- * Get recent activities for dashboard
- * @param {number} limit - Number of activities to fetch
- * @returns {Promise<Array>} Recent activities
- */
-export const getRecentActivities = async (limit = 5) => {
-  try {
-    const response = await api.get(`/dashboard/activities?limit=${limit}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching recent activities:", error);
-    throw error;
+    console.error("Error fetching dashboard summary:", error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
 export default {
-  getDashboardStats,
-  getRecentActivities,
+  getDashboardSummary,
 };

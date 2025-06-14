@@ -172,11 +172,7 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
       return;
     }
 
-    if (
-      !formData.amount ||
-      isNaN(formData.amount) ||
-      parseFloat(formData.amount) <= 0
-    ) {
+    if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
       setError("Please enter a valid amount");
       return;
     }
@@ -191,7 +187,6 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
       return;
     }
 
-    // Additional validation for custom category
     if (formData.category === "custom" && !formData.customCategory) {
       setError("Custom category name is required");
       return;
@@ -205,6 +200,11 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
         ...formData,
         amount: parseFloat(formData.amount),
       };
+
+      // If unit is empty string, don't include it
+      if (!expenseData.unit || expenseData.unit === "") {
+        delete expenseData.unit;
+      }
 
       await onSubmit(expenseData);
     } catch (err) {
@@ -465,82 +465,82 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
           </div>
 
           {formData.recurring.isRecurring && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Frequency
-              </label>
-              <select
-                name="recurring.frequency"
-                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-                value={formData.recurring.frequency}
-                onChange={handleChange}
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="annually">Annually</option>
-              </select>
-            </div>
-          )}
-        </div>
+           <div>
+             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+               Frequency
+             </label>
+             <select
+               name="recurring.frequency"
+               className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+               value={formData.recurring.frequency}
+               onChange={handleChange}
+             >
+               <option value="weekly">Weekly</option>
+               <option value="monthly">Monthly</option>
+               <option value="quarterly">Quarterly</option>
+               <option value="annually">Annually</option>
+             </select>
+           </div>
+         )}
+       </div>
 
-        {/* Summary Card */}
-        {selectedProperty && formData.amount && (
-          <Card className="p-4 bg-gray-50 dark:bg-gray-800">
-            <h3 className="text-sm font-medium mb-3">Expense Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Property</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {selectedProperty.name}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Amount</p>
-                <p className="font-medium text-red-600 dark:text-red-400">
-                  {formatCurrency(formData.amount)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Category</p>
-                <p className="font-medium text-gray-900 dark:text-white capitalize">
-                  {formData.category === "custom" ? formData.customCategory : formData.category}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Date</p>
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {new Date(formData.date).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
+       {/* Summary Card */}
+       {selectedProperty && formData.amount && (
+         <Card className="p-4 bg-gray-50 dark:bg-gray-800">
+           <h3 className="text-sm font-medium mb-3">Expense Summary</h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div>
+               <p className="text-sm text-gray-500 dark:text-gray-400">Property</p>
+               <p className="font-medium text-gray-900 dark:text-white">
+                 {selectedProperty.name}
+               </p>
+             </div>
+             <div>
+               <p className="text-sm text-gray-500 dark:text-gray-400">Amount</p>
+               <p className="font-medium text-red-600 dark:text-red-400">
+                 {formatCurrency(formData.amount)}
+               </p>
+             </div>
+             <div>
+               <p className="text-sm text-gray-500 dark:text-gray-400">Category</p>
+               <p className="font-medium text-gray-900 dark:text-white capitalize">
+                 {formData.category === "custom" ? formData.customCategory : formData.category}
+               </p>
+             </div>
+             <div>
+               <p className="text-sm text-gray-500 dark:text-gray-400">Date</p>
+               <p className="font-medium text-gray-900 dark:text-white">
+                 {new Date(formData.date).toLocaleDateString()}
+               </p>
+             </div>
+           </div>
+         </Card>
+       )}
 
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading
-              ? "Saving..."
-              : initialData
-              ? "Update Expense"
-              : "Add Expense"}
-          </button>
-        </div>
-      </form>
-    </Card>
-  );
+       <div className="flex justify-end gap-3 pt-4">
+         <button
+           type="button"
+           onClick={onCancel}
+           className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+           disabled={loading}
+         >
+           Cancel
+         </button>
+         <button
+           type="submit"
+           className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+           disabled={loading}
+         >
+           {loading
+             ? "Saving..."
+             : initialData
+             ? "Update Expense"
+             : "Add Expense"}
+         </button>
+       </div>
+     </form>
+   </Card>
+ );
 };
 
 export default ExpenseForm;

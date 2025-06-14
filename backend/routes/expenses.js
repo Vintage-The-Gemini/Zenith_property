@@ -2,33 +2,27 @@
 import express from "express";
 import {
   getExpenses,
-  getExpense,
+  getExpenseById,  // Changed from getExpense to getExpenseById
   createExpense,
   updateExpense,
   deleteExpense,
   getExpensesByProperty,
-  getExpensesByUnit
+  getExpensesByUnit,
+  getExpenseSummary,
 } from "../controllers/expenseController.js";
 import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Apply authentication
+// Apply authentication middleware
 router.use(auth);
 
-// Get all expenses
+// Expense routes
 router.get("/", getExpenses);
-
-// Get expense by ID
-router.get("/:id", getExpense);
-
-// Create expense
+router.get("/summary", getExpenseSummary);
+router.get("/:id", getExpenseById);  // Using getExpenseById instead of getExpense
 router.post("/", createExpense);
-
-// Update expense
 router.put("/:id", updateExpense);
-
-// Delete expense
 router.delete("/:id", deleteExpense);
 
 // Get expenses by property

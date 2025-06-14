@@ -1,146 +1,80 @@
 // backend/controllers/dashboardController.js
 import Property from "../models/Property.js";
-import Tenant from "../models/Tenant.js";
 import Unit from "../models/Unit.js";
+import Tenant from "../models/Tenant.js";
 import Payment from "../models/Payment.js";
-import Maintenance from "../models/Maintenance.js"; // Using the same spelling as the file
+import Expense from "../models/Expense.js";
 import logger from "../utils/logger.js";
 
-export const getDashboardStats = async (req, res) => {
+export const getDashboardSummary = async (req, res) => {
   try {
-    // Count properties
-    const propertiesCount = await Property.countDocuments();
+    // Get basic counts
+    const totalProperties = await Property.countDocuments();
+    const totalUnits = await Unit.countDocuments();
+    const totalTenants = await Tenant.countDocuments({ status: "active" });
+    const occupiedUnits = await Unit.countDocuments({ status: "occupied" });
+    const availableUnits = await Unit.countDocuments({ status: "available" });
 
-    // Count units and calculate occupancy
-    const units = await Unit.find();
-    const totalUnits = units.length;
-    const occupiedUnits = units.filter(
-      (unit) => unit.status === "occupied"
-    ).length;
-    const occupancyRate =
-      totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+    // Calculate occupancy rate
+    const occupancyRate = totalUnits > 0 
+      ? Math.round((occupiedUnits / totalUnits) * 100) 
+      : 0;
 
-    // Count tenants
-    const tenantsCount = await Tenant.countDocuments();
-
-    // Calculate monthly revenue from payments
+    // Get financial data
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59
-    );
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-    const completedPayments = await Payment.find({
-      status: "completed",
-      paymentDate: { $gte: startOfMonth, $lte: endOfMonth },
+    // Get this month's payments
+    const monthlyPayments = await Payment.find({
+      paymentDate: {
+        $gte: new Date(currentYear, currentMonth, 1),
+        $lte: new Date(currentYear, currentMonth + 1, 0)
+      },
+      status: "completed"
     });
 
-    const monthlyRevenue = completedPayments.reduce(
-      (total, payment) => total + payment.amount,
-      0
+    const monthlyRevenue = monthlyPayments.reduce((sum, payment) => 
+      sum + (payment.amountPaid || 0), 0
     );
 
-    // Year to date revenue
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const ytdPayments = await Payment.find({
-      status: "completed",
-      paymentDate: { $gte: startOfYear, $lte: now },
-    });
-
-    const yearToDateRevenue = ytdPayments.reduce(
-      (total, payment) => total + payment.amount,
-      0
+    // Get all completed payments
+    const totalPayments = await Payment.find({ status: "completed" });
+    const totalRevenue = totalPayments.reduce((sum, payment) => 
+      sum + (payment.amountPaid || 0), 0
     );
 
-    // Count pending maintenance
-    const pendingMaintenance = await Maintenance.countDocuments({
-      status: { $in: ["pending", "in_progress"] },
-    });
-
-    // Count pending payments (overdue payments)
-    const pendingPayments = await Payment.find({
-      status: "pending",
-      dueDate: { $lt: now },
-    });
-
-    const pendingRevenue = pendingPayments.reduce(
-      (total, payment) => total + payment.amount,
-      0
+    // Get expenses
+    const expenses = await Expense.find({ paymentStatus: "paid" });
+    const totalExpenses = expenses.reduce((sum, expense) => 
+      sum + (expense.amount || 0), 0
     );
 
-    // Return dashboard stats
+    // Calculate net income
+    const netIncome = totalRevenue - totalExpenses;
+
+    // Get outstanding payments
+    const outstandingPayments = await Payment.find({ status: "pending" });
+    const outstandingAmount = outstandingPayments.reduce((sum, payment) => 
+      sum + (payment.amountDue || 0), 0
+    );
+
+    // Return summary
     res.json({
-      totalProperties: propertiesCount,
+      totalProperties,
       totalUnits,
+      totalTenants,
       occupiedUnits,
+      availableUnits,
       occupancyRate,
-      totalTenants: tenantsCount,
       monthlyRevenue,
-      yearToDateRevenue,
-      pendingMaintenance,
-      pendingRevenue,
+      totalRevenue,
+      totalExpenses,
+      netIncome,
+      outstandingPayments: outstandingAmount,
     });
   } catch (error) {
-    logger.error(`Error in getDashboardStats: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const getRecentActivities = async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 5;
-
-    // Get recent payments as activities
-    const recentPayments = await Payment.find()
-      .populate("tenant", "firstName lastName")
-      .populate("unit", "unitNumber")
-      .populate("property", "name")
-      .sort("-createdAt")
-      .limit(limit);
-
-    // Get recent maintenance requests
-    const recentMaintenance = await Maintenance.find()
-      .populate("property", "name")
-      .populate("unit", "unitNumber")
-      .sort("-createdAt")
-      .limit(limit);
-
-    // Combine and transform into activities
-    const paymentActivities = recentPayments.map((payment) => ({
-      id: payment._id,
-      type: "payment",
-      title: `Payment ${
-        payment.status === "completed" ? "Received" : "Recorded"
-      }`,
-      description: `${payment.tenant.firstName} ${
-        payment.tenant.lastName
-      } - KES ${payment.amount.toLocaleString()} for ${
-        payment.property.name
-      } Unit ${payment.unit.unitNumber}`,
-      date: payment.createdAt,
-    }));
-
-    const maintenanceActivities = recentMaintenance.map((maintenance) => ({
-      id: maintenance._id,
-      type: "maintenance",
-      title: `Maintenance Request ${maintenance.status}`,
-      description: `${maintenance.issue} - ${maintenance.property.name} Unit ${maintenance.unit.unitNumber}`,
-      date: maintenance.createdAt,
-    }));
-
-    // Combine, sort by date (newest first) and limit
-    const allActivities = [...paymentActivities, ...maintenanceActivities]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, limit);
-
-    res.json(allActivities);
-  } catch (error) {
-    logger.error(`Error in getRecentActivities: ${error.message}`);
+    logger.error(`Error fetching dashboard summary: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
