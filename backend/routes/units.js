@@ -1,25 +1,51 @@
-// routes/units.js
+// backend/routes/units.js
 import express from 'express';
-import { 
-  getUnits, 
-  getUnit, 
-  createUnit, 
-  updateUnit, 
-  addMaintenanceRecord, 
-  updateUnitStatus 
+import {
+  getUnits,
+  getUnitById,
+  createUnit,
+  updateUnit,
+  deleteUnit
 } from '../controllers/unitController.js';
 import auth from '../middleware/auth.js';
-import { upload } from '../middleware/upload.js';
+import { checkPermission } from '../middleware/rbac.js';
+import { validateUnit, validate } from '../middleware/validators.js';
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(auth);
 
-router.get('/', getUnits);
-router.get('/:id', getUnit);
-router.post('/', createUnit);
-router.put('/:id', upload.array('images'), updateUnit);
-router.post('/:id/maintenance', addMaintenanceRecord);
-router.put('/:id/status', updateUnitStatus);
+// GET /api/units - Get all units with filtering
+router.get('/', 
+  checkPermission('units', 'read'),
+  getUnits
+);
+
+// POST /api/units - Create new unit
+router.post('/', 
+  checkPermission('units', 'create'),
+  validateUnit,
+  validate,
+  createUnit
+);
+
+// GET /api/units/:id - Get single unit
+router.get('/:id', 
+  checkPermission('units', 'read'),
+  getUnitById
+);
+
+// PUT /api/units/:id - Update unit
+router.put('/:id', 
+  checkPermission('units', 'update'),
+  updateUnit
+);
+
+// DELETE /api/units/:id - Delete unit
+router.delete('/:id', 
+  checkPermission('units', 'delete'),
+  deleteUnit
+);
 
 export default router;

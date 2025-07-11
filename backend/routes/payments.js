@@ -1,44 +1,55 @@
 // backend/routes/payments.js
-import express from "express";
+import express from 'express';
 import {
-  getPayments,
-  getPayment,
   createPayment,
-  updatePaymentStatus,
-  getPaymentsByTenant,
-  getPaymentsByProperty,
-  getPaymentsByUnit,
-  getPaymentSummary,
-} from "../controllers/paymentController.js";
-import auth from "../middleware/auth.js";
+  getPayments,
+  getPaymentById,
+  updatePayment,
+  deletePayment,
+  getPaymentAnalytics
+} from '../controllers/paymentController.js';
+import auth from '../middleware/auth.js';
+import { checkPermission } from '../middleware/rbac.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
+// All routes require authentication
 router.use(auth);
 
-// Get all payments
-router.get("/", getPayments);
+// GET /api/payments - Get all payments with filtering
+router.get('/', 
+  checkPermission('payments', 'read'),
+  getPayments
+);
 
-// Get payment summary
-router.get("/summary", getPaymentSummary);
+// POST /api/payments - Create new payment
+router.post('/', 
+  checkPermission('payments', 'create'),
+  createPayment
+);
 
-// Get payment by ID
-router.get("/:id", getPayment);
+// GET /api/payments/analytics - Get payment analytics
+router.get('/analytics', 
+  checkPermission('payments', 'read'),
+  getPaymentAnalytics
+);
 
-// Create new payment
-router.post("/", createPayment);
+// GET /api/payments/:id - Get single payment
+router.get('/:id', 
+  checkPermission('payments', 'read'),
+  getPaymentById
+);
 
-// Update payment status
-router.patch("/:id/status", updatePaymentStatus);
+// PUT /api/payments/:id - Update payment
+router.put('/:id', 
+  checkPermission('payments', 'update'),
+  updatePayment
+);
 
-// Get payments by tenant
-router.get("/tenant/:tenantId", getPaymentsByTenant);
-
-// Get payments by property
-router.get("/property/:propertyId", getPaymentsByProperty);
-
-// Get payments by unit
-router.get("/unit/:unitId", getPaymentsByUnit);
+// DELETE /api/payments/:id - Delete payment
+router.delete('/:id', 
+  checkPermission('payments', 'delete'),
+  deletePayment
+);
 
 export default router;
