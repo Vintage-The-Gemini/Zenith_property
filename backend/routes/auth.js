@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Role from '../models/Role.js';
+import auth from '../middleware/auth.js';
 import { generateToken, generateRefreshToken } from '../middleware/auth.js';
 import { validateUser, validate } from '../middleware/validators.js';
 import logger from '../utils/logger.js';
@@ -118,6 +119,31 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     logger.error(`Login error: ${error.message}`);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+/**
+ * GET /api/auth/me - Get current user
+ */
+router.get('/me', auth, async (req, res) => {
+  try {
+    // Get user with role information
+    const user = await User.findById(req.user.id)
+      .populate('role', 'name displayName permissions')
+      .select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+
+  } catch (error) {
+    logger.error(`Get current user error: ${error.message}`);
+    res.status(500).json({ error: 'Failed to get user information' });
   }
 });
 

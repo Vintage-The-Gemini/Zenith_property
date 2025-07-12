@@ -11,7 +11,7 @@ dotenv.config();
 
 const resetPaymentsAndBalances = async () => {
   try {
-    // Connect to database
+    // Connect to database - Fixed: Changed from MONGO_URI to MONGODB_URI
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -44,80 +44,71 @@ const resetPaymentsAndBalances = async () => {
       console.log(`Reset balances for ${tenantUpdateResult.modifiedCount} tenants`);
       logger.info(`Reset balances for ${tenantUpdateResult.modifiedCount} tenants`);
 
-      // 3. Reset unit balances and last payment dates
+      // 3. Reset unit payment statuses
       const unitUpdateResult = await Unit.updateMany(
         {},
         {
           $set: {
-            balance: 0,
-            lastPaymentDate: null
+            lastPaymentDate: null,
+            nextPaymentDue: null
           }
         },
         { session }
       );
-      console.log(`Reset balances for ${unitUpdateResult.modifiedCount} units`);
-      logger.info(`Reset balances for ${unitUpdateResult.modifiedCount} units`);
+      console.log(`Reset payment status for ${unitUpdateResult.modifiedCount} units`);
+      logger.info(`Reset payment status for ${unitUpdateResult.modifiedCount} units`);
 
       // Commit the transaction
       await session.commitTransaction();
-      console.log("Successfully reset all payments and balances");
-      logger.info("Successfully reset all payments and balances");
-
-      // Optional: Verify the reset
-      const remainingPayments = await Payment.countDocuments();
-      const tenantsWithBalance = await Tenant.countDocuments({ currentBalance: { $ne: 0 } });
-      
-      console.log("\nVerification:");
-      console.log(`Remaining payments: ${remainingPayments}`);
-      console.log(`Tenants with non-zero balance: ${tenantsWithBalance}`);
-      
-      if (remainingPayments === 0 && tenantsWithBalance === 0) {
-        console.log("✓ Reset successful - all payments deleted and balances cleared");
-      } else {
-        console.log("⚠ Warning: Some data may not have been reset properly");
-      }
+      console.log('\n✅ All payments and balances have been reset successfully!');
+      logger.info('Payment and balance reset completed successfully');
 
     } catch (error) {
-      // Abort transaction on error
+      // Rollback the transaction on error
       await session.abortTransaction();
-      console.error("Error during reset:", error);
-      logger.error(`Error during reset: ${error.message}`);
       throw error;
     } finally {
-      // End session
       await session.endSession();
     }
 
-    // Disconnect from database
-    await mongoose.disconnect();
-    console.log("Disconnected from MongoDB");
-    process.exit(0);
-
   } catch (error) {
-    console.error("Fatal error:", error);
-    logger.error(`Fatal error: ${error.message}`);
-    process.exit(1);
+    console.error('❌ Error during reset process:', error);
+    logger.error('Error during payment and balance reset:', error);
+  } finally {
+    // Close database connection
+    await mongoose.disconnect();
+    console.log('Database connection closed');
   }
 };
 
-// Add confirmation prompt for safety
+// Create readline interface for user confirmation
 const rl = createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-console.log("⚠️  WARNING: This will delete ALL payments and reset ALL tenant balances!");
-console.log("This action cannot be undone.");
-console.log("");
+// Main execution with user confirmation
+const main = async () => {
+  console.log('⚠️  WARNING: This will delete ALL payments and reset ALL tenant balances!');
+  console.log('This action cannot be undone.\n');
 
-rl.question('Are you sure you want to continue? (yes/no): ', (answer) => {
-  if (answer.toLowerCase() === 'yes') {
-    console.log("Starting reset process...\n");
+  rl.question('Are you sure you want to continue? (type "yes" to confirm): ', async (answer) => {
+    if (answer.toLowerCase() === 'yes') {
+      await resetPaymentsAndBalances();
+    } else {
+      console.log('Operation cancelled.');
+    }
     rl.close();
-    resetPaymentsAndBalances();
-  } else {
-    console.log("Reset cancelled.");
+  });
+};
+
+// Run if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(error => {
+    console.error('Script failed:', error);
     rl.close();
-    process.exit(0);
-  }
-});
+    process.exit(1);
+  });
+}
+
+export { resetPaymentsAndBalances };

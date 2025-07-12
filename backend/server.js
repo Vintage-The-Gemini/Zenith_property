@@ -11,9 +11,10 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import propertyRoutes from './routes/properties.js';
 import tenantRoutes from './routes/tenants.js';
-// import unitRoutes from './routes/units.js';
+import unitRoutes from './routes/units.js';
 import paymentRoutes from './routes/payments.js';
 import expenseRoutes from './routes/expenses.js';
+import dashboardRoutes from './routes/dashboard.js';
 // import bnbRoutes from './routes/bnb.js';
 
 // Import utilities
@@ -41,7 +42,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Connect to MongoDB
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    // Fixed: Changed from MONGO_URI to MONGODB_URI to match .env file
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     logger.error('Database connection failed:', error);
@@ -53,9 +55,10 @@ const connectDB = async () => {
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/tenants', tenantRoutes);
-// app.use('/api/units', unitRoutes);
+app.use('/api/units', unitRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 // app.use('/api/bnb', bnbRoutes);
 
 // Health check endpoint
@@ -78,9 +81,10 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       properties: '/api/properties',
       tenants: '/api/tenants',
-      // units: '/api/units',
+      units: '/api/units',
       payments: '/api/payments',
       expenses: '/api/expenses',
+      dashboard: '/api/dashboard',
       // bnb: '/api/bnb',
       health: '/api/health'
     }

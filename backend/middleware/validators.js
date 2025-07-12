@@ -29,7 +29,7 @@ export const validateTenant = [
 export const validateUnit = [
   check('propertyId', 'Property ID is required').notEmpty(),
   check('unitNumber', 'Unit number is required').notEmpty(),
-  check('type', 'Unit type must be either rental or bnb').isIn(['rental', 'bnb']),
+  check('type', 'Unit type must be valid').isIn(['rental', 'bnb', 'commercial', 'storage', 'parking', 'mixed']),
   check('specifications.bedrooms', 'Number of bedrooms is required').isNumeric(),
   check('specifications.bathrooms', 'Number of bathrooms is required').isNumeric(),
 ];
