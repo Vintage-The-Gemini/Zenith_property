@@ -1,0 +1,96 @@
+{
+  "name": "Palvoria Properties Kenya",
+  "short_name": "Palvoria",
+  "description": "Kenya's Premier Real Estate Platform - Find Your Perfect Property",
+  "lang": "en-KE",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0284c7",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "categories": ["real estate", "property", "kenya", "housing"],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-home.png",
+      "type": "image/png",
+      "sizes": "540x960",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshots/desktop-home.png", 
+      "type": "image/png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/palvoria-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Properties",
+      "short_name": "Search",
+      "description": "Search for properties in Kenya",
+      "url": "/properties",
+      "icons": [{ "src": "/palvoria-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Saved Properties",
+      "short_name": "Saved",
+      "description": "View your saved properties",
+      "url": "/saved",
+      "icons": [{ "src": "/palvoria-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Contact Agent",
+      "short_name": "Contact",
+      "description": "Get in touch with our agents",
+      "url": "/contact",
+      "icons": [{ "src": "/palvoria-logo.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=ke.co.palvoriaproperties",
+      "id": "ke.co.palvoriaproperties"
+    }
+  ],
+  "prefer_related_applications": false
+}
