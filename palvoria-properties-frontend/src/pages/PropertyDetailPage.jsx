@@ -155,36 +155,69 @@ export default function PropertyDetailPage() {
   }
 
   return (
-    <div className="bg-white">
+    <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
       <Header />
       
-      {/* Breadcrumb */}
-      <nav className="bg-gray-50 py-4">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-sm">
-            <Link to="/" className="text-gray-500 hover:text-primary-600">Home</Link>
-            <span className="text-gray-300">/</span>
-            <Link to="/properties" className="text-gray-500 hover:text-primary-600">Properties</Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-gray-900">{property.title}</span>
+      {/* Hero Section */}
+      <section className="relative pt-16 lg:pt-20 pb-16 overflow-hidden" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        {/* Parallax Background */}
+        <div className="absolute inset-0 z-0">
+          <img
+            className="w-full h-full object-cover opacity-10 parallax"
+            src={property.images[0]}
+            alt="Property background"
+            style={{ transform: 'scale(1.05)' }}
+          />
+        </div>
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="pt-20 lg:pt-32 text-center">
+            <motion.h1 
+              className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-black mb-8 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2 }}
+            >
+              {property.location.split(',')[0].toUpperCase()}
+            </motion.h1>
+            <motion.h2 
+              className="text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-black mb-8 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 0.2 }}
+            >
+              {property.title.toUpperCase()}
+            </motion.h2>
+            
+            <motion.div
+              className="flex items-center justify-center gap-8 mb-12"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <div className="text-center">
+                <div className="text-3xl lg:text-4xl font-bold text-black mb-2 vogue-heading">{property.price}</div>
+                <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Investment</div>
+              </div>
+            </motion.div>
           </div>
         </div>
-      </nav>
+      </section>
 
-      <main className="py-8">
+      <main className="py-8" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           {/* Back Button */}
           <Link 
             to="/properties" 
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-primary-600 mb-6"
+            className="inline-flex items-center gap-2 text-black hover:text-gray-800 mb-8 text-sm font-semibold uppercase tracking-widest"
           >
             <ChevronLeftIcon className="h-4 w-4" />
-            Back to Properties
+            Back to Collection
           </Link>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-16">
             {/* Main Content */}
-            <div className="lg:col-span-2">
+            <div>
               {/* Image Gallery */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -192,30 +225,15 @@ export default function PropertyDetailPage() {
                 transition={{ duration: 0.6 }}
                 className="relative mb-8"
               >
-                <div className="aspect-[16/10] rounded-xl overflow-hidden bg-gray-200">
+                <div className="aspect-[16/10] overflow-hidden bg-white">
                   <img
                     src={property.images[currentImageIndex]}
                     alt={property.title}
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <button
-                      onClick={() => setIsLiked(!isLiked)}
-                      className="p-2 bg-white/80 rounded-full hover:bg-white transition-colors"
-                    >
-                      {isLiked ? (
-                        <HeartSolidIcon className="h-5 w-5 text-red-500" />
-                      ) : (
-                        <HeartIcon className="h-5 w-5 text-gray-600" />
-                      )}
-                    </button>
-                    <button className="p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
-                      <ShareIcon className="h-5 w-5 text-gray-600" />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-4 right-4 bg-white/80 px-3 py-1 rounded-full text-sm">
-                    <CameraIcon className="h-4 w-4 inline mr-1" />
-                    {property.images.length} photos
+                  <div className="absolute bottom-4 right-4 bg-black text-white px-4 py-2 text-sm font-semibold uppercase tracking-widest">
+                    <CameraIcon className="h-4 w-4 inline mr-2" />
+                    {property.images.length} Images
                   </div>
                 </div>
                 
@@ -225,8 +243,8 @@ export default function PropertyDetailPage() {
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`flex-shrink-0 aspect-square w-16 rounded-lg overflow-hidden ${
-                        currentImageIndex === index ? 'ring-2 ring-primary-500' : ''
+                      className={`flex-shrink-0 aspect-square w-16 overflow-hidden ${
+                        currentImageIndex === index ? 'ring-2 ring-black' : ''
                       }`}
                     >
                       <img
@@ -244,82 +262,72 @@ export default function PropertyDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-center mb-16"
               >
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        property.type === 'Apartment' ? 'bg-blue-100 text-blue-800' :
-                        property.type === 'House' ? 'bg-green-100 text-green-800' :
-                        'bg-purple-100 text-purple-800'
-                      }`}>
-                        {property.type === 'Apartment' ? (
-                          <BuildingOffice2Icon className="h-3 w-3 mr-1" />
-                        ) : property.type === 'House' ? (
-                          <HomeIcon className="h-3 w-3 mr-1" />
-                        ) : (
-                          <BuildingOffice2Icon className="h-3 w-3 mr-1" />
-                        )}
-                        {property.type}
-                      </span>
-                      {property.featured && (
-                        <span className="inline-flex items-center rounded-full bg-accent-500 px-3 py-1 text-sm font-medium text-white">
-                          Featured
-                        </span>
-                      )}
-                    </div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{property.title}</h1>
-                    <div className="flex items-center text-gray-600 mb-4">
-                      <MapPinIcon className="h-5 w-5 mr-1" />
-                      <span>{property.location}</span>
-                    </div>
+                <div className="mb-8">
+                  <span className="inline-block bg-black text-white px-6 py-2 text-sm font-semibold uppercase tracking-widest mb-4">
+                    {property.type}
+                  </span>
+                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-4 vogue-heading leading-none">
+                    PROPERTY
+                    <br />
+                    DETAILS
+                  </h2>
+                  <div className="flex items-center justify-center text-black mb-4">
+                    <MapPinIcon className="h-5 w-5 mr-2" />
+                    <span className="text-lg">{property.location}</span>
                   </div>
-                  
-                  <div className="text-right">
-                    <div className="flex items-center text-primary-600 font-bold text-3xl mb-2">
-                      <CurrencyDollarIcon className="h-8 w-8 mr-1" />
-                      {property.price.replace('KSH', '')}
-                    </div>
-                    <div className="text-sm text-gray-500">Property ID: {property.propertyId}</div>
+                  <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>
+                    Property ID: {property.propertyId}
                   </div>
                 </div>
 
                 {/* Property Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-xl mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
                   {property.bedrooms > 0 && (
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{property.bedrooms}</div>
-                      <div className="text-sm text-gray-600">Bedroom{property.bedrooms > 1 ? 's' : ''}</div>
+                      <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{property.bedrooms}</div>
+                      <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Bedroom{property.bedrooms > 1 ? 's' : ''}</div>
                     </div>
                   )}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{property.bathrooms}</div>
-                    <div className="text-sm text-gray-600">Bathroom{property.bathrooms > 1 ? 's' : ''}</div>
+                    <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{property.bathrooms}</div>
+                    <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Bathroom{property.bathrooms > 1 ? 's' : ''}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{property.area}</div>
-                    <div className="text-sm text-gray-600">Total Area</div>
+                    <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{property.area}</div>
+                    <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Total Area</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{property.yearBuilt}</div>
-                    <div className="text-sm text-gray-600">Year Built</div>
+                    <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{property.yearBuilt}</div>
+                    <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Year Built</div>
                   </div>
                 </div>
 
                 {/* Description */}
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Property</h2>
-                  <p className="text-gray-600 leading-relaxed">{property.description}</p>
+                <div className="mb-16 text-center">
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black mb-8 vogue-heading leading-none">
+                    ABOUT THIS
+                    <br />
+                    PROPERTY
+                  </h2>
+                  <p className="text-lg md:text-xl text-black leading-relaxed max-w-4xl mx-auto" style={{ fontWeight: '300' }}>
+                    {property.description}
+                  </p>
                 </div>
 
                 {/* Features */}
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Property Features</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="text-center">
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black mb-12 vogue-heading leading-none">
+                    PROPERTY
+                    <br />
+                    FEATURES
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                     {property.features.map((feature, index) => (
-                      <div key={index} className="flex items-center">
-                        <div className="w-2 h-2 bg-primary-600 rounded-full mr-3"></div>
-                        <span className="text-gray-700">{feature}</span>
+                      <div key={index} className="flex items-center justify-center md:justify-start">
+                        <div className="w-3 h-3 bg-black mr-4"></div>
+                        <span className="text-black text-lg">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -327,91 +335,6 @@ export default function PropertyDetailPage() {
               </motion.div>
             </div>
 
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="sticky top-8"
-              >
-                {/* Agent Card */}
-                <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Agent</h3>
-                  
-                  <div className="flex items-center mb-4">
-                    <img
-                      src={property.agent.image}
-                      alt={property.agent.name}
-                      className="h-12 w-12 rounded-full object-cover mr-4"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900">{property.agent.name}</div>
-                      <div className="text-sm text-gray-600">Property Specialist</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    <a
-                      href={`tel:${property.agent.phone}`}
-                      className="flex items-center text-gray-700 hover:text-primary-600"
-                    >
-                      <PhoneIcon className="h-4 w-4 mr-2" />
-                      {property.agent.phone}
-                    </a>
-                    <a
-                      href={`mailto:${property.agent.email}`}
-                      className="flex items-center text-gray-700 hover:text-primary-600"
-                    >
-                      <EnvelopeIcon className="h-4 w-4 mr-2" />
-                      {property.agent.email}
-                    </a>
-                  </div>
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setShowContactForm(!showContactForm)}
-                      className="w-full btn-primary"
-                    >
-                      Request Information
-                    </button>
-                    <a
-                      href={`tel:${property.agent.phone}`}
-                      className="w-full btn-secondary text-center block"
-                    >
-                      Call Now
-                    </a>
-                  </div>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Summary</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Property Type:</span>
-                      <span className="font-medium">{property.type}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Location:</span>
-                      <span className="font-medium">{property.location}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Year Built:</span>
-                      <span className="font-medium">{property.yearBuilt}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Area:</span>
-                      <span className="font-medium">{property.area}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Property ID:</span>
-                      <span className="font-medium">{property.propertyId}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
           </div>
         </div>
       </main>
