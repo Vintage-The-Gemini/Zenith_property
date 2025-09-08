@@ -152,6 +152,97 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Services Section */}
+      <section className="py-32" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="text-center mb-20">
+            <motion.h2 
+              className="text-5xl md:text-7xl lg:text-8xl font-bold text-black mb-8 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1 }}
+            >
+              YOUR NAIROBI
+              <br />
+              JOURNEY
+            </motion.h2>
+            <motion.p 
+              className="text-lg md:text-xl text-black max-w-3xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              style={{ fontWeight: '300' }}
+            >
+              Whether you're ready to buy, sell, or rent — we've curated the perfect path for your Nairobi property dreams.
+            </motion.p>
+          </div>
+
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.4 }}
+          >
+            {/* Buy */}
+            <div className="group text-center">
+              <div className="mb-8">
+                <div className="w-24 h-24 bg-black mx-auto mb-6 flex items-center justify-center">
+                  <div className="text-white text-3xl font-bold vogue-heading">B</div>
+                </div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">BUY</h3>
+                <p className="text-black leading-relaxed mb-8" style={{ fontWeight: '300' }}>
+                  Discover your perfect Nairobi home. From Westlands penthouses to Karen estates — we'll find your forever address.
+                </p>
+              </div>
+              <Link 
+                to="/properties" 
+                className="bg-black text-white px-8 py-3 text-sm font-semibold hover:bg-gray-800 transition-all duration-300 uppercase tracking-widest group-hover:scale-105"
+              >
+                Browse Properties
+              </Link>
+            </div>
+
+            {/* Sell */}
+            <div className="group text-center">
+              <div className="mb-8">
+                <div className="w-24 h-24 bg-black mx-auto mb-6 flex items-center justify-center">
+                  <div className="text-white text-3xl font-bold vogue-heading">S</div>
+                </div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">SELL</h3>
+                <p className="text-black leading-relaxed mb-8" style={{ fontWeight: '300' }}>
+                  Ready to move on? We'll showcase your property to Nairobi's most discerning buyers with unmatched expertise.
+                </p>
+              </div>
+              <Link 
+                to="/contact" 
+                className="bg-black text-white px-8 py-3 text-sm font-semibold hover:bg-gray-800 transition-all duration-300 uppercase tracking-widest group-hover:scale-105"
+              >
+                Sell With Us
+              </Link>
+            </div>
+
+            {/* Rent */}
+            <div className="group text-center">
+              <div className="mb-8">
+                <div className="w-24 h-24 bg-black mx-auto mb-6 flex items-center justify-center">
+                  <div className="text-white text-3xl font-bold vogue-heading">R</div>
+                </div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">RENT</h3>
+                <p className="text-black leading-relaxed mb-8" style={{ fontWeight: '300' }}>
+                  Flexible living in Nairobi's prime locations. From short stays to long-term homes — find your perfect rental.
+                </p>
+              </div>
+              <Link 
+                to="/contact" 
+                className="bg-black text-white px-8 py-3 text-sm font-semibold hover:bg-gray-800 transition-all duration-300 uppercase tracking-widest group-hover:scale-105"
+              >
+                Find Rentals
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Neighborhoods Section */}
       <section className="py-32" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
         <div className="mx-auto max-w-7xl px-4 lg:px-8">

@@ -13,9 +13,9 @@ import Footer from '../components/Footer'
 const contactInfo = [
   {
     name: 'Phone',
-    value: '+254 700 123 456',
+    value: '+254 757 880 789',
     icon: PhoneIcon,
-    href: 'tel:+254700123456'
+    href: 'tel:+254757880789'
   },
   {
     name: 'Email',

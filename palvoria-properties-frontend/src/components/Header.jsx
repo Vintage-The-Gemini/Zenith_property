@@ -23,21 +23,21 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed top-6 left-6 right-6 z-50">
-      <nav className="flex items-center justify-between px-6 lg:px-12 py-4 bg-black mx-auto max-w-6xl" aria-label="Global">
+    <header className="fixed top-3 left-3 right-3 md:top-6 md:left-6 md:right-6 z-50">
+      <nav className="flex items-center justify-between px-4 md:px-6 lg:px-12 py-3 md:py-4 bg-white shadow-lg mx-auto max-w-6xl" aria-label="Global">
         <div className="flex lg:flex-1">
           <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-3">
             <span className="sr-only">Palvoria Properties - Nairobi's Premier Real Estate</span>
             <img 
               src={palvoriaLogo} 
               alt="Palvoria Properties Logo" 
-              className="h-8 lg:h-10 w-auto"
+              className="h-6 md:h-8 lg:h-10 w-auto"
             />
-            <div className="hidden md:block">
-              <div className="text-lg lg:text-xl font-bold text-white vogue-heading">
+            <div className="hidden sm:block">
+              <div className="text-sm md:text-lg lg:text-xl font-bold text-black vogue-heading">
                 PALVORIA
               </div>
-              <div className="text-xs text-yellow-400 -mt-1">
+              <div className="text-xs text-gray-600 -mt-1">
                 Nairobi Properties
               </div>
             </div>
@@ -46,7 +46,7 @@ export default function Header() {
         <div className="flex md:hidden">
           <button
             type="button"
-            className="-m-2.5 inline-flex items-center justify-center p-2.5 text-white hover:text-yellow-400 transition-all duration-200"
+            className="-m-2.5 inline-flex items-center justify-center p-2.5 text-black hover:text-gray-600 transition-all duration-200"
             onClick={() => setMobileMenuOpen(true)}
           >
             <span className="sr-only">Open main menu</span>
@@ -60,8 +60,8 @@ export default function Header() {
               to={item.href}
               className={`text-sm font-semibold leading-6 transition-all duration-200 px-3 py-2 ${
                 isActive(item.href)
-                  ? 'text-yellow-400 border-b-2 border-yellow-400'
-                  : 'text-gray-300 hover:text-yellow-400'
+                  ? 'text-black border-b-2 border-black'
+                  : 'text-gray-600 hover:text-black'
               }`}
             >
               {item.name}
@@ -71,7 +71,7 @@ export default function Header() {
         <div className="hidden md:flex md:flex-1 md:justify-end">
           <Link 
             to="/contact" 
-            className="bg-yellow-400 px-4 lg:px-6 py-2 lg:py-3 text-sm font-semibold text-black hover:bg-yellow-300 transition-all duration-200"
+            className="bg-black px-4 lg:px-6 py-2 lg:py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-all duration-200"
           >
             Contact
           </Link>
@@ -143,7 +143,7 @@ export default function Header() {
                       className="mt-4 block bg-black px-4 py-3 text-center text-sm font-semibold text-white hover:bg-gray-800 transition-all duration-200"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Let's Chat! 💬
+                      Contact Us
                     </Link>
                   </div>
                 </div>

@@ -14,7 +14,10 @@
       "Bash(PORT=5002 npm start)",
       "Bash(git log:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(PORT=5000 npm run dev)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

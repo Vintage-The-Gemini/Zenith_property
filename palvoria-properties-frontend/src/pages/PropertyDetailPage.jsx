@@ -52,7 +52,7 @@ const propertyData = {
     propertyId: 'PV-WL-001',
     agent: {
       name: 'Sarah Wanjiku',
-      phone: '+254 700 123 456',
+      phone: '+254 757 880 789',
       email: 'sarah@palvoriaproperties.co.ke',
       image: 'https://images.unsplash.com/photo-1494790108755-2616b612b9c3?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80'
     }

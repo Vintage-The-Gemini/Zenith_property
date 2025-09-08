@@ -174,7 +174,7 @@ export default function Footer() {
                   </li>
                   <li>
                     <p className="text-sm leading-6" style={{ color: 'var(--white-secondary)' }}>
-                      Phone: +254 700 123 456<br />
+                      Phone: +254 757 880 789<br />
                       Email: info@palvoriaproperties.co.ke
                     </p>
                   </li>
