@@ -1,9 +1,9 @@
 // frontend/src/components/payments/TenantBalanceTable.jsx
 import React from 'react';
-import { CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { CheckCircle, TrendingUp, TrendingDown, CreditCard, FileText } from 'lucide-react';
 import Card from '../ui/Card';
 
-const TenantBalanceTable = ({ tenants, formatCurrency }) => {
+const TenantBalanceTable = ({ tenants, formatCurrency, onRecordPayment, onGenerateStatement }) => {
   const getBalanceIndicator = (balance) => {
     if (balance < 0) {
       return <TrendingUp className="w-4 h-4 text-green-600" title="Credit balance" />;
@@ -34,6 +34,9 @@ const TenantBalanceTable = ({ tenants, formatCurrency }) => {
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Monthly Rent
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Actions
               </th>
             </tr>
           </thead>
@@ -83,6 +86,33 @@ const TenantBalanceTable = ({ tenants, formatCurrency }) => {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                     {formatCurrency(tenant.leaseDetails?.rentAmount || 0)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {onRecordPayment && (
+                        <button
+                          onClick={() => onRecordPayment(tenant)}
+                          className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                            tenant.currentBalance > 0
+                              ? 'text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 focus:ring-primary-500'
+                              : 'text-primary-600 bg-primary-50 hover:bg-primary-100 dark:text-primary-400 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 focus:ring-primary-500'
+                          }`}
+                        >
+                          <CreditCard className="w-3 h-3 mr-1.5" />
+                          {tenant.currentBalance > 0 ? 'Record Payment' : 'Add Credit'}
+                        </button>
+                      )}
+                      {onGenerateStatement && (
+                        <button
+                          onClick={() => onGenerateStatement(tenant)}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 text-gray-600 bg-gray-50 hover:bg-gray-100 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 focus:ring-gray-500"
+                          title="Generate Statement"
+                        >
+                          <FileText className="w-3 h-3 mr-1.5" />
+                          Statement
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

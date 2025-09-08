@@ -1,6 +1,6 @@
 // frontend/src/components/tenants/PaymentFormModal.jsx
 import { useState, useEffect } from "react";
-import { X, DollarSign, AlertCircle } from "lucide-react";
+import { X, Banknote, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 import unitService from "../../services/unitService";
 
@@ -112,7 +112,7 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
       <Card className="max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <DollarSign className="h-6 w-6 text-primary-600" />
+            <Banknote className="h-6 w-6 text-primary-600" />
             <h2 className="text-xl font-medium">Record Payment</h2>
           </div>
           <button
@@ -172,7 +172,7 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
               <input
                 type="number"
                 name="amount"
-                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="no-spinners pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 value={formData.amount}
                 onChange={handleChange}
                 min="0"
@@ -193,7 +193,7 @@ const PaymentFormModal = ({ isOpen, onClose, onSubmit, tenant }) => {
               <input
                 type="number"
                 name="dueAmount"
-                className="pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="no-spinners pl-12 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 value={formData.dueAmount}
                 onChange={handleChange}
                 min="0"

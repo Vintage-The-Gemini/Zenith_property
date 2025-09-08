@@ -6,8 +6,16 @@ import ExpenseForm from "../payments/ExpenseForm";
 import expenseService from "../../services/expenseService";
 import { exportToCSV } from "../../utils/csvExporter";
 
-const PropertyExpensesList = ({ propertyId, propertyName }) => {
+const PropertyExpensesList = ({ 
+  propertyId, 
+  propertyName, 
+  timeFilter = 'all',
+  customStartDate = '',
+  customEndDate = '',
+  refreshTrigger 
+}) => {
   const [expenses, setExpenses] = useState([]);
+  const [allExpenses, setAllExpenses] = useState([]); // Store unfiltered expenses
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,8 +24,6 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
   const [filters, setFilters] = useState({
     category: "",
     status: "",
-    startDate: "",
-    endDate: "",
   });
 
   const [summary, setSummary] = useState({
@@ -27,11 +33,58 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
     byCategory: {},
   });
 
+  // Calculate date range based on time filter
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (timeFilter) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'week':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+        startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'quarter':
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterStart, 1);
+        endDate = new Date(now.getFullYear(), quarterStart + 3, 0, 23, 59, 59);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          startDate = new Date(customStartDate);
+          endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999); // End of day
+        } else {
+          startDate = null;
+          endDate = null;
+        }
+        break;
+      default: // 'all'
+        startDate = null;
+        endDate = null;
+    }
+
+    return { startDate, endDate };
+  };
+
   useEffect(() => {
     if (propertyId) {
       loadExpenses();
     }
-  }, [propertyId]);
+  }, [propertyId, refreshTrigger, timeFilter, customStartDate, customEndDate]);
 
   const loadExpenses = async () => {
     try {
@@ -39,10 +92,28 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
       setError(null);
 
       const data = await expenseService.getExpensesByProperty(propertyId);
-      setExpenses(data);
+      const expensesArray = Array.isArray(data) ? data : [];
 
-      // Calculate summary
-      calculateSummary(data);
+      // Store unfiltered data
+      setAllExpenses(expensesArray);
+
+      // Apply time filter to expenses if specified
+      const { startDate, endDate } = getDateRange();
+      
+      let filteredExpenses = expensesArray;
+
+      if (startDate && endDate) {
+        // Filter expenses by date
+        filteredExpenses = expensesArray.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+      }
+
+      setExpenses(filteredExpenses);
+
+      // Calculate summary with filtered data
+      calculateSummary(filteredExpenses);
     } catch (err) {
       console.error("Error loading expenses:", err);
       setError("Failed to load expense data");
@@ -94,8 +165,6 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
     setFilters({
       category: "",
       status: "",
-      startDate: "",
-      endDate: "",
     });
     setSearchTerm("");
   };
@@ -171,23 +240,6 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
       return false;
     }
 
-    // Apply date range filters
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
-      const expenseDate = new Date(expense.date);
-      if (expenseDate < startDate) {
-        return false;
-      }
-    }
-
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59);
-      const expenseDate = new Date(expense.date);
-      if (expenseDate > endDate) {
-        return false;
-      }
-    }
 
     return true;
   });
@@ -331,37 +383,17 @@ const PropertyExpensesList = ({ propertyId, propertyName }) => {
         </div>
       </div>
 
-      {/* Date Filter */}
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700 dark:text-gray-300">From:</label>
-          <input
-            type="date"
-            name="startDate"
-            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
-            value={filters.startDate}
-            onChange={handleFilterChange}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700 dark:text-gray-300">To:</label>
-          <input
-            type="date"
-            name="endDate"
-            className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
-            value={filters.endDate}
-            onChange={handleFilterChange}
-          />
-        </div>
-        {(filters.category || filters.status || filters.startDate || filters.endDate || searchTerm) && (
+      {/* Reset Filters Button */}
+      {(filters.category || filters.status || searchTerm) && (
+        <div className="flex justify-center">
           <button
             onClick={resetFilters}
             className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
           >
             Reset Filters
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Expenses Table */}
       {expenses.length === 0 ? (

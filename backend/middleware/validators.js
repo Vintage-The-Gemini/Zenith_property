@@ -1,4 +1,4 @@
-// backend/middleware/validators.js
+// middleware/validators.js
 import { check, validationResult } from 'express-validator';
 
 export const validateUser = [
@@ -17,21 +17,12 @@ export const validateProperty = [
   check('propertyType', 'Property type is required').isIn(['apartment', 'house', 'condo', 'commercial', 'mixed-use'])
 ];
 
-export const validateTenant = [
-  check('firstName', 'First name is required').notEmpty(),
-  check('lastName', 'Last name is required').notEmpty(),
-  check('email', 'Valid email is required').isEmail(),
-  check('phone', 'Valid phone number is required').matches(/^(\+254|254|0)[17]\d{8}$/),
-  check('nationalId', 'Valid national ID is required').matches(/^\d{8}$/),
-  check('dateOfBirth', 'Valid date of birth is required').isISO8601()
-];
-
 export const validateUnit = [
   check('propertyId', 'Property ID is required').notEmpty(),
   check('unitNumber', 'Unit number is required').notEmpty(),
-  check('type', 'Unit type must be valid').isIn(['rental', 'bnb', 'commercial', 'storage', 'parking', 'mixed']),
-  check('specifications.bedrooms', 'Number of bedrooms is required').isNumeric(),
-  check('specifications.bathrooms', 'Number of bathrooms is required').isNumeric(),
+  check('type', 'Unit type must be either rental or bnb').isIn(['rental', 'bnb']),
+  check('bedrooms', 'Number of bedrooms is required').isNumeric(),
+  check('bathrooms', 'Number of bathrooms is required').isNumeric(),
 ];
 
 export const validateExpense = [
@@ -47,20 +38,7 @@ export const validateExpense = [
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
-      error: 'Validation failed',
-      details: errors.array()
-    });
+    return res.status(400).json({ errors: errors.array() });
   }
   next();
-};
-
-// Default export for convenience
-export default {
-  validateUser,
-  validateProperty,
-  validateTenant,
-  validateUnit,
-  validateExpense,
-  validate
 };

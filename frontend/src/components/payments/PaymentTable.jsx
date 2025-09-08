@@ -1,7 +1,7 @@
 // frontend/src/components/payments/PaymentTable.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CreditCard, Plus, CheckCircle, Clock, XCircle, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { CreditCard, Plus, CheckCircle, Clock, XCircle, Banknote, TrendingUp, TrendingDown } from 'lucide-react';
 import Card from '../ui/Card';
 
 const PaymentTable = ({ 
@@ -38,7 +38,7 @@ const PaymentTable = ({
       case "partial":
         return (
           <span className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-            <DollarSign className="w-3 h-3 mr-1" />
+            <Banknote className="w-3 h-3 mr-1" />
             Partial
           </span>
         );
@@ -97,10 +97,11 @@ const PaymentTable = ({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-800">
-          <tr>
+    <Card className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-light-primary-200 dark:divide-dark-primary-700">
+          <thead className="bg-light-primary-50 dark:bg-dark-primary-800">
+            <tr>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Date
             </th>
@@ -128,11 +129,11 @@ const PaymentTable = ({
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Actions
             </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            </tr>
+          </thead>
+        <tbody className="bg-white dark:bg-dark-primary-900 divide-y divide-light-primary-100 dark:divide-dark-primary-800">
           {filteredPayments.map((payment) => (
-            <tr key={payment._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+            <tr key={payment._id} className="hover:bg-light-primary-25 dark:hover:bg-dark-primary-800 transition-colors duration-150">
               <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                 {formatDate(payment.paymentDate)}
               </td>
@@ -142,36 +143,36 @@ const PaymentTable = ({
                   : "Unknown"}
               </td>
               <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                {formatCurrency(payment.previousBalance)}
+                {formatCurrency(payment.balanceBeforePayment || 0)}
               </td>
               <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {formatCurrency(payment.amountDue)}
+                {formatCurrency(payment.amountDue || 0)}
               </td>
               <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-300">
-                {formatCurrency(payment.amountPaid)}
+                {formatCurrency(payment.amountPaid || 0)}
               </td>
               <td className={`px-4 py-3 text-sm font-medium ${
-                payment.paymentVariance > 0
+                (payment.amountPaid - payment.amountDue) > 0
                   ? "text-green-600 dark:text-green-400"
-                  : payment.paymentVariance < 0
+                  : (payment.amountPaid - payment.amountDue) < 0
                   ? "text-red-600 dark:text-red-400"
                   : "text-gray-500 dark:text-gray-400"
               }`}>
-                {payment.paymentVariance > 0 ? "+" : ""}
-                {formatCurrency(Math.abs(payment.paymentVariance || 0))}
+                {(payment.amountPaid - payment.amountDue) > 0 ? "+" : ""}
+                {formatCurrency(Math.abs((payment.amountPaid || 0) - (payment.amountDue || 0)))}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1">
                   <span className={`text-sm font-medium ${
-                    payment.newBalance < 0
+                    (payment.balanceAfterPayment || 0) < 0
                       ? "text-green-600 dark:text-green-400"
-                      : payment.newBalance > 0
+                      : (payment.balanceAfterPayment || 0) > 0
                       ? "text-red-600 dark:text-red-400"
                       : "text-gray-500 dark:text-gray-400"
                   }`}>
-                    {formatCurrency(Math.abs(payment.newBalance || 0))}
+                    {formatCurrency(Math.abs(payment.balanceAfterPayment || 0))}
                   </span>
-                  {getBalanceIndicator(payment.newBalance)}
+                  {getBalanceIndicator(payment.balanceAfterPayment)}
                 </div>
               </td>
               <td className="px-4 py-3">
@@ -195,9 +196,10 @@ const PaymentTable = ({
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 };
 

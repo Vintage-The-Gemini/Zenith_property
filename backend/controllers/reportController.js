@@ -52,11 +52,11 @@ export const getFinancialSummary = async (req, res) => {
       // Calculate totals
       const totalRevenue = payments
         .filter((payment) => payment.status === "completed")
-        .reduce((sum, payment) => sum + payment.amount, 0);
+        .reduce((sum, payment) => sum + (payment.amountPaid || 0), 0);
   
       const pendingRevenue = payments
         .filter((payment) => payment.status === "pending")
-        .reduce((sum, payment) => sum + payment.amount, 0);
+        .reduce((sum, payment) => sum + (payment.amountDue || 0), 0);
   
       const totalExpenses = expenses.reduce(
         (sum, expense) => sum + expense.amount,
@@ -83,7 +83,7 @@ export const getFinancialSummary = async (req, res) => {
           };
         }
   
-        revenueByMonth[monthYear].revenue += payment.amount;
+        revenueByMonth[monthYear].revenue += (payment.amountPaid || 0);
       });
   
       // Group expenses by month
@@ -126,7 +126,7 @@ export const getFinancialSummary = async (req, res) => {
           };
         }
   
-        revenueByProperty[propId].revenue += payment.amount;
+        revenueByProperty[propId].revenue += (payment.amountPaid || 0);
       });
   
       // Add expenses to property revenue

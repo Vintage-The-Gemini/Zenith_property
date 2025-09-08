@@ -100,7 +100,7 @@ const TenantFormModal = ({
 
       fetchAvailableUnits();
     }
-  }, [isOpen, initialData, unitInfo, propertyId]);
+  }, [isOpen, initialData, unitInfo, propertyId, isEditMode]);
 
   const fetchAvailableUnits = async (selectedPropertyId = null) => {
     try {
@@ -115,7 +115,30 @@ const TenantFormModal = ({
       }
 
       const response = await getAvailableUnits(propId);
-      setAvailableUnits(response);
+      let allAvailableUnits = [...response];
+
+      // When editing a tenant, include their current unit even if it's occupied
+      if (isEditMode && initialData?.unitId) {
+        const currentUnitId = typeof initialData.unitId === 'object' 
+          ? initialData.unitId._id 
+          : initialData.unitId;
+        
+        // Check if current unit is already in the available units
+        const currentUnitExists = allAvailableUnits.some(unit => unit._id === currentUnitId);
+        
+        if (!currentUnitExists) {
+          // Add current unit to the list
+          const currentUnit = {
+            _id: currentUnitId,
+            unitNumber: initialData.unitId?.unitNumber || 'Unknown',
+            propertyId: initialData.propertyId,
+            status: 'occupied' // Mark it as occupied
+          };
+          allAvailableUnits.unshift(currentUnit); // Add at the beginning
+        }
+      }
+
+      setAvailableUnits(allAvailableUnits);
 
       // If we have unitInfo but no other form data, try to get rent and deposit from the unit
       if (unitInfo && !initialData && response.length > 0) {
@@ -285,9 +308,10 @@ const TenantFormModal = ({
                   <input
                     type="text"
                     name="firstName"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.firstName}
                     onChange={handleChange}
+                    placeholder="Enter first name"
                     required
                   />
                 </div>
@@ -299,9 +323,10 @@ const TenantFormModal = ({
                   <input
                     type="text"
                     name="lastName"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.lastName}
                     onChange={handleChange}
+                    placeholder="Enter last name"
                     required
                   />
                 </div>
@@ -313,9 +338,10 @@ const TenantFormModal = ({
                   <input
                     type="email"
                     name="email"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.email}
                     onChange={handleChange}
+                    placeholder="Enter email address"
                     required
                   />
                 </div>
@@ -327,9 +353,10 @@ const TenantFormModal = ({
                   <input
                     type="tel"
                     name="phone"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.phone}
                     onChange={handleChange}
+                    placeholder="Enter phone number"
                     required
                   />
                 </div>
@@ -380,6 +407,7 @@ const TenantFormModal = ({
                     <option key={unit._id} value={unit._id}>
                       {unit.propertyId?.name || "Property"} - Unit{" "}
                       {unit.unitNumber}
+                      {unit.status === 'occupied' ? ' (Current)' : ''}
                     </option>
                   ))}
                   {unitInfo && (
@@ -403,7 +431,7 @@ const TenantFormModal = ({
                   <input
                     type="date"
                     name="leaseDetails.startDate"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.leaseDetails.startDate}
                     onChange={handleChange}
                   />
@@ -416,7 +444,7 @@ const TenantFormModal = ({
                   <input
                     type="date"
                     name="leaseDetails.endDate"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.leaseDetails.endDate}
                     onChange={handleChange}
                   />
@@ -429,9 +457,10 @@ const TenantFormModal = ({
                   <input
                     type="number"
                     name="leaseDetails.rentAmount"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="no-spinners mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.leaseDetails.rentAmount}
                     onChange={handleChange}
+                    placeholder="Enter monthly rent amount"
                     min="0"
                     step="0.01"
                   />
@@ -444,9 +473,10 @@ const TenantFormModal = ({
                   <input
                     type="number"
                     name="leaseDetails.securityDeposit"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="no-spinners mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.leaseDetails.securityDeposit}
                     onChange={handleChange}
+                    placeholder="Enter security deposit amount"
                     min="0"
                     step="0.01"
                   />
@@ -466,7 +496,7 @@ const TenantFormModal = ({
                   <input
                     type="text"
                     name="emergencyContact.name"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.emergencyContact.name}
                     onChange={handleChange}
                   />
@@ -479,7 +509,7 @@ const TenantFormModal = ({
                   <input
                     type="text"
                     name="emergencyContact.relationship"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.emergencyContact.relationship}
                     onChange={handleChange}
                   />
@@ -492,7 +522,7 @@ const TenantFormModal = ({
                   <input
                     type="tel"
                     name="emergencyContact.phone"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.emergencyContact.phone}
                     onChange={handleChange}
                   />
@@ -505,7 +535,7 @@ const TenantFormModal = ({
                   <input
                     type="email"
                     name="emergencyContact.email"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                     value={formData.emergencyContact.email}
                     onChange={handleChange}
                   />

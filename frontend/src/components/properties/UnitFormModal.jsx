@@ -219,7 +219,7 @@ const UnitFormModal = ({
                 <input
                   type="number"
                   name="monthlyRent"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="no-spinners pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   value={formData.monthlyRent}
                   onChange={handleChange}
                   placeholder="15000"
@@ -276,7 +276,7 @@ const UnitFormModal = ({
                   <input
                     type="number"
                     name="bedrooms"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="no-spinners mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                     value={formData.bedrooms}
                     onChange={handleChange}
                     min="0"
@@ -289,7 +289,7 @@ const UnitFormModal = ({
                   <input
                     type="number"
                     name="bathrooms"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="no-spinners mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                     value={formData.bathrooms}
                     onChange={handleChange}
                     min="0"
@@ -331,7 +331,7 @@ const UnitFormModal = ({
                 <input
                   type="number"
                   name="securityDeposit"
-                  className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className="no-spinners pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   value={formData.securityDeposit}
                   onChange={handleChange}
                   placeholder="0"
@@ -348,7 +348,7 @@ const UnitFormModal = ({
               <input
                 type="number"
                 name="squareFootage"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                className="no-spinners mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 value={formData.squareFootage}
                 onChange={handleChange}
                 placeholder="0"

@@ -1,6 +1,6 @@
 // frontend/src/pages/PropertyDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Edit,
@@ -8,14 +8,15 @@ import {
   Building2,
   Users,
   Home,
-  DollarSign,
+  Banknote,
   Loader2,
   Plus,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Clock,
-  Download, 
+  Download,
+  CreditCard,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import PropertyFormModal from "../components/properties/PropertyFormModal";
@@ -35,7 +36,12 @@ import {
   deleteUnit,
 } from "../services/unitService";
 import floorService from "../services/floorService";
+import expenseService from "../services/expenseService";
+import paymentService from "../services/paymentService";
+import tenantService from "../services/tenantService";
 import { exportPropertyPaymentsToCSV } from '../utils/paymentReportExporter';
+import { exportToCSV } from '../utils/csvExporter';
+import { exportPaymentsToEnhancedCSV, generatePaymentReportFileName } from '../utils/enhancedPaymentExporter';
 // Move this inside the PropertyDetail component
 
 
@@ -43,10 +49,13 @@ import { exportPropertyPaymentsToCSV } from '../utils/paymentReportExporter';
 const PropertyDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  
+  // Get active tab from URL params, default to overview
+  const activeTab = searchParams.get("tab") || "overview";
   const [isPropertyFormModalOpen, setIsPropertyFormModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -57,6 +66,9 @@ const PropertyDetail = () => {
     type: "",
     id: null,
   });
+  
+  // Refresh trigger for cross-component communication
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     loadProperty();
@@ -65,13 +77,51 @@ const PropertyDetail = () => {
   const handleExportPayments = async () => {
     try {
       setExporting(true);
-      await exportPropertyPaymentsToCSV(id, null, null, property.name);
+      
+      // Load comprehensive data for export
+      const [payments, tenants, expenses] = await Promise.all([
+        paymentService.getPaymentsByProperty(id),
+        tenantService.getTenantsByProperty(id),
+        expenseService.getExpensesByProperty(id)
+      ]);
+
+      // Prepare filter information
+      const exportFilters = {
+        timeFilter: 'all', // Default to all time for comprehensive export
+        propertyId: id
+      };
+
+      // Generate enhanced CSV data
+      const csvData = exportPaymentsToEnhancedCSV(
+        payments,
+        expenses,
+        tenants,
+        property,
+        exportFilters
+      );
+
+      // Generate filename
+      const fileName = generatePaymentReportFileName(property, exportFilters);
+
+      // Export the data
+      exportToCSV(csvData, fileName);
+      
       setExporting(false);
     } catch (error) {
       console.error('Error exporting payments:', error);
       setError('Failed to export payments');
       setExporting(false);
     }
+  };
+
+  // Function to handle tab changes and update URL
+  const handleTabChange = (tabName) => {
+    setSearchParams({ tab: tabName });
+  };
+
+  // Function to trigger refresh across components
+  const handleDataRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
   // Load property details
@@ -350,165 +400,90 @@ const PropertyDetail = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/properties")}
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {property.name}
-            </h1>
-            <p className="text-gray-500">
-              {property.address?.street}, {property.address?.city},{" "}
-              {property.address?.state}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsPropertyFormModalOpen(true)}
-            className="inline-flex items-center px-3.5 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <Edit className="h-4 w-4 mr-1.5" />
-            Edit
-          </button>
-          <button
-            onClick={() =>
-              setDeleteConfirm({
-                show: true,
-                type: "property",
-                id: property._id,
-              })
-            }
-            className="inline-flex items-center px-3.5 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
-          >
-            <Trash className="h-4 w-4 mr-1.5" />
-            Delete
-          </button>
-        </div>
+      {/* Back Button - Keep minimal header */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => navigate("/properties")}
+          className="p-3 text-light-primary-500 dark:text-dark-primary-400 hover:bg-light-primary-100 dark:hover:bg-dark-primary-800 rounded-full transition-colors duration-200"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-2xl font-bold text-light-primary-900 dark:text-white">
+          {property.name}
+        </h1>
       </div>
 
-      {/* Property Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 mr-4">
-              <Home className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Units</p>
-              <p className="text-xl font-semibold">{stats.totalUnits}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 mr-4">
-              <Users className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Occupancy</p>
-              <p className="text-xl font-semibold">
-                {stats.occupiedUnits}/{stats.totalUnits} ({stats.occupancyRate}
-                %)
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 mr-4">
-              <Building2 className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Vacant Units</p>
-              <p className="text-xl font-semibold">{stats.vacantUnits}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 mr-4">
-              <DollarSign className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Monthly Revenue</p>
-              <p className="text-xl font-semibold">
-                KES {stats.totalRent.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
+      {/* Enhanced Tabs - Moved to top */}
+      <Card className="p-1 rounded-xl">
+        <nav className="flex space-x-1">
           <button
-            onClick={() => setActiveTab("overview")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            onClick={() => handleTabChange("overview")}
+            className={`py-3 px-6 inline-flex items-center rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === "overview"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "bg-light-accent-600 dark:bg-dark-accent-600 text-white shadow-sm"
+                : "text-light-primary-600 dark:text-dark-primary-300 hover:text-light-accent-600 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800"
             }`}
           >
+            <Building2 className="mr-2 h-4 w-4" />
             Overview
           </button>
           <button
-            onClick={() => setActiveTab("units")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            onClick={() => handleTabChange("units")}
+            className={`py-3 px-6 inline-flex items-center rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === "units"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "bg-light-accent-600 dark:bg-dark-accent-600 text-white shadow-sm"
+                : "text-light-primary-600 dark:text-dark-primary-300 hover:text-light-accent-600 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800"
             }`}
           >
+            <Home className="mr-2 h-4 w-4" />
             Units
           </button>
           <button
-            onClick={() => setActiveTab("tenants")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            onClick={() => handleTabChange("tenants")}
+            className={`py-3 px-6 inline-flex items-center rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === "tenants"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "bg-light-accent-600 dark:bg-dark-accent-600 text-white shadow-sm"
+                : "text-light-primary-600 dark:text-dark-primary-300 hover:text-light-accent-600 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800"
             }`}
           >
+            <Users className="mr-2 h-4 w-4" />
             Tenants
           </button>
           <button
-            onClick={() => setActiveTab("payments")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            onClick={() => handleTabChange("payments")}
+            className={`py-3 px-6 inline-flex items-center rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === "payments"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "bg-light-accent-600 dark:bg-dark-accent-600 text-white shadow-sm"
+                : "text-light-primary-600 dark:text-dark-primary-300 hover:text-light-accent-600 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800"
             }`}
           >
+            <CreditCard className="mr-2 h-4 w-4" />
             Payments
           </button>
           <button
-            onClick={() => setActiveTab("expenses")}
-            className={`py-4 px-1 inline-flex items-center border-b-2 font-medium text-sm ${
+            onClick={() => handleTabChange("expenses")}
+            className={`py-3 px-6 inline-flex items-center rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === "expenses"
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "bg-light-accent-600 dark:bg-dark-accent-600 text-white shadow-sm"
+                : "text-light-primary-600 dark:text-dark-primary-300 hover:text-light-accent-600 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800"
             }`}
           >
-            <DollarSign className="mr-2 h-5 w-5" />
+            <Banknote className="mr-2 h-4 w-4" />
             Expenses
           </button>
         </nav>
-      </div>
+      </Card>
 
       {/* Tab Content */}
       <div className="py-4">
-        {activeTab === "overview" && <PropertyOverview property={property} />}
+        {activeTab === "overview" && (
+          <PropertyOverview 
+            property={property} 
+            stats={stats}
+            onEditProperty={() => setIsPropertyFormModalOpen(true)}
+            onDeleteProperty={() => setDeleteConfirm({ show: true, type: "property", id: property._id })}
+          />
+        )}
 
         {activeTab === "units" && (
           <FloorManagement
@@ -522,33 +497,23 @@ const PropertyDetail = () => {
           <PropertyTenantList
             propertyId={property._id}
             propertyName={property.name}
+            onDataChange={handleDataRefresh}
           />
         )}
 
 {activeTab === "payments" && (
-  <>
-    <div className="flex justify-between mb-4">
-      <h3 className="text-lg font-medium">Property Payments</h3>
-      <button
-        onClick={handleExportPayments}
-        disabled={exporting}
-        className="inline-flex items-center px-3 py-1.5 text-sm text-white bg-primary-600 rounded-md hover:bg-primary-700"
-      >
-        <Download className="h-4 w-4 mr-1.5" />
-        {exporting ? 'Exporting...' : 'Export Payments'}
-      </button>
-    </div>
-    <PropertyPaymentsList
-      propertyId={property._id}
-      propertyName={property.name}
-    />
-  </>
+  <PropertyPaymentsTab
+    property={property}
+    onExportPayments={handleExportPayments}
+    exporting={exporting}
+    refreshTrigger={refreshTrigger}
+  />
 )}
 
         {activeTab === "expenses" && (
-          <PropertyExpensesList
-            propertyId={property._id}
-            propertyName={property.name}
+          <PropertyExpensesTab
+            property={property}
+            refreshTrigger={refreshTrigger}
           />
         )}
       </div>
@@ -619,81 +584,204 @@ const PropertyDetail = () => {
 };
 
 
-// PropertyOverview Component
-const PropertyOverview = ({ property }) => {
+// Enhanced PropertyOverview Component
+const PropertyOverview = ({ property, stats, onEditProperty, onDeleteProperty }) => {
   return (
-    <div className="space-y-6">
-      <Card className="p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+    <div className="space-y-8">
+      {/* Property Header */}
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-light-primary-900 dark:text-white">
+            {property.name}
+          </h1>
+          <p className="text-light-primary-600 dark:text-dark-primary-300 mt-1">
+            {property.address?.street}, {property.address?.city},{" "}
+            {property.address?.state}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onEditProperty}
+            className="inline-flex items-center px-4 py-2.5 border border-light-primary-300 dark:border-dark-primary-600 rounded-lg text-sm font-medium text-light-primary-700 dark:text-dark-primary-300 bg-white dark:bg-dark-primary-900 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800 transition-colors duration-200"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Property
+          </button>
+          <button
+            onClick={onDeleteProperty}
+            className="inline-flex items-center px-4 py-2.5 border border-red-300 dark:border-red-600 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-dark-primary-900 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+          >
+            <Trash className="h-4 w-4 mr-2" />
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Property Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="p-6 rounded-xl hover:shadow-lg transition-all duration-200">
+          <div className="flex items-center">
+            <div className="p-4 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-4">
+              <Home className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+                Total Units
+              </p>
+              <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
+                {stats.totalUnits}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 rounded-xl hover:shadow-lg transition-all duration-200">
+          <div className="flex items-center">
+            <div className="p-4 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
+              <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+                Occupancy Rate
+              </p>
+              <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
+                {stats.occupancyRate}%
+              </p>
+              <p className="text-xs text-light-primary-400 dark:text-dark-primary-500">
+                {stats.occupiedUnits} of {stats.totalUnits} units
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 rounded-xl hover:shadow-lg transition-all duration-200">
+          <div className="flex items-center">
+            <div className="p-4 rounded-full bg-purple-100 dark:bg-purple-900/30 mr-4">
+              <Building2 className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+                Vacant Units
+              </p>
+              <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
+                {stats.vacantUnits}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 rounded-xl hover:shadow-lg transition-all duration-200">
+          <div className="flex items-center">
+            <div className="p-4 rounded-full bg-yellow-100 dark:bg-yellow-900/30 mr-4">
+              <Banknote className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+                Monthly Revenue
+              </p>
+              <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
+                KES {stats.totalRent.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-8 rounded-xl">
+        <h3 className="text-2xl font-bold text-light-primary-900 dark:text-white mb-6">
           Property Information
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Property Type</h4>
-            <p className="mt-1">
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Property Type
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-900 dark:text-white">
               {property.propertyType?.charAt(0).toUpperCase() +
                 property.propertyType?.slice(1) || "Residential"}
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Address</h4>
-            <p className="mt-1">
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Address
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-900 dark:text-white">
               {property.address?.street}, {property.address?.city},{" "}
               {property.address?.state}, {property.address?.zipCode}
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Status</h4>
-            <p className="mt-1">
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Status
+            </h4>
+            <p className="mt-2 flex items-center">
               <span
-                className={`inline-block h-2 w-2 rounded-full mr-1.5 align-middle ${
+                className={`inline-block h-3 w-3 rounded-full mr-2 ${
                   property.status === "active"
-                    ? "bg-green-500"
+                    ? "bg-green-500 dark:bg-green-400"
                     : property.status === "maintenance"
-                    ? "bg-yellow-500"
-                    : "bg-gray-500"
+                    ? "bg-yellow-500 dark:bg-yellow-400"
+                    : "bg-gray-500 dark:bg-gray-400"
                 }`}
               ></span>
-              {property.status?.charAt(0).toUpperCase() +
-                property.status?.slice(1) || "Active"}
+              <span className="text-lg text-light-primary-900 dark:text-white">
+                {property.status?.charAt(0).toUpperCase() +
+                  property.status?.slice(1) || "Active"}
+              </span>
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Date Added</h4>
-            <p className="mt-1">
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Date Added
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-900 dark:text-white">
               {property.createdAt
                 ? new Date(property.createdAt).toLocaleDateString()
                 : "-"}
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Floors</h4>
-            <p className="mt-1">{property.floors?.length || 0}</p>
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Floors
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-900 dark:text-white">
+              {property.floors?.length || 0} floors
+            </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Units</h4>
-            <p className="mt-1">{property.units?.length || 0}</p>
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Total Units
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-900 dark:text-white">
+              {property.units?.length || 0} units
+            </p>
           </div>
         </div>
         {property.description && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-500">Description</h4>
-            <p className="mt-1 text-gray-700">{property.description}</p>
+          <div className="mt-8 pt-8 border-t border-light-primary-200 dark:border-dark-primary-700">
+            <h4 className="text-sm font-semibold text-light-primary-500 dark:text-dark-primary-400 uppercase tracking-wide">
+              Description
+            </h4>
+            <p className="mt-2 text-lg text-light-primary-700 dark:text-dark-primary-200">
+              {property.description}
+            </p>
           </div>
         )}
       </Card>
 
-      {/* Property Amenities */}
+      {/* Enhanced Property Amenities */}
       {property.amenities && property.amenities.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Amenities</h3>
+        <Card className="p-8 rounded-xl">
+          <h3 className="text-2xl font-bold text-light-primary-900 dark:text-white mb-6">
+            Property Amenities
+          </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {property.amenities.map((amenity, index) => (
               <div
                 key={index}
-                className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center"
+                className="bg-light-primary-50 dark:bg-dark-primary-800 rounded-xl p-4 text-center border border-light-primary-100 dark:border-dark-primary-700 hover:bg-light-primary-100 dark:hover:bg-dark-primary-700 transition-colors duration-200"
               >
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-sm font-medium text-light-primary-700 dark:text-dark-primary-200">
                   {amenity.name || amenity}
                 </p>
               </div>
@@ -702,45 +790,52 @@ const PropertyOverview = ({ property }) => {
         </Card>
       )}
 
-      {/* Financial Summary */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+      {/* Enhanced Financial Summary */}
+      <Card className="p-8 rounded-xl">
+        <h3 className="text-2xl font-bold text-light-primary-900 dark:text-white mb-6">
           Financial Summary
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 p-6 rounded-xl border border-green-200 dark:border-green-800">
+            <h4 className="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide mb-2">
               Potential Monthly Income
             </h4>
-            <p className="text-xl font-semibold text-gray-900">
+            <p className="text-2xl font-bold text-green-900 dark:text-green-100">
               KES {getPropertyIncome(property).potential.toLocaleString()}
             </p>
           </div>
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
+            <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">
               Actual Monthly Income
             </h4>
-            <p className="text-xl font-semibold text-gray-900">
+            <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
               KES {getPropertyIncome(property).actual.toLocaleString()}
             </p>
           </div>
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+          <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/40 p-6 rounded-xl border border-red-200 dark:border-red-800">
+            <h4 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">
               Vacancy Loss
             </h4>
-            <p className="text-xl font-semibold text-red-600">
+            <p className="text-2xl font-bold text-red-900 dark:text-red-100">
               KES {getPropertyIncome(property).vacancy.toLocaleString()}
             </p>
           </div>
         </div>
       </Card>
 
-      <Card className="p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+      {/* Enhanced Recent Activity */}
+      <Card className="p-8 rounded-xl">
+        <h3 className="text-2xl font-bold text-light-primary-900 dark:text-white mb-6">
           Recent Activity
         </h3>
-        <div className="text-center py-4">
-          <p className="text-gray-500">No recent activity found.</p>
+        <div className="text-center py-8">
+          <Clock className="mx-auto h-12 w-12 text-light-primary-400 dark:text-dark-primary-400 mb-4" />
+          <p className="text-light-primary-500 dark:text-dark-primary-400">
+            No recent activity found.
+          </p>
+          <p className="text-sm text-light-primary-400 dark:text-dark-primary-500 mt-1">
+            Activity will appear here as you manage your property
+          </p>
         </div>
       </Card>
     </div>
@@ -767,6 +862,264 @@ const getPropertyIncome = (property) => {
     actual,
     vacancy: potential - actual,
   };
+};
+
+// PropertyPaymentsTab Component with Time Filters
+const PropertyPaymentsTab = ({ property, onExportPayments, exporting, refreshTrigger }) => {
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const timeFilterOptions = [
+    { value: 'all', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' },
+    { value: 'year', label: 'This Year' },
+    { value: 'custom', label: 'Custom Range' }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Time Filters Section */}
+      <Card className="p-4 rounded-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Filter by Time:
+            </h4>
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+            >
+              {timeFilterOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Custom Date Range */}
+          {timeFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-gray-500">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+              />
+            </div>
+          )}
+
+          <div className="lg:ml-auto">
+            <button
+              onClick={onExportPayments}
+              disabled={exporting}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 rounded-md transition-colors duration-200 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? 'Exporting...' : 'Export Payments'}
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Payments Content */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Property Payments
+        </h3>
+        <PropertyPaymentsList
+          propertyId={property._id}
+          propertyName={property.name}
+          refreshTrigger={refreshTrigger}
+          timeFilter={timeFilter}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+        />
+      </div>
+    </div>
+  );
+};
+
+// PropertyExpensesTab Component with Time Filters
+const PropertyExpensesTab = ({ property, refreshTrigger }) => {
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const timeFilterOptions = [
+    { value: 'all', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' },
+    { value: 'year', label: 'This Year' },
+    { value: 'custom', label: 'Custom Range' }
+  ];
+
+  const handleExportExpenses = async () => {
+    try {
+      const data = await expenseService.getExpensesByProperty(property._id);
+      const expensesArray = Array.isArray(data) ? data : [];
+
+      // Apply time filtering for export
+      const { startDate, endDate } = getDateRange();
+      let filteredExpenses = expensesArray;
+
+      if (startDate && endDate) {
+        filteredExpenses = expensesArray.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+      }
+
+      const exportData = filteredExpenses.map(expense => ({
+        Date: new Date(expense.date).toLocaleDateString(),
+        Category: expense.category === 'custom' ? expense.customCategory : expense.category,
+        Amount: expense.amount,
+        Status: expense.paymentStatus,
+        Description: expense.description,
+        Vendor: expense.vendor?.name || 'N/A',
+        Invoice: expense.vendor?.invoiceNumber || 'N/A',
+        Unit: expense.unit ? `Unit ${expense.unit.unitNumber}` : 'N/A',
+        Recurring: expense.recurring?.isRecurring ? 'Yes' : 'No',
+        Frequency: expense.recurring?.isRecurring ? expense.recurring.frequency : 'N/A',
+      }));
+
+      const fileName = `${property.name}_expenses_${timeFilter !== 'all' ? timeFilter + '_' : ''}${new Date().toISOString().split('T')[0]}.csv`;
+      exportToCSV(exportData, fileName);
+    } catch (error) {
+      console.error('Error exporting expenses:', error);
+    }
+  };
+
+  // Helper function for time range calculation (same as in PropertyExpensesList)
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (timeFilter) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'week':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'quarter':
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterStart, 1);
+        endDate = new Date(now.getFullYear(), quarterStart + 3, 0, 23, 59, 59);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          startDate = new Date(customStartDate);
+          endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999);
+        } else {
+          startDate = null;
+          endDate = null;
+        }
+        break;
+      default:
+        startDate = null;
+        endDate = null;
+    }
+
+    return { startDate, endDate };
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Time Filters Section */}
+      <Card className="p-4 rounded-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Filter by Time:
+            </h4>
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+            >
+              {timeFilterOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Custom Date Range */}
+          {timeFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-gray-500">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-primary-500"
+              />
+            </div>
+          )}
+
+          <div className="lg:ml-auto">
+            <button
+              onClick={handleExportExpenses}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 rounded-md transition-colors duration-200"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Expenses
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Expenses Content */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Property Expenses
+        </h3>
+        <PropertyExpensesList
+          propertyId={property._id}
+          propertyName={property.name}
+          refreshTrigger={refreshTrigger}
+          timeFilter={timeFilter}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default PropertyDetail;

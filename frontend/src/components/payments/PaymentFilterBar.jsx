@@ -15,32 +15,40 @@ const PaymentFilterBar = ({
 }) => {
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search payments..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-light-primary-400 dark:text-dark-primary-400" />
+            <input
+              type="text"
+              placeholder="Search payments by tenant, property, or reference..."
+              className="w-full pl-10 pr-4 py-3 border border-light-primary-200 dark:border-dark-primary-700 focus:outline-none focus:border-light-accent-500 dark:focus:border-dark-accent-500 bg-white dark:bg-dark-primary-900 text-light-primary-900 dark:text-white transition-colors duration-200"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center px-4 py-3 border transition-colors duration-200 font-medium ${
+                showFilters
+                  ? 'border-light-accent-500 dark:border-dark-accent-500 bg-light-accent-50 dark:bg-dark-accent-900/20 text-light-accent-700 dark:text-dark-accent-400'
+                  : 'border-light-primary-200 dark:border-dark-primary-700 text-light-primary-700 dark:text-dark-primary-300 bg-white dark:bg-dark-primary-900 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800'
+              }`}
+            >
+              <Filter className="h-5 w-5 mr-2" />
+              Filters
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center px-4 py-3 border border-light-primary-200 dark:border-dark-primary-700 text-light-primary-700 dark:text-dark-primary-300 bg-white dark:bg-dark-primary-900 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800 transition-colors duration-200 font-medium"
+            >
+              <Download className="h-5 w-5 mr-2" />
+              Export
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          <Filter className="h-5 w-5 mr-2" />
-          Filters
-        </button>
-        <button
-          onClick={handleExportCSV}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          <Download className="h-5 w-5 mr-2" />
-          Export CSV
-        </button>
-      </div>
+      </Card>
 
       {/* Filter panel */}
       {showFilters && (

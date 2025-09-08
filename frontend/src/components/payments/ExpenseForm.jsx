@@ -1,6 +1,6 @@
 // frontend/src/components/payments/ExpenseForm.jsx
 import { useState, useEffect } from "react";
-import { X, DollarSign, AlertCircle } from "lucide-react";
+import { X, Banknote, AlertCircle } from "lucide-react";
 import Card from "../ui/Card";
 import propertyService from "../../services/propertyService";
 
@@ -223,7 +223,7 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
     <Card className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
-          <DollarSign className="h-6 w-6 text-primary-600" />
+          <Banknote className="h-6 w-6 text-primary-600" />
           <h2 className="text-xl font-medium">
             {initialData ? "Edit Expense" : "Add New Expense"}
           </h2>
@@ -340,7 +340,7 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData = null, defaultPropertyId
               <input
                 type="number"
                 name="amount"
-                className="pl-12 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+                className="no-spinners pl-12 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
                 value={formData.amount}
                 onChange={handleChange}
                 placeholder="0.00"

@@ -1,6 +1,6 @@
 // frontend/src/components/reports/FinancialReport.jsx
 import { useState, useEffect } from "react";
-import { BarChart2, DollarSign, Download } from "lucide-react";
+import { BarChart2, Banknote, Download } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
 import {
@@ -134,14 +134,14 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <Banknote className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Total Revenue
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {reportData.summary.totalRevenue.toLocaleString()}
+                KES {(reportData?.summary?.totalRevenue || 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -150,14 +150,14 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-red-600 dark:text-red-400" />
+              <Banknote className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Total Expenses
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {reportData.summary.totalExpenses.toLocaleString()}
+                KES {(reportData?.summary?.totalExpenses || 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -166,14 +166,14 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <Banknote className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Net Profit
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {reportData.summary.netProfit.toLocaleString()}
+                KES {(reportData?.summary?.netProfit || 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -182,14 +182,14 @@ const FinancialReport = ({ dateRange, filters, onError, onDataLoad }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              <Banknote className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Pending Revenue
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                KES {(reportData.summary.pendingRevenue || 0).toLocaleString()}
+                KES {(reportData?.summary?.pendingRevenue || 0).toLocaleString()}
               </p>
             </div>
           </div>

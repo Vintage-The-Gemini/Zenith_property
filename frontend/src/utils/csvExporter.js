@@ -5,8 +5,11 @@ import Papa from "papaparse";
  * Export data to CSV with proper horizontal tabular format
  */
 export const exportToCSV = (data, filename = "export.csv", propertyDetails = null, financialSummary = null) => {
-  if (!data || !data.length) {
-    console.error("No data to export");
+  console.log("Attempting CSV export with data:", { data, filename, hasData: data && data.length > 0 });
+  
+  if (!data || data.length === 0) {
+    console.error("No data to export:", data);
+    alert("No data available to export");
     return;
   }
 
@@ -111,49 +114,79 @@ export const exportToCSV = (data, filename = "export.csv", propertyDetails = nul
   csvContent.push(['TRANSACTION DETAILS']);
   
   if (data && data.length > 0) {
-    // Get headers from the first object
-    const headers = Object.keys(data[0]);
-    csvContent.push(headers);
-    
-    // Add data rows
-    data.forEach(item => {
-      const row = headers.map(header => {
-        let value = item[header];
-        
-        // Format currency fields
-        if (typeof value === 'number' && isCurrencyField(header)) {
-          return formatCurrency(value);
-        }
-        
-        // Format date fields
-        if (value && isDateField(header)) {
-          return formatDate(value);
-        }
-        
-        // Format boolean fields
-        if (typeof value === 'boolean') {
-          return value ? 'Yes' : 'No';
-        }
-        
-        return value ?? '';
+    // Check if data is array of arrays or array of objects
+    if (Array.isArray(data[0])) {
+      // Data is already in array format, use as-is
+      data.forEach(row => csvContent.push(row));
+    } else {
+      // Data is array of objects, convert to table format
+      const headers = Object.keys(data[0]);
+      csvContent.push(headers);
+      
+      // Add data rows
+      data.forEach(item => {
+        const row = headers.map(header => {
+          let value = item[header];
+          
+          // Format currency fields
+          if (typeof value === 'number' && isCurrencyField(header)) {
+            return formatCurrency(value);
+          }
+          
+          // Format date fields
+          if (value && isDateField(header)) {
+            return formatDate(value);
+          }
+          
+          // Format boolean fields
+          if (typeof value === 'boolean') {
+            return value ? 'Yes' : 'No';
+          }
+          
+          return value ?? '';
+        });
+        csvContent.push(row);
       });
-      csvContent.push(row);
-    });
+    }
   }
 
   // Convert to CSV string using Papa Parse for proper formatting
-  const csv = Papa.unparse(csvContent);
+  let csv;
+  try {
+    csv = Papa.unparse(csvContent);
+    console.log("CSV content generated successfully", { csvLength: csv.length, contentRows: csvContent.length });
+  } catch (error) {
+    console.error("Error generating CSV with Papa Parse:", error);
+    // Fallback to simple CSV generation
+    csv = csvContent.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+  }
+
+  if (!csv || csv.trim().length === 0) {
+    console.error("Generated CSV is empty");
+    alert("Failed to generate CSV file");
+    return;
+  }
 
   // Create download
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  try {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log("CSV download initiated successfully", { filename });
+    
+    // Clean up the URL
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  } catch (error) {
+    console.error("Error creating CSV download:", error);
+    alert("Failed to download CSV file");
+  }
 };
 
 // Helper functions

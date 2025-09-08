@@ -19,51 +19,75 @@ const paymentSchema = new mongoose.Schema(
       required: true,
     },
     
-    // Basic Amount Information
+    // Payment Period Information
+    paymentPeriod: {
+      month: {
+        type: Number,
+        required: true,
+      },
+      year: {
+        type: Number,
+        required: true,
+      },
+      startDate: {
+        type: Date,
+        required: true,
+      },
+      endDate: {
+        type: Date,
+        required: true,
+      },
+    },
+    
+    // Progressive Balance Tracking
     baseRentAmount: {
       type: Number,
-      required: true,
+      required: true, // From tenant's negotiated rent
+    },
+    balanceBeforePayment: {
+      type: Number,
+      default: 0, // Outstanding balance before this payment
     },
     amountDue: {
       type: Number,
-      required: true,
+      required: true, // What was due at time of payment
     },
     amountPaid: {
       type: Number,
       required: true,
     },
-    
-    // Payment Allocation
-    appliedToPreviousBalance: {
+    balanceAfterPayment: {
       type: Number,
-      default: 0,
-    },
-    appliedToCurrentRent: {
-      type: Number,
-      default: 0,
-    },
-    overpayment: {
-      type: Number,
-      default: 0,
-    },
-    underpayment: {
-      type: Number,
-      default: 0,
+      required: true, // New balance after this payment
     },
     
-    // Balance Tracking
-    previousBalance: {
+    // Period-based calculations
+    monthlyRentDue: {
+      type: Number,
+      required: true, // Base rent for the period
+    },
+    cumulativeAmountDue: {
+      type: Number,
+      required: true, // Total that should have been paid by this date
+    },
+    
+    // Payment sequence within period
+    paymentSequence: {
+      type: Number,
+      default: 1, // 1st, 2nd, 3rd payment in the period
+    },
+    
+    // Payment allocation (optional - for detailed tracking)
+    appliedToArears: {
       type: Number,
       default: 0,
     },
-    paymentVariance: {
-      type: Number,
-      default: 0, // amountPaid - amountDue
-    },
-    newBalance: {
+    appliedToCurrentPeriod: {
       type: Number,
       default: 0,
     },
+    
+    // Status flags
     isOverpayment: {
       type: Boolean,
       default: false,
@@ -72,11 +96,9 @@ const paymentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    
-    // Track if payment is in same period
-    inSamePeriod: {
+    isFullyPaid: {
       type: Boolean,
-      default: false,
+      default: false, // True if period is fully paid
     },
     
     // Payment Details

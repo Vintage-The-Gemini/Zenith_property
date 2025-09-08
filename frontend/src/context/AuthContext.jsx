@@ -48,19 +48,34 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await api.post("/auth/login", credentials);
-      const { token, user: userData } = response.data;
+      const { token } = response.data;
 
-      // Store token and user data
+      // Store token
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
 
-      setUser(userData);
+      // Get user data using the token
+      try {
+        const userResponse = await api.get("/auth/me");
+        const userData = userResponse.data;
+        
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+      } catch (userError) {
+        console.error("Error fetching user data after login:", userError);
+        // Clear token if user fetch fails
+        localStorage.removeItem("token");
+        return {
+          success: false,
+          message: "Login succeeded but failed to get user data",
+        };
+      }
+
       return { success: true };
     } catch (error) {
       console.error("Login error:", error);
       return {
         success: false,
-        message: error.response?.data?.message || "Login failed",
+        message: error.response?.data?.msg || error.response?.data?.message || "Login failed",
       };
     }
   };

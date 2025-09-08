@@ -49,43 +49,56 @@ export const getMaintenanceById = getMaintenanceRequestById;
 export const createMaintenanceRequest = async (req, res) => {
   try {
     const {
-      propertyId,
-      unitId,
-      tenantId,
+      property,
+      unit,
+      tenant,
       issue,
       description,
       priority,
       category,
+      reportedBy,
+      scheduledDate,
+      estimatedCost,
+      assignedTo,
     } = req.body;
 
     // Verify property exists
-    const property = await Property.findById(propertyId);
-    if (!property) {
+    const propertyDoc = await Property.findById(property);
+    if (!propertyDoc) {
       return res.status(404).json({ error: "Property not found" });
     }
 
     // Verify unit exists
-    const unit = await Unit.findById(unitId);
-    if (!unit) {
+    const unitDoc = await Unit.findById(unit);
+    if (!unitDoc) {
       return res.status(404).json({ error: "Unit not found" });
     }
 
     const maintenanceRequest = new Maintenance({
-      property: propertyId,
-      unit: unitId,
-      tenant: tenantId,
+      property,
+      unit,
+      tenant: tenant || undefined,
       issue,
       description,
       priority: priority || "medium",
       category: category || "other",
-      reportedBy: req.user
+      reportedBy: reportedBy || (req.user
         ? `${req.user.firstName} ${req.user.lastName}`
-        : "System",
+        : "System"),
+      scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+      estimatedCost: estimatedCost ? parseFloat(estimatedCost) : undefined,
+      assignedTo: assignedTo || undefined,
     });
 
     await maintenanceRequest.save();
 
-    res.status(201).json(maintenanceRequest);
+    // Populate the response for consistency
+    const populatedRequest = await Maintenance.findById(maintenanceRequest._id)
+      .populate("property", "name")
+      .populate("unit", "unitNumber")
+      .populate("tenant", "firstName lastName");
+
+    res.status(201).json(populatedRequest);
   } catch (error) {
     logger.error(`Error in createMaintenanceRequest: ${error.message}`);
     res.status(400).json({ error: error.message });

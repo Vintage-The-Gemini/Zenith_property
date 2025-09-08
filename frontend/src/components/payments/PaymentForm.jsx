@@ -1,20 +1,15 @@
 // frontend/src/components/payments/PaymentForm.jsx
 
 import { useState, useEffect } from "react";
-import { X, DollarSign, AlertCircle, Calculator, Info } from "lucide-react";
+import { X, Banknote, AlertCircle, Calculator, Info, Clock, CheckCircle } from "lucide-react";
 import Card from "../ui/Card";
+import api from "../../services/api";
 
 const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = null }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedTenant, setSelectedTenant] = useState(null);
-  const [isNewPaymentPeriod, setIsNewPaymentPeriod] = useState(false);
-  
-  // Get end of current month as default due date
-  const getEndOfMonth = () => {
-    const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split("T")[0];
-  };
+  const [loadingBalance, setLoadingBalance] = useState(false);
   
   const [formData, setFormData] = useState({
     tenant: "",
@@ -22,34 +17,55 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
     property: "",
     amountPaid: "",
     paymentDate: new Date().toISOString().split("T")[0],
-    dueDate: getEndOfMonth(),
     paymentMethod: "cash",
     type: "rent",
     description: "",
     reference: "",
   });
   
-  // Balance calculation state
+  // Progressive balance tracking state
   const [balanceInfo, setBalanceInfo] = useState({
+    currentBalance: 0,
+    amountDueNow: 0,
     baseRentAmount: 0,
-    previousBalance: 0,
-    totalAmountDue: 0,
-    appliedToPreviousBalance: 0,
-    appliedToCurrentRent: 0,
-    overpayment: 0,
-    underpayment: 0,
-    paymentVariance: 0,
-    newBalance: 0,
-    willBeOverpayment: false,
-    willBeUnderpayment: false,
+    currentPeriod: null,
+    currentPeriodDue: 0,
+    currentPeriodPaid: 0,
+    remainingForPeriod: 0,
+    balanceAfterPayment: 0,
+    paymentSequence: 1,
+    isOverpayment: false,
+    isUnderpayment: false,
+    paymentHistory: []
   });
 
+  // Handle initial data when component mounts or initialData changes
+  useEffect(() => {
+    if (initialData) {
+      // Pre-populate form with initial data
+      setFormData(prev => ({
+        ...prev,
+        tenant: initialData.tenant || "",
+        unit: initialData.unit || "",
+        property: initialData.property || "",
+      }));
+    }
+  }, [initialData]);
+
+  // Fetch tenant balance when tenant is selected
   useEffect(() => {
     if (formData.tenant) {
       const tenant = tenantOptions.find(t => t._id === formData.tenant);
       if (tenant) {
         setSelectedTenant(tenant);
-        calculatePaymentAllocation(tenant);
+        fetchTenantBalance(tenant._id);
+        
+        // Auto-populate unit and property from tenant data
+        setFormData(prev => ({
+          ...prev,
+          unit: tenant.unitId?._id || tenant.unitId || "",
+          property: tenant.propertyId?._id || tenant.propertyId || ""
+        }));
       }
     } else {
       setSelectedTenant(null);
@@ -57,78 +73,79 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
     }
   }, [formData.tenant, tenantOptions]);
 
+  // Recalculate balance when payment amount changes
   useEffect(() => {
-    calculatePaymentAllocation();
-  }, [formData.amountPaid, selectedTenant, formData.type, isNewPaymentPeriod]);
+    if (selectedTenant && balanceInfo.baseRentAmount > 0) {
+      calculatePaymentAllocation();
+    }
+  }, [formData.amountPaid, balanceInfo.currentBalance]);
+
+  // Fetch tenant's current balance and payment info
+  const fetchTenantBalance = async (tenantId) => {
+    try {
+      setLoadingBalance(true);
+      const response = await api.get(`/payments/tenant/${tenantId}/balance`);
+      const data = response.data;
+      
+      setBalanceInfo({
+        currentBalance: data.currentBalance,
+        amountDueNow: data.amountDueNow,
+        baseRentAmount: data.baseRentAmount,
+        currentPeriod: data.currentPeriod,
+        currentPeriodDue: data.currentPeriodDue,
+        currentPeriodPaid: data.currentPeriodPaid,
+        remainingForPeriod: data.remainingForPeriod,
+        balanceAfterPayment: data.currentBalance,
+        paymentSequence: data.paymentHistory?.length + 1 || 1,
+        isOverpayment: false,
+        isUnderpayment: false,
+        paymentHistory: data.paymentHistory || []
+      });
+      
+    } catch (error) {
+      console.error('Error fetching tenant balance:', error);
+      setError('Failed to fetch tenant balance information');
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   const resetBalanceInfo = () => {
     setBalanceInfo({
+      currentBalance: 0,
+      amountDueNow: 0,
       baseRentAmount: 0,
-      previousBalance: 0,
-      totalAmountDue: 0,
-      appliedToPreviousBalance: 0,
-      appliedToCurrentRent: 0,
-      overpayment: 0,
-      underpayment: 0,
-      paymentVariance: 0,
-      newBalance: 0,
-      willBeOverpayment: false,
-      willBeUnderpayment: false,
+      currentPeriod: null,
+      currentPeriodDue: 0,
+      currentPeriodPaid: 0,
+      remainingForPeriod: 0,
+      balanceAfterPayment: 0,
+      paymentSequence: 1,
+      isOverpayment: false,
+      isUnderpayment: false,
+      paymentHistory: []
     });
   };
 
-  const calculatePaymentAllocation = (tenant = selectedTenant) => {
-    if (!tenant) {
-      resetBalanceInfo();
-      return;
-    }
+  const calculatePaymentAllocation = () => {
+    if (!selectedTenant || !balanceInfo.baseRentAmount) return;
     
-    const baseRentAmount = tenant.leaseDetails?.rentAmount || 0;
-    const previousBalance = tenant.currentBalance || 0;
-    const amountPaid = parseFloat(formData.amountPaid) || 0;
+    const paidAmount = parseFloat(formData.amountPaid) || 0;
+    const currentDue = balanceInfo.amountDueNow;
     
-    // Calculate amount due based on payment period
-    let totalAmountDue;
+    // Calculate new balance after this payment
+    const newBalance = Math.max(0, currentDue - paidAmount);
     
-    if (!isNewPaymentPeriod) {
-      // If in the same payment period, the amount due is the previous balance
-      totalAmountDue = previousBalance;
-    } else {
-      // If new payment period, add current rent to previous balance
-      totalAmountDue = previousBalance + baseRentAmount;
-    }
+    // Determine if overpayment or underpayment
+    const isOverpayment = paidAmount > currentDue;
+    const isUnderpayment = paidAmount < currentDue && paidAmount > 0;
     
-    // Calculate new balance - amount due minus amount paid
-    const newBalance = totalAmountDue - amountPaid;
-    
-    // Calculate payment allocation
-    let appliedToPreviousBalance = Math.min(previousBalance, amountPaid);
-    let appliedToCurrentRent = 0;
-    
-    // If in a new payment period and there's payment left after covering previous balance,
-    // apply the remainder to current rent
-    if (isNewPaymentPeriod && amountPaid > previousBalance) {
-      appliedToCurrentRent = Math.min(baseRentAmount, amountPaid - previousBalance);
-    }
-    
-    // Calculate overpayment/underpayment
-    const paymentVariance = amountPaid - totalAmountDue;
-    const overpayment = paymentVariance > 0 ? paymentVariance : 0;
-    const underpayment = paymentVariance < 0 ? Math.abs(paymentVariance) : 0;
-    
-    setBalanceInfo({
-      baseRentAmount,
-      previousBalance,
-      totalAmountDue,
-      appliedToPreviousBalance,
-      appliedToCurrentRent,
-      overpayment,
-      underpayment,
-      paymentVariance,
-      newBalance,
-      willBeOverpayment: newBalance < 0,
-      willBeUnderpayment: newBalance > 0,
-    });
+    setBalanceInfo(prev => ({
+      ...prev,
+      balanceAfterPayment: newBalance,
+      isOverpayment,
+      isUnderpayment
+    }));
   };
 
   const handleChange = (e) => {
@@ -165,347 +182,337 @@ const PaymentForm = ({ onSubmit, onCancel, tenantOptions = [], initialData = nul
       setError("Please enter a valid payment amount");
       return;
     }
-    
+
     try {
       setLoading(true);
       
-      // Prepare payment data
       const paymentData = {
-        tenant: formData.tenant,
-        unit: formData.unit,
-        property: formData.property,
+        ...formData,
         amountPaid: parseFloat(formData.amountPaid),
-        paymentDate: formData.paymentDate,
-        dueDate: formData.dueDate,
-        paymentMethod: formData.paymentMethod,
-        type: formData.type,
-        description: formData.description,
-        reference: formData.reference,
-        // Add balance information for backend calculations
-        previousBalance: balanceInfo.previousBalance,
-        baseRentAmount: balanceInfo.baseRentAmount,
-        totalAmountDue: balanceInfo.totalAmountDue,
-        newBalance: balanceInfo.newBalance,
-        // Flag to indicate payment period
-        inSamePeriod: !isNewPaymentPeriod
+        inSamePeriod: balanceInfo.paymentSequence > 1
       };
-      
+
       await onSubmit(paymentData);
-    } catch (err) {
-      console.error("Error submitting payment:", err);
-      setError(err.message || "Failed to record payment");
+    } catch (error) {
+      setError(error.response?.data?.error || "Failed to process payment");
     } finally {
       setLoading(false);
     }
   };
 
+  // Format currency for display
   const formatCurrency = (amount) => {
-    return `KES ${(amount || 0).toLocaleString()}`;
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0
+    }).format(amount || 0);
   };
 
   return (
-    <Card className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <DollarSign className="h-6 w-6 text-primary-600" />
-          <h2 className="text-xl font-medium">Record Payment</h2>
-        </div>
-        <button
-          onClick={onCancel}
-          className="text-gray-400 hover:text-gray-500"
-        >
-          <X className="h-6 w-6" />
-        </button>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md mb-4 flex items-center">
-          <AlertCircle className="h-5 w-5 mr-2" />
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Tenant and Payment Type Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Tenant <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="tenant"
-              value={formData.tenant}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-              required
-            >
-              <option value="">Select Tenant</option>
-              {tenantOptions.map(tenant => (
-                <option key={tenant._id} value={tenant._id}>
-                  {tenant.firstName} {tenant.lastName} - Unit {tenant.unitId?.unitNumber || 'N/A'}
-                  {tenant.currentBalance ? ` (Balance: KES ${tenant.currentBalance.toLocaleString()})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Payment Type
-            </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="rent">Rent</option>
-              <option value="deposit">Security Deposit</option>
-              <option value="fee">Late Fee</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Payment Period Toggle */}
-        {selectedTenant && (
-          <div className="flex items-center">
-            <input
-              id="new-period"
-              type="checkbox"
-              checked={isNewPaymentPeriod}
-              onChange={() => setIsNewPaymentPeriod(!isNewPaymentPeriod)}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-700 rounded"
-            />
-            <label htmlFor="new-period" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-              This is a payment for a new period (includes current rent)
-            </label>
-          </div>
-        )}
-
-        {/* Balance Information Card */}
-        {selectedTenant && (
-          <Card className="p-4 bg-gray-50 dark:bg-gray-800">
-            <h3 className="text-lg font-medium mb-4 flex items-center">
-              <Calculator className="h-5 w-5 mr-2 text-primary-600" />
-              Current Balance Information
-            </h3>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Previous Balance</p>
-                <p className={`text-lg font-semibold ${
-                  balanceInfo.previousBalance > 0 ? 'text-red-600 dark:text-red-400' : 
-                  balanceInfo.previousBalance < 0 ? 'text-green-600 dark:text-green-400' : 
-                  'text-gray-900 dark:text-gray-100'
-                }`}>
-                  {formatCurrency(balanceInfo.previousBalance)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {balanceInfo.previousBalance > 0 ? 'Amount owed' : 
-                   balanceInfo.previousBalance < 0 ? 'Credit balance' : 'No balance'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Monthly Rent</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(balanceInfo.baseRentAmount)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {isNewPaymentPeriod ? 'To be charged' : 'For reference'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Amount Due Now</p>
-                <p className="text-lg font-semibold text-primary-600 dark:text-primary-400">
-                  {formatCurrency(balanceInfo.totalAmountDue)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {isNewPaymentPeriod ? 'Previous + current rent' : 'Previous balance only'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">New Balance After Payment</p>
-                <p className={`text-lg font-semibold ${
-                  balanceInfo.newBalance < 0 ? 'text-green-600 dark:text-green-400' : 
-                  balanceInfo.newBalance > 0 ? 'text-red-600 dark:text-red-400' : 
-                  'text-gray-900 dark:text-gray-100'
-                }`}>
-                  {formatCurrency(Math.abs(balanceInfo.newBalance))}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {balanceInfo.newBalance < 0 ? 'Credit' : 
-                   balanceInfo.newBalance > 0 ? 'Outstanding' : 'Balanced'}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Payment Amount and Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Amount Paid (KES) <span className="text-red-500">*</span>
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 dark:text-gray-400 sm:text-sm">KES</span>
-              </div>
-              <input
-                type="number"
-                name="amountPaid"
-                value={formData.amountPaid}
-                onChange={handleChange}
-                className="pl-12 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Payment Method
-            </label>
-            <select
-              name="paymentMethod"
-              value={formData.paymentMethod}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="cash">Cash</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="check">Check</option>
-              <option value="card">Card</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Payment Date
-            </label>
-            <input
-              type="date"
-              name="paymentDate"
-              value={formData.paymentDate}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Due Date
-            </label>
-            <input
-              type="date"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-        </div>
-
-        {/* Payment Allocation Preview */}
-        {formData.amountPaid && selectedTenant && (
-          <Card className="p-4 bg-blue-50 dark:bg-blue-900/20">
-            <h4 className="text-sm font-medium mb-3 flex items-center">
-              <Info className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
-              Payment Allocation Preview
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Amount to be Paid:</span>
-                <span className="font-medium">{formatCurrency(parseFloat(formData.amountPaid) || 0)}</span>
-              </div>
-              
-              {balanceInfo.appliedToPreviousBalance > 0 && (
-                <div className="flex justify-between text-orange-600 dark:text-orange-400">
-                  <span>Applied to Previous Balance:</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToPreviousBalance)}</span>
-                </div>
-              )}
-              
-              {balanceInfo.appliedToCurrentRent > 0 && (
-                <div className="flex justify-between text-blue-600 dark:text-blue-400">
-                  <span>Applied to Current Rent:</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.appliedToCurrentRent)}</span>
-                </div>
-              )}
-              
-              {balanceInfo.overpayment > 0 && (
-                <div className="flex justify-between text-green-600 dark:text-green-400">
-                  <span>Overpayment (Credit):</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.overpayment)}</span>
-                </div>
-              )}
-              
-              {balanceInfo.underpayment > 0 && (
-                <div className="flex justify-between text-red-600 dark:text-red-400">
-                  <span>Underpayment (Still Due):</span>
-                  <span className="font-medium">{formatCurrency(balanceInfo.underpayment)}</span>
-                </div>
-              )}
-              
-              <div className="border-t border-blue-200 dark:border-blue-700 pt-2 mt-2">
-                <div className="flex justify-between font-medium">
-                  <span>New Balance After Payment:</span>
-                  <span className={
-                    balanceInfo.newBalance < 0 ? 'text-green-600 dark:text-green-400' : 
-                    balanceInfo.newBalance > 0 ? 'text-red-600 dark:text-red-400' : 
-                    'text-gray-900 dark:text-gray-100'
-                  }>
-                    {formatCurrency(Math.abs(balanceInfo.newBalance))}
-                    {balanceInfo.newBalance < 0 ? ' (Credit)' : 
-                     balanceInfo.newBalance > 0 ? ' (Owed)' : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows="3"
-            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-            placeholder="Additional payment details or notes..."
-          />
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Record Payment
+          </h2>
           <button
-            type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-            disabled={loading}
+            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
-            disabled={loading || !formData.tenant || !formData.amountPaid}
-          >
-            {loading ? 'Processing...' : 'Record Payment'}
+            <X className="w-6 h-6" />
           </button>
         </div>
-      </form>
-    </Card>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          {error && (
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Payment Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Payment Details
+              </h3>
+
+              {/* Tenant Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tenant *
+                </label>
+                <select
+                  name="tenant"
+                  value={formData.tenant}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Select a tenant</option>
+                  {tenantOptions.map((tenant) => (
+                    <option key={tenant._id} value={tenant._id}>
+                      {tenant.firstName} {tenant.lastName} - Unit {tenant.unitId?.unitNumber || 'N/A'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Amount Paid */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Amount Paid *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Banknote className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="number"
+                    name="amountPaid"
+                    value={formData.amountPaid}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    className="no-spinners w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Date *
+                </label>
+                <input
+                  type="date"
+                  name="paymentDate"
+                  value={formData.paymentDate}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  value={formData.paymentMethod}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="check">Check</option>
+                  <option value="mobile_money">Mobile Money</option>
+                  <option value="card">Card</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Payment Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Type
+                </label>
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="rent">Rent</option>
+                  <option value="deposit">Deposit</option>
+                  <option value="fee">Fee</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows="3"
+                  placeholder="Payment description or notes"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Right Column - Balance Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Balance Information
+              </h3>
+
+              {loadingBalance ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Loading balance...</span>
+                </div>
+              ) : selectedTenant ? (
+                <div className="space-y-4">
+                  {/* Current Balance Summary */}
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Base Rent Amount</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {formatCurrency(balanceInfo.baseRentAmount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
+                        <p className={`text-lg font-semibold ${
+                          balanceInfo.currentBalance > 0 
+                            ? 'text-red-600 dark:text-red-400' 
+                            : 'text-green-600 dark:text-green-400'
+                        }`}>
+                          {formatCurrency(balanceInfo.currentBalance)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Amount Due Now */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Amount Due Now</p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                      {formatCurrency(balanceInfo.amountDueNow)}
+                    </p>
+                    {balanceInfo.paymentSequence > 1 && (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                        Payment #{balanceInfo.paymentSequence} for {balanceInfo.currentPeriod?.month}/{balanceInfo.currentPeriod?.year}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Payment Preview */}
+                  {formData.amountPaid && parseFloat(formData.amountPaid) > 0 && (
+                    <div className="border border-gray-200 dark:border-gray-700 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                        <Calculator className="w-4 h-4 mr-2" />
+                        Payment Preview
+                      </h4>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Amount Paying:</span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {formatCurrency(parseFloat(formData.amountPaid))}
+                          </span>
+                        </div>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">New Balance:</span>
+                          <span className={`font-medium ${
+                            balanceInfo.balanceAfterPayment === 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-orange-600 dark:text-orange-400'
+                          }`}>
+                            {formatCurrency(balanceInfo.balanceAfterPayment)}
+                          </span>
+                        </div>
+                        
+                        {balanceInfo.isOverpayment && (
+                          <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            <span>Overpayment - credit will be applied</span>
+                          </div>
+                        )}
+                        
+                        {balanceInfo.isUnderpayment && (
+                          <div className="flex items-center text-sm text-orange-600 dark:text-orange-400">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            <span>Partial payment - balance remains</span>
+                          </div>
+                        )}
+                        
+                        {balanceInfo.balanceAfterPayment === 0 && !balanceInfo.isOverpayment && (
+                          <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            <span>Full payment - account balanced</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current Period Summary */}
+                  {balanceInfo.currentPeriod && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Current Period ({balanceInfo.currentPeriod.month}/{balanceInfo.currentPeriod.year})
+                      </h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Due:</span>
+                          <span>{formatCurrency(balanceInfo.currentPeriodDue)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Paid:</span>
+                          <span>{formatCurrency(balanceInfo.currentPeriodPaid)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Remaining:</span>
+                          <span className={balanceInfo.remainingForPeriod > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                            {formatCurrency(balanceInfo.remainingForPeriod)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                  <Info className="w-5 h-5 mr-2" />
+                  Select a tenant to view balance information
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || loadingBalance || !selectedTenant}
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </>
+              ) : (
+                'Record Payment'
+              )}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 };
 

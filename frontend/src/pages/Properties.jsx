@@ -130,19 +130,19 @@ const Properties = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Properties
+          <h1 className="text-3xl font-bold text-light-primary-900 dark:text-white">
+            Property Portfolio
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Manage your properties and view details
+          <p className="text-light-primary-600 dark:text-dark-primary-300 mt-1">
+            Manage and oversee all your properties
           </p>
         </div>
         <button
           onClick={handleAddProperty}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="inline-flex items-center px-6 py-3 bg-light-accent-600 dark:bg-dark-accent-600 text-white hover:bg-light-accent-700 dark:hover:bg-dark-accent-700 transition-colors duration-200 font-medium shadow-sm"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add Property
@@ -150,28 +150,30 @@ const Properties = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 flex items-center gap-2">
           <AlertTriangle size={18} />
           <span>{error}</span>
           <button
             onClick={loadProperties}
-            className="ml-2 text-red-700 dark:text-red-300 underline"
+            className="ml-2 text-red-700 dark:text-red-300 underline hover:no-underline"
           >
             Try Again
           </button>
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search properties by name or address..."
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      <Card className="p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-light-primary-400 dark:text-dark-primary-400" />
+          <input
+            type="text"
+            placeholder="Search properties by name, location, or type..."
+            className="w-full pl-10 pr-4 py-3 border border-light-primary-200 dark:border-dark-primary-700 focus:outline-none focus:border-light-accent-500 dark:focus:border-dark-accent-500 bg-white dark:bg-dark-primary-900 text-light-primary-900 dark:text-white transition-colors duration-200"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </Card>
 
       {properties.length === 0 ? (
         <Card className="text-center py-12">
@@ -206,44 +208,44 @@ const Properties = () => {
           {filteredProperties.map((property) => (
             <Card
               key={property._id}
-              className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              className="group overflow-hidden hover:shadow-lg hover:border-light-accent-300 dark:hover:border-dark-accent-600 transition-all duration-200 cursor-pointer"
               onClick={() => handlePropertyClick(property._id)}
             >
               <div className="p-6">
-                <div className="flex justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-xl text-light-primary-900 dark:text-white group-hover:text-light-accent-700 dark:group-hover:text-dark-accent-400 transition-colors">
                       {property.name}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-light-primary-600 dark:text-dark-primary-300 mt-1">
                       {property.address?.street}, {property.address?.city}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <span className="inline-block px-2 py-1 text-xs font-medium text-light-accent-700 dark:text-dark-accent-400 bg-light-accent-50 dark:bg-dark-accent-900/20 border border-light-accent-200 dark:border-dark-accent-800 mt-2">
                       {property.propertyType?.charAt(0).toUpperCase() +
                         property.propertyType?.slice(1) || "Residential"}
-                    </p>
+                    </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePropertyClick(property._id);
                       }}
-                      className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="p-2 text-light-primary-400 hover:text-light-accent-600 dark:text-dark-primary-400 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800 transition-colors"
                       aria-label="View property details"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
                     <button
                       onClick={(e) => handleEditProperty(e, property)}
-                      className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="p-2 text-light-primary-400 hover:text-light-accent-600 dark:text-dark-primary-400 dark:hover:text-dark-accent-400 hover:bg-light-primary-50 dark:hover:bg-dark-primary-800 transition-colors"
                       aria-label="Edit property"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={(e) => handleDeleteClick(e, property._id)}
-                      className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="p-2 text-light-primary-400 hover:text-red-600 dark:text-dark-primary-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       aria-label="Delete property"
                     >
                       <Trash className="h-4 w-4" />

@@ -4,7 +4,7 @@ import {
   Building2, 
   Home, 
   Users, 
-  DollarSign,
+  Banknote,
   Loader2,
   AlertCircle
 } from "lucide-react";
@@ -133,7 +133,7 @@ const Dashboard = () => {
                 {formatCurrency(summary.monthlyRevenue)}
               </p>
             </div>
-            <DollarSign className="h-8 w-8 text-primary-600 dark:text-primary-400" />
+            <Banknote className="h-8 w-8 text-primary-600 dark:text-primary-400" />
           </div>
         </Card>
       </div>

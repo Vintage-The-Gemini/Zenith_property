@@ -1,19 +1,39 @@
 // frontend/src/pages/Settings.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "../components/ui/Card";
-import { User, Building2, Bell, Shield, Globe, Moon, Sun } from "lucide-react";
+import { User, Building2, Bell, Shield, Globe, Moon, Sun, Save, Download, AlertTriangle, Database, Mail } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("account");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Mock settings data
+  // Real user settings data from context
   const [accountSettings, setAccountSettings] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+254 712 345 678",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+  });
+
+  const [businessSettings, setBusinessSettings] = useState({
+    businessName: "",
+    businessAddress: "",
+    businessPhone: "",
+    businessEmail: "",
+    businessLicense: "",
+    taxId: "",
+  });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [notifications, setNotifications] = useState({
@@ -25,10 +45,102 @@ const Settings = () => {
   const [currency, setCurrency] = useState("KES");
   const [language, setLanguage] = useState("en");
 
-  const handleAccountSubmit = (e) => {
+  // Load user data when component mounts
+  useEffect(() => {
+    if (user) {
+      setAccountSettings({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      });
+    }
+  }, [user]);
+
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+  };
+
+  const handleAccountSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, this would save to an API
-    alert("Account settings saved!");
+    setLoading(true);
+    
+    try {
+      await api.put('/auth/profile', accountSettings);
+      showMessage('success', 'Account settings updated successfully!');
+    } catch (error) {
+      console.error('Error updating account settings:', error);
+      showMessage('error', 'Failed to update account settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBusinessSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await api.put('/settings/business', businessSettings);
+      showMessage('success', 'Business settings updated successfully!');
+    } catch (error) {
+      console.error('Error updating business settings:', error);
+      showMessage('error', 'Failed to update business settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showMessage('error', 'New passwords do not match!');
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      showMessage('error', 'Password must be at least 6 characters long!');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      await api.put('/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      showMessage('success', 'Password changed successfully!');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      showMessage('error', error.response?.data?.message || 'Failed to change password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDataExport = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await api.get('/settings/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `property-management-backup-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showMessage('success', 'Data exported successfully!');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      showMessage('error', 'Failed to export data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,6 +179,17 @@ const Settings = () => {
           Properties
         </button>
         <button
+          onClick={() => setActiveTab("business")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 ${
+            activeTab === "business"
+              ? "border-primary-600 text-primary-600 dark:text-primary-400"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          }`}
+        >
+          <Building2 className="w-4 h-4 inline mr-1" />
+          Business
+        </button>
+        <button
           onClick={() => setActiveTab("notifications")}
           className={`px-4 py-2 text-sm font-medium border-b-2 ${
             activeTab === "notifications"
@@ -99,7 +222,31 @@ const Settings = () => {
           <Globe className="w-4 h-4 inline mr-1" />
           Preferences
         </button>
+        <button
+          onClick={() => setActiveTab("system")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 ${
+            activeTab === "system"
+              ? "border-primary-600 text-primary-600 dark:text-primary-400"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          }`}
+        >
+          <Database className="w-4 h-4 inline mr-1" />
+          System
+        </button>
       </div>
+
+      {/* Message Display */}
+      {message.text && (
+        <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+          message.type === 'success' 
+            ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
+            : 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+        }`}>
+          {message.type === 'error' && <AlertTriangle className="w-5 h-5" />}
+          {message.type === 'success' && <Save className="w-5 h-5" />}
+          <span>{message.text}</span>
+        </div>
+      )}
 
       {/* Settings Content */}
       <div className="mt-6">
@@ -176,9 +323,109 @@ const Settings = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  disabled={loading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
-                  Save Changes
+                  {loading ? <span className="mr-2">Saving...</span> : <><Save className="w-4 h-4 mr-2" />Save Changes</>}
+                </button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        {activeTab === "business" && (
+          <Card className="p-6">
+            <h2 className="text-lg font-medium mb-4">Business Profile</h2>
+            <form onSubmit={handleBusinessSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Business Name
+                  </label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={businessSettings.businessName}
+                    onChange={(e) =>
+                      setBusinessSettings({
+                        ...businessSettings,
+                        businessName: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Business Email
+                  </label>
+                  <input
+                    type="email"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={businessSettings.businessEmail}
+                    onChange={(e) =>
+                      setBusinessSettings({
+                        ...businessSettings,
+                        businessEmail: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Business Phone
+                  </label>
+                  <input
+                    type="tel"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={businessSettings.businessPhone}
+                    onChange={(e) =>
+                      setBusinessSettings({
+                        ...businessSettings,
+                        businessPhone: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tax ID / License Number
+                  </label>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    value={businessSettings.taxId}
+                    onChange={(e) =>
+                      setBusinessSettings({
+                        ...businessSettings,
+                        taxId: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Business Address
+                </label>
+                <textarea
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={businessSettings.businessAddress}
+                  onChange={(e) =>
+                    setBusinessSettings({
+                      ...businessSettings,
+                      businessAddress: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                >
+                  {loading ? <span className="mr-2">Saving...</span> : <><Save className="w-4 h-4 mr-2" />Save Business Info</>}
                 </button>
               </div>
             </form>
@@ -329,7 +576,7 @@ const Settings = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-md font-medium mb-2">Change Password</h3>
-                <form className="space-y-4">
+                <form onSubmit={handlePasswordChange} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Current Password
@@ -337,6 +584,9 @@ const Settings = () => {
                     <input
                       type="password"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                      required
                     />
                   </div>
                   <div>
@@ -346,6 +596,10 @@ const Settings = () => {
                     <input
                       type="password"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                      required
+                      minLength="6"
                     />
                   </div>
                   <div>
@@ -355,14 +609,18 @@ const Settings = () => {
                     <input
                       type="password"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                      required
                     />
                   </div>
                   <div className="flex justify-end">
                     <button
-                      type="button"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                     >
-                      Update Password
+                      {loading ? <span className="mr-2">Updating...</span> : <><Shield className="w-4 h-4 mr-2" />Update Password</>}
                     </button>
                   </div>
                 </form>
@@ -448,6 +706,119 @@ const Settings = () => {
                 >
                   Save Settings
                 </button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {activeTab === "system" && (
+          <Card className="p-6">
+            <h2 className="text-lg font-medium mb-4">System & Data Management</h2>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-md font-medium mb-2">Data Export & Backup</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Export all your property management data for backup or migration purposes.
+                </p>
+                <button
+                  onClick={handleDataExport}
+                  disabled={loading}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="mr-2">Exporting...</span>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export All Data
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-md font-medium mb-2">Email Configuration</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configure SMTP settings for sending automated emails and notifications.
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      SMTP Server
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="smtp.gmail.com"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Port
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="587"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Username/Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="your-email@gmail.com"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Password/App Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••••••••••"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Test & Save Email Settings
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-md font-medium mb-2 text-red-600 dark:text-red-400">
+                  Danger Zone
+                </h3>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                  <div className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 mr-3" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-red-800 dark:text-red-400 mb-1">
+                        Database Cleanup
+                      </h4>
+                      <p className="text-sm text-red-700 dark:text-red-400 mb-3">
+                        Remove old records, optimize database performance, and clean up orphaned data. This action cannot be undone.
+                      </p>
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/40"
+                      >
+                        <Database className="h-4 w-4 mr-2" />
+                        Clean Database
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>

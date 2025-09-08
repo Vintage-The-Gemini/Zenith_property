@@ -5,7 +5,7 @@ import {
   Trash2,
   Building2,
   Home,
-  DollarSign,
+  Banknote,
   Users,
 } from "lucide-react";
 import Card from "../ui/Card";

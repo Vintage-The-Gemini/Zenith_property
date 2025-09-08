@@ -9,83 +9,84 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  Filter,
+  Edit,
+  Eye,
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import MaintenanceForm from "../components/maintenance/MaintenanceForm";
+import MaintenanceStatusModal from "../components/maintenance/MaintenanceStatusModal";
+import maintenanceService from "../services/maintenanceService";
 
 function Maintenance() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    priority: '',
+    category: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    // Simulate API call with a timeout
-    const fetchMaintenance = async () => {
-      try {
-        setLoading(true);
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 500));
+    fetchMaintenanceRequests();
+  }, [filters]);
 
-        // Mock data for development
-        const mockData = [
-          {
-            id: 1,
-            issue: "Plumbing leak in bathroom",
-            description: "Water leaking from under the sink",
-            unit: "101",
-            property: "Sunset Apartments",
-            priority: "High",
-            status: "pending",
-            reportedBy: "John Doe",
-            reportedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: 2,
-            issue: "HVAC not working",
-            description: "Air conditioning stopped working yesterday",
-            unit: "202",
-            property: "Ocean View Condos",
-            priority: "Medium",
-            status: "in_progress",
-            reportedBy: "Jane Smith",
-            reportedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: 3,
-            issue: "Broken window",
-            description: "Window cracked during the storm",
-            unit: "304",
-            property: "Sunset Apartments",
-            priority: "Low",
-            status: "completed",
-            reportedBy: "Mike Johnson",
-            reportedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          },
-        ];
+  const fetchMaintenanceRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await maintenanceService.getMaintenanceRequests(filters);
+      setRequests(data);
+    } catch (err) {
+      console.error("Error fetching maintenance requests:", err);
+      setError("Failed to load maintenance requests. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        setRequests(mockData);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching maintenance requests:", err);
-        setError("Failed to load maintenance requests");
-        setLoading(false);
-      }
-    };
+  const handleCreateRequest = async (formData) => {
+    try {
+      await maintenanceService.createMaintenanceRequest(formData);
+      await fetchMaintenanceRequests(); // Refresh the list
+    } catch (error) {
+      console.error("Error creating maintenance request:", error);
+      throw error; // Let the form handle the error
+    }
+  };
 
-    fetchMaintenance();
-  }, []);
+  const handleStatusUpdate = async (requestId, updateData) => {
+    try {
+      await maintenanceService.updateMaintenanceRequest(requestId, updateData);
+      await fetchMaintenanceRequests(); // Refresh the list
+    } catch (error) {
+      console.error("Error updating maintenance request:", error);
+      throw error; // Let the modal handle the error
+    }
+  };
+
+  const handleViewRequest = (request) => {
+    setSelectedRequest(request);
+    setIsStatusModalOpen(true);
+  };
 
   // Filter requests based on search term
   const filteredRequests = requests.filter((request) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       request.issue.toLowerCase().includes(searchLower) ||
-      request.unit.toLowerCase().includes(searchLower) ||
-      request.property.toLowerCase().includes(searchLower) ||
+      (request.unit?.unitNumber || '').toString().toLowerCase().includes(searchLower) ||
+      (request.property?.name || '').toLowerCase().includes(searchLower) ||
       request.priority.toLowerCase().includes(searchLower) ||
       request.status.toLowerCase().includes(searchLower) ||
-      request.reportedBy.toLowerCase().includes(searchLower)
+      request.reportedBy.toLowerCase().includes(searchLower) ||
+      (request.description || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -163,7 +164,7 @@ function Maintenance() {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Maintenance Requests
@@ -172,13 +173,22 @@ function Maintenance() {
             Track and manage property maintenance issues
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          New Request
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </button>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            New Request
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -188,12 +198,72 @@ function Maintenance() {
         </div>
       )}
 
+      {/* Filters */}
+      {showFilters && (
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status
+              </label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Priority
+              </label>
+              <select
+                value={filters.priority}
+                onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Category
+              </label>
+              <select
+                value={filters.category}
+                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">All Categories</option>
+                <option value="plumbing">Plumbing</option>
+                <option value="electrical">Electrical</option>
+                <option value="hvac">HVAC</option>
+                <option value="structural">Structural</option>
+                <option value="appliance">Appliance</option>
+                <option value="cleaning">Cleaning</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
         <input
           type="text"
           placeholder="Search maintenance requests..."
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -210,7 +280,7 @@ function Maintenance() {
           </p>
           <div className="mt-6">
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsFormOpen(true)}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
             >
               <Plus className="h-5 w-5 mr-2" />
@@ -231,7 +301,7 @@ function Maintenance() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRequests.map((request) => (
             <Card
-              key={request.id}
+              key={request._id || request.id}
               className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
             >
               <div className="p-6">
@@ -241,7 +311,7 @@ function Maintenance() {
                       {request.issue}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {request.property} - Unit {request.unit}
+                      {request.property?.name || 'Unknown Property'} - Unit {request.unit?.unitNumber || 'N/A'}
                     </p>
                   </div>
                   {getStatusBadge(request.status)}
@@ -267,13 +337,16 @@ function Maintenance() {
                   <div>
                     <p className="text-gray-500 dark:text-gray-400">Date</p>
                     <p className="font-medium">
-                      {formatDate(request.reportedDate)}
+                      {formatDate(request.reportedDate || request.createdAt)}
                     </p>
                   </div>
                 </div>
               </div>
               <div className="bg-gray-50 dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
-                <button className="w-full text-sm text-center text-primary-600 hover:text-primary-700 dark:text-primary-400">
+                <button 
+                  onClick={() => handleViewRequest(request)}
+                  className="w-full text-sm text-center text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                >
                   View Details
                 </button>
               </div>
@@ -282,26 +355,20 @@ function Maintenance() {
         </div>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full p-6">
-            <h2 className="text-xl font-semibold mb-6">
-              Create Maintenance Request
-            </h2>
-            <p className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Maintenance request form will be implemented soon.
-            </p>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Maintenance Form Modal */}
+      <MaintenanceForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleCreateRequest}
+      />
+
+      {/* Maintenance Status Modal */}
+      <MaintenanceStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        maintenanceRequest={selectedRequest}
+        onStatusUpdate={handleStatusUpdate}
+      />
     </div>
   );
 }

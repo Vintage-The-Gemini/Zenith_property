@@ -13,13 +13,14 @@ import {
   XCircle,
   Clock,
   Calendar,
-  DollarSign,
+  Banknote,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import PaymentForm from "../components/payments/PaymentForm";
 import paymentService from "../services/paymentService";
 import tenantService from "../services/tenantService";
 import propertyService from "../services/propertyService";
+import expenseService from "../services/expenseService";
 import { exportToCSV } from "../utils/csvExporter";
 
 // Import our components
@@ -32,6 +33,7 @@ const Payments = () => {
   const [payments, setPayments] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [properties, setProperties] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,6 +63,9 @@ const Payments = () => {
     netBalance: 0,
     criticalAccounts: 0,
     collectionRate: 0,
+    totalExpenses: 0,
+    netRevenue: 0,
+    profitMargin: 0,
   });
 
   const navigate = useNavigate();
@@ -75,18 +80,29 @@ const Payments = () => {
       setError(null);
 
       // Load all required data in parallel
-      const [paymentsData, tenantsData, propertiesData] = await Promise.all([
+      const [paymentsResponse, tenantsData, propertiesData, expensesData] = await Promise.all([
         paymentService.getAllPayments(),
         tenantService.getAllTenants(),
         propertyService.getAllProperties(),
+        expenseService.getAllExpenses(),
       ]);
 
-      setPayments(paymentsData);
-      setTenants(tenantsData);
-      setProperties(propertiesData);
+      // Handle payments response - check if it has pagination structure
+      const paymentsData = paymentsResponse?.payments || paymentsResponse || [];
+      
+      // Ensure we have arrays to work with
+      const paymentsArray = Array.isArray(paymentsData) ? paymentsData : [];
+      const tenantsArray = Array.isArray(tenantsData) ? tenantsData : [];
+      const propertiesArray = Array.isArray(propertiesData) ? propertiesData : [];
+      const expensesArray = Array.isArray(expensesData) ? expensesData : [];
+      
+      setPayments(paymentsArray);
+      setTenants(tenantsArray);
+      setProperties(propertiesArray);
+      setExpenses(expensesArray);
 
       // Calculate summary statistics
-      calculateSummary(paymentsData, tenantsData);
+      calculateSummary(paymentsArray, tenantsArray, expensesArray);
     } catch (err) {
       console.error("Error loading data:", err);
       setError("Failed to load payment data. Please try again.");
@@ -95,21 +111,26 @@ const Payments = () => {
     }
   };
 
-  const calculateSummary = (paymentsData, tenantsData) => {
+  const calculateSummary = (paymentsData, tenantsData, expensesData) => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
+    // Ensure we have arrays to work with
+    const payments = Array.isArray(paymentsData) ? paymentsData : [];
+    const tenants = Array.isArray(tenantsData) ? tenantsData : [];
+    const expenses = Array.isArray(expensesData) ? expensesData : [];
+
     // Current month payments
-    const currentMonthPayments = paymentsData.filter(payment => {
+    const currentMonthPayments = payments.filter(payment => {
       const paymentDate = new Date(payment.paymentDate);
       return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
     });
 
     // Last month payments
-    const lastMonthPayments = paymentsData.filter(payment => {
+    const lastMonthPayments = payments.filter(payment => {
       const paymentDate = new Date(payment.paymentDate);
       return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
     });
@@ -123,11 +144,11 @@ const Payments = () => {
       .filter(p => p.status === 'completed')
       .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
 
-    const pendingTotal = paymentsData
+    const pendingTotal = payments
       .filter(p => p.status === 'pending')
       .reduce((sum, p) => sum + (p.amountDue || 0), 0);
 
-    const overdueTotal = paymentsData
+    const overdueTotal = payments
       .filter(p => p.status === 'pending' && new Date(p.dueDate) < now)
       .reduce((sum, p) => sum + (p.amountDue || 0), 0);
 
@@ -137,20 +158,41 @@ const Payments = () => {
       : 0;
 
     // Balance statistics
-    const totalOverpayments = paymentsData
+    const totalOverpayments = payments
       .filter(p => p.isOverpayment)
       .reduce((sum, p) => sum + (p.overpayment || 0), 0);
 
-    const totalUnderpayments = paymentsData
+    const totalUnderpayments = payments
       .filter(p => p.isUnderpayment)
       .reduce((sum, p) => sum + (p.underpayment || 0), 0);
 
     // Critical accounts (tenants with high balances)
-    const criticalAccounts = tenantsData.filter(t => (t.currentBalance || 0) > 100000).length;
+    const criticalAccounts = tenants.filter(t => (t.currentBalance || 0) > 100000).length;
     
     // Calculate collection rate
     const totalDue = currentMonthPayments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
     const collectionRate = totalDue > 0 ? (monthlyTotal / totalDue) * 100 : 0;
+
+    // Calculate expense totals
+    const currentMonthExpenses = expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+    });
+
+    const lastMonthExpenses = expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear;
+    });
+
+    const totalExpenses = currentMonthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    const lastMonthExpensesTotal = lastMonthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
+    // Calculate net revenue (Revenue - Expenses)
+    const netRevenue = monthlyTotal - totalExpenses;
+    const lastMonthNetRevenue = lastMonthTotal - lastMonthExpensesTotal;
+    
+    // Calculate profit margin
+    const profitMargin = monthlyTotal > 0 ? (netRevenue / monthlyTotal) * 100 : 0;
 
     setSummary({
       monthlyTotal,
@@ -163,6 +205,9 @@ const Payments = () => {
       netBalance: totalUnderpayments - totalOverpayments,
       criticalAccounts,
       collectionRate,
+      totalExpenses,
+      netRevenue,
+      profitMargin,
     });
   };
 
@@ -215,30 +260,54 @@ const Payments = () => {
 
   const handleExportCSV = () => {
     try {
-      // Prepare data for export
-      const exportData = filteredPayments.map(payment => ({
-        Date: new Date(payment.paymentDate).toLocaleDateString(),
-        Tenant: payment.tenant ? `${payment.tenant.firstName} ${payment.tenant.lastName}` : 'Unknown',
-        Property: payment.property?.name || 'Unknown',
-        Unit: payment.unit ? `Unit ${payment.unit.unitNumber}` : 'Unknown',
-        Amount_Paid: payment.amountPaid || 0,
-        Amount_Due: payment.amountDue || 0,
-        Variance: payment.paymentVariance || 0,
-        Status: payment.status,
-        Type: payment.type,
-        Payment_Method: payment.paymentMethod,
-        Reference: payment.reference || 'N/A',
-      }));
+      console.log("Attempting to export CSV with payments:", { 
+        filteredPaymentsCount: filteredPayments.length,
+        totalPayments: payments.length,
+        samplePayment: filteredPayments[0]
+      });
+
+      if (!filteredPayments || filteredPayments.length === 0) {
+        alert("No payment data available to export");
+        return;
+      }
+
+      // Prepare data for export with more robust data handling
+      const exportData = filteredPayments.map(payment => {
+        const tenant = payment.tenant || {};
+        const property = payment.property || {};
+        const unit = payment.unit || {};
+
+        return {
+          'Payment ID': payment._id || 'N/A',
+          'Date': payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A',
+          'Due Date': payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : 'N/A',
+          'Tenant': tenant.firstName && tenant.lastName ? `${tenant.firstName} ${tenant.lastName}` : 'Unknown',
+          'Tenant Email': tenant.email || 'N/A',
+          'Property': property.name || 'Unknown',
+          'Unit': unit.unitNumber ? `Unit ${unit.unitNumber}` : 'Unknown',
+          'Amount Due': `KES ${(payment.amountDue || 0).toLocaleString()}`,
+          'Amount Paid': `KES ${(payment.amountPaid || 0).toLocaleString()}`,
+          'Balance': `KES ${((payment.amountDue || 0) - (payment.amountPaid || 0)).toLocaleString()}`,
+          'Status': payment.status || 'Unknown',
+          'Type': payment.type || 'Rent',
+          'Payment Method': payment.paymentMethod || 'N/A',
+          'Reference': payment.reference || 'N/A',
+          'Late Fee': `KES ${(payment.lateFee || 0).toLocaleString()}`,
+          'Notes': payment.notes || 'N/A'
+        };
+      });
+
+      console.log("Prepared export data:", { dataCount: exportData.length, sampleRow: exportData[0] });
 
       exportToCSV(exportData, 'payments_report.csv');
     } catch (err) {
       console.error("Error exporting payments:", err);
-      setError("Failed to export payment data");
+      setError("Failed to export payment data: " + err.message);
     }
   };
 
   // Filter payments based on search and filters
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = (Array.isArray(payments) ? payments : []).filter(payment => {
     // Apply text search
     const searchLower = searchTerm.toLowerCase();
     const tenantName = payment.tenant
@@ -315,32 +384,32 @@ const Payments = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
+    <div className="container mx-auto px-4 py-8 space-y-8">
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 flex items-center gap-2">
           <AlertTriangle size={18} />
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            className="ml-auto text-sm underline"
+            className="ml-auto text-sm underline hover:no-underline"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Payments
+          <h1 className="text-3xl font-bold text-light-primary-900 dark:text-white">
+            Payment Management
           </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Manage tenant payments and balances
+          <p className="text-light-primary-600 dark:text-dark-primary-300 mt-1">
+            Track revenue, expenses, and tenant payments
           </p>
         </div>
         <button
           onClick={handleAddPayment}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="inline-flex items-center px-6 py-3 bg-light-accent-600 dark:bg-dark-accent-600 text-white hover:bg-light-accent-700 dark:hover:bg-dark-accent-700 transition-colors duration-200 font-medium shadow-sm"
         >
           <Plus className="h-5 w-5 mr-2" />
           Record Payment

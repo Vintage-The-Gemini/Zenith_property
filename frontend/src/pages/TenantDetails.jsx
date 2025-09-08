@@ -6,7 +6,7 @@ import {
   Phone,
   Mail,
   Calendar,
-  DollarSign,
+  Banknote,
   Clock,
   AlertTriangle,
 } from "lucide-react";
@@ -183,7 +183,7 @@ const TenantDetails = ({ tenant, onUpdate }) => {
                 Monthly Rent
               </p>
               <p className="mt-1 flex items-center">
-                <DollarSign className="h-4 w-4 mr-1 text-gray-400" />
+                <Banknote className="h-4 w-4 mr-1 text-gray-400" />
                 KES {tenant.leaseDetails.rentAmount?.toLocaleString() || 0}
               </p>
             </div>
@@ -193,7 +193,7 @@ const TenantDetails = ({ tenant, onUpdate }) => {
                 Security Deposit
               </p>
               <p className="mt-1 flex items-center">
-                <DollarSign className="h-4 w-4 mr-1 text-gray-400" />
+                <Banknote className="h-4 w-4 mr-1 text-gray-400" />
                 KES {tenant.leaseDetails.securityDeposit?.toLocaleString() || 0}
               </p>
             </div>

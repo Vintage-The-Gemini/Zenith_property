@@ -6,22 +6,38 @@ import PaymentForm from "../payments/PaymentForm";
 import paymentService from "../../services/paymentService";
 import tenantService from "../../services/tenantService";
 import { exportPropertyPaymentsToCSV } from "../../utils/paymentReportExporter";
+import { exportPaymentsToEnhancedCSV, generatePaymentReportFileName } from "../../utils/enhancedPaymentExporter";
+import { exportToCSV } from "../../utils/csvExporter";
 
 // Import our components
 import PaymentSummaryCards from "../payments/PaymentSummaryCards";
 import PaymentFilterBar from "../payments/PaymentFilterBar";
 import PaymentTable from "../payments/PaymentTable";
 import TenantBalanceTable from "../payments/TenantBalanceTable";
+import TenantStatementModal from "../tenants/TenantStatementModal";
+import { getExpensesByProperty } from "../../services/expenseService";
 
-const PropertyPaymentsList = ({ propertyId, propertyName }) => {
+const PropertyPaymentsList = ({ 
+  propertyId, 
+  propertyName, 
+  refreshTrigger, 
+  timeFilter = 'all',
+  customStartDate = '',
+  customEndDate = ''
+}) => {
   const [payments, setPayments] = useState([]);
   const [tenants, setTenants] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [allPayments, setAllPayments] = useState([]); // Store unfiltered payments
+  const [allExpenses, setAllExpenses] = useState([]); // Store unfiltered expenses
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showStatementModal, setShowStatementModal] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState(null);
   const [filters, setFilters] = useState({
     status: "",
     type: "",
@@ -44,11 +60,58 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     collectionRate: 0,
   });
 
+  // Calculate date range based on time filter
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (timeFilter) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'week':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+        startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'quarter':
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        startDate = new Date(now.getFullYear(), quarterStart, 1);
+        endDate = new Date(now.getFullYear(), quarterStart + 3, 0, 23, 59, 59);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          startDate = new Date(customStartDate);
+          endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999); // End of day
+        } else {
+          startDate = null;
+          endDate = null;
+        }
+        break;
+      default: // 'all'
+        startDate = null;
+        endDate = null;
+    }
+
+    return { startDate, endDate };
+  };
+
   useEffect(() => {
     if (propertyId) {
       loadData();
     }
-  }, [propertyId]);
+  }, [propertyId, refreshTrigger, timeFilter, customStartDate, customEndDate]);
 
   const loadData = async () => {
     try {
@@ -56,16 +119,47 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       setError(null);
 
       // Load all data in parallel
-      const [paymentsData, propertyTenantsData] = await Promise.all([
+      const [paymentsData, propertyTenantsData, expensesData] = await Promise.all([
         paymentService.getPaymentsByProperty(propertyId),
         tenantService.getTenantsByProperty(propertyId),
+        getExpensesByProperty(propertyId),
       ]);
 
-      setPayments(paymentsData);
-      setTenants(propertyTenantsData);
+      // Ensure we have arrays to work with
+      const paymentsArray = Array.isArray(paymentsData) ? paymentsData : [];
+      const tenantsArray = Array.isArray(propertyTenantsData) ? propertyTenantsData : [];
+      const expensesArray = Array.isArray(expensesData) ? expensesData : [];
 
-      // Calculate summary statistics
-      calculateSummary(paymentsData, propertyTenantsData);
+      // Store unfiltered data
+      setAllPayments(paymentsArray);
+      setAllExpenses(expensesArray);
+      setTenants(tenantsArray);
+
+      // Apply time filter to payments and expenses if specified
+      const { startDate, endDate } = getDateRange();
+      
+      let filteredPayments = paymentsArray;
+      let filteredExpenses = expensesArray;
+
+      if (startDate && endDate) {
+        // Filter payments by payment date
+        filteredPayments = paymentsArray.filter(payment => {
+          const paymentDate = new Date(payment.paymentDate);
+          return paymentDate >= startDate && paymentDate <= endDate;
+        });
+
+        // Filter expenses by date
+        filteredExpenses = expensesArray.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+      }
+
+      setPayments(filteredPayments);
+      setExpenses(filteredExpenses);
+
+      // Calculate summary statistics with filtered data and access to full data
+      calculateSummary(filteredPayments, tenantsArray, filteredExpenses, paymentsArray, expensesArray);
     } catch (err) {
       console.error("Error loading property payments:", err);
       setError("Failed to load payment data. Please try again.");
@@ -74,74 +168,125 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     }
   };
 
-  const calculateSummary = (paymentsData, tenantsData) => {
+  const calculateSummary = (paymentsData, tenantsData, expensesData, allPaymentsData = paymentsData, allExpensesData = expensesData) => {
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
+    // Ensure we have arrays to work with
+    const payments = Array.isArray(paymentsData) ? paymentsData : []; // filtered payments
+    const tenants = Array.isArray(tenantsData) ? tenantsData : [];
+    const expenses = Array.isArray(expensesData) ? expensesData : []; // filtered expenses
+    const allPayments = Array.isArray(allPaymentsData) ? allPaymentsData : []; // full payments dataset
+    const allExpensesArray = Array.isArray(allExpensesData) ? allExpensesData : []; // full expenses dataset
 
-    // Current month payments
-    const currentMonthPayments = paymentsData.filter(payment => {
-      const paymentDate = new Date(payment.paymentDate);
-      return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
-    });
+    // For filtered data (when time filter is applied), use the filtered payments/expenses
+    // For 'all' time filter, calculate monthly comparisons
+    const { startDate, endDate } = getDateRange();
+    const isTimeFiltered = startDate && endDate && timeFilter !== 'all';
 
-    // Last month payments
-    const lastMonthPayments = paymentsData.filter(payment => {
-      const paymentDate = new Date(payment.paymentDate);
-      return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
-    });
+    let currentPeriodPayments, previousPeriodPayments, currentPeriodExpenses, previousPeriodExpenses;
 
-    // Calculate totals
-    const monthlyTotal = currentMonthPayments
+    if (isTimeFiltered) {
+      // Use the filtered payments and expenses as current period
+      currentPeriodPayments = payments;
+      currentPeriodExpenses = expenses;
+
+      // For comparison, we'll use empty arrays (or could implement previous period logic)
+      previousPeriodPayments = [];
+      previousPeriodExpenses = [];
+    } else {
+      // Original monthly logic for 'all' filter
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+      currentPeriodPayments = payments.filter(payment => {
+        const paymentDate = new Date(payment.paymentDate);
+        return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+      });
+
+      previousPeriodPayments = payments.filter(payment => {
+        const paymentDate = new Date(payment.paymentDate);
+        return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
+      });
+
+      currentPeriodExpenses = expenses.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+      });
+
+      previousPeriodExpenses = expenses.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear;
+      });
+    }
+
+    // Calculate totals for current period
+    const periodTotal = currentPeriodPayments
       .filter(p => p.status === 'completed')
       .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
 
-    const lastMonthTotal = lastMonthPayments
+    const previousPeriodTotal = previousPeriodPayments
       .filter(p => p.status === 'completed')
       .reduce((sum, p) => sum + (p.amountPaid || 0), 0);
 
-    const pendingTotal = paymentsData
+    // Pending and overdue always from full dataset (current tenant status)
+    const pendingTotal = allPayments
       .filter(p => p.status === 'pending')
       .reduce((sum, p) => sum + (p.amountDue || 0), 0);
 
-    const overdueTotal = paymentsData
+    const overdueTotal = allPayments
       .filter(p => p.status === 'pending' && new Date(p.dueDate) < now)
       .reduce((sum, p) => sum + (p.amountDue || 0), 0);
 
     // Calculate growth rate
-    const growthRate = lastMonthTotal > 0 
-      ? ((monthlyTotal - lastMonthTotal) / lastMonthTotal) * 100 
+    const growthRate = previousPeriodTotal > 0 
+      ? ((periodTotal - previousPeriodTotal) / previousPeriodTotal) * 100 
       : 0;
 
-    // Balance statistics
-    const totalOverpayments = paymentsData
+    // Balance statistics (from full dataset)
+    const totalOverpayments = allPayments
       .filter(p => p.isOverpayment)
       .reduce((sum, p) => sum + (p.overpayment || 0), 0);
 
-    const totalUnderpayments = paymentsData
+    const totalUnderpayments = allPayments
       .filter(p => p.isUnderpayment)
       .reduce((sum, p) => sum + (p.underpayment || 0), 0);
 
     // Critical accounts (tenants with high balances)
-    const criticalAccounts = tenantsData.filter(t => (t.currentBalance || 0) > 100000).length;
+    const criticalAccounts = tenants.filter(t => (t.currentBalance || 0) > 100000).length;
 
-    // Calculate collection rate
-    const totalDue = currentMonthPayments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
-    const collectionRate = totalDue > 0 ? (monthlyTotal / totalDue) * 100 : 0;
+    // Calculate collection rate for current period
+    const totalDue = currentPeriodPayments.reduce((sum, p) => sum + (p.amountDue || 0), 0);
+    const collectionRate = totalDue > 0 ? (periodTotal / totalDue) * 100 : 0;
+
+    // Expense calculations
+    const periodExpenses = currentPeriodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const previousPeriodExpensesTotal = previousPeriodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    // Net revenue calculations
+    const netRevenue = periodTotal - periodExpenses;
+    const previousNetRevenue = previousPeriodTotal - previousPeriodExpensesTotal;
+    const netGrowthRate = previousNetRevenue > 0 
+      ? ((netRevenue - previousNetRevenue) / previousNetRevenue) * 100 
+      : 0;
 
     setSummary({
-      monthlyTotal,
+      monthlyTotal: periodTotal,
       pendingTotal,
       overdueTotal,
-      lastMonthRevenue: lastMonthTotal,
+      lastMonthRevenue: previousPeriodTotal,
       growthRate,
       totalOverpayments,
       totalUnderpayments,
       netBalance: totalUnderpayments - totalOverpayments,
       criticalAccounts,
       collectionRate,
+      // Expense-related fields
+      monthlyExpenses: periodExpenses,
+      netRevenue,
+      netGrowthRate,
+      totalExpenses: allExpensesArray.reduce((sum, e) => sum + (e.amount || 0), 0),
     });
   };
 
@@ -170,6 +315,21 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
     setShowForm(true);
   };
 
+  const handleRecordPayment = (tenant) => {
+    const paymentData = { 
+      tenant: tenant._id,
+      unit: tenant.unitId?._id || tenant.unitId,
+      property: propertyId
+    };
+    setSelectedPayment(paymentData);
+    setShowForm(true);
+  };
+
+  const handleGenerateStatement = (tenant) => {
+    setSelectedTenant(tenant);
+    setShowStatementModal(true);
+  };
+
   const handleSubmitPayment = async (paymentData) => {
     try {
       await paymentService.createPayment(paymentData);
@@ -192,7 +352,36 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
 
   const handleExportCSV = async () => {
     try {
-      await exportPropertyPaymentsToCSV(propertyId, payments, null, propertyName);
+      // Get property details for the export
+      const property = { 
+        name: propertyName,
+        // Add more property details if available
+        _id: propertyId
+      };
+
+      // Prepare filter information for the export
+      const exportFilters = {
+        timeFilter: timeFilter || 'all',
+        customStartDate,
+        customEndDate,
+        searchTerm,
+        ...filters
+      };
+
+      // Generate enhanced CSV data
+      const csvData = exportPaymentsToEnhancedCSV(
+        allPayments, // Use unfiltered payments for comprehensive report
+        allExpenses, // Use unfiltered expenses
+        tenants,
+        property,
+        exportFilters
+      );
+
+      // Generate filename
+      const fileName = generatePaymentReportFileName(property, exportFilters);
+
+      // Export the data
+      exportToCSV(csvData, fileName);
     } catch (err) {
       console.error("Error exporting payments:", err);
       setError("Failed to export payment data");
@@ -200,7 +389,7 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
   };
 
   // Filter payments based on search and filters
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = (Array.isArray(payments) ? payments : []).filter(payment => {
     // Apply text search
     const searchLower = searchTerm.toLowerCase();
     const tenantName = payment.tenant
@@ -325,7 +514,21 @@ const PropertyPaymentsList = ({ propertyId, propertyName }) => {
       <TenantBalanceTable
         tenants={tenants}
         formatCurrency={formatCurrency}
+        onRecordPayment={handleRecordPayment}
+        onGenerateStatement={handleGenerateStatement}
       />
+
+      {/* Tenant Statement Modal */}
+      {showStatementModal && (
+        <TenantStatementModal
+          tenant={selectedTenant}
+          isOpen={showStatementModal}
+          onClose={() => {
+            setShowStatementModal(false);
+            setSelectedTenant(null);
+          }}
+        />
+      )}
     </div>
   );
 };

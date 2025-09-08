@@ -1,6 +1,6 @@
 // frontend/src/components/reports/RevenueExpensesReport.jsx
 import { useState, useEffect } from "react";
-import { BarChart2, TrendingUp, DollarSign, AlertTriangle } from "lucide-react";
+import { BarChart2, TrendingUp, Banknote, AlertTriangle } from "lucide-react";
 import Card from "../ui/Card";
 import reportService from "../../services/reportService";
 
@@ -81,7 +81,7 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <Banknote className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -97,7 +97,7 @@ const RevenueExpensesReport = ({ dateRange, filters, onError }) => {
         <Card className="p-4">
           <div className="flex items-center">
             <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-red-600 dark:text-red-400" />
+              <Banknote className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">

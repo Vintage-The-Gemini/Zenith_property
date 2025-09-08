@@ -1,39 +1,25 @@
-// backend/routes/units.js
+// routes/units.js
 import express from 'express';
-import {
-  getUnits,
-  getUnitById,
-  createUnit,
-  updateUnit,
-  deleteUnit,
-  getAvailableUnits
+import { 
+  getUnits, 
+  getUnit, 
+  createUnit, 
+  updateUnit, 
+  addMaintenanceRecord, 
+  updateUnitStatus 
 } from '../controllers/unitController.js';
 import auth from '../middleware/auth.js';
-// Temporarily removing RBAC to fix the immediate 404 errors
-// import { checkPermission } from '../middleware/rbac.js';
-// import { validateUnit, validate } from '../middleware/validators.js';
+import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(auth);
 
-// GET /api/units - Get all units with filtering
 router.get('/', getUnits);
-
-// GET /api/units/available - Get available units (needed by frontend)
-router.get('/available', getAvailableUnits);
-
-// POST /api/units - Create new unit
+router.get('/:id', getUnit);
 router.post('/', createUnit);
-
-// GET /api/units/:id - Get single unit
-router.get('/:id', getUnitById);
-
-// PUT /api/units/:id - Update unit
-router.put('/:id', updateUnit);
-
-// DELETE /api/units/:id - Delete unit
-router.delete('/:id', deleteUnit);
+router.put('/:id', upload.array('images'), updateUnit);
+router.post('/:id/maintenance', addMaintenanceRecord);
+router.put('/:id/status', updateUnitStatus);
 
 export default router;

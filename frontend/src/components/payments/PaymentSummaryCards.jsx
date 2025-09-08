@@ -1,11 +1,13 @@
 // frontend/src/components/payments/PaymentSummaryCards.jsx
 import React from 'react';
 import { 
-  DollarSign, 
+  Banknote, 
   Clock, 
   TrendingUp, 
   TrendingDown, 
-  AlertTriangle 
+  AlertTriangle,
+  Minus,
+  BarChart3 
 } from 'lucide-react';
 import Card from '../ui/Card';
 
@@ -15,21 +17,21 @@ const PaymentSummaryCards = ({ summary }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       <Card className="p-4">
         <div className="flex justify-between items-center">
           <div>
-            <h4 className="text-sm text-gray-500 dark:text-gray-400 mb-1">Monthly Revenue</h4>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h4 className="text-sm text-light-primary-500 dark:text-dark-primary-300 mb-1">Monthly Revenue</h4>
+            <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
               {formatCurrency(summary.monthlyTotal)}
             </p>
           </div>
-          <div className="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-            <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <div className="h-10 w-10 bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+            <Banknote className="h-6 w-6 text-green-600 dark:text-green-400" />
           </div>
         </div>
         <div className="mt-2 text-xs">
-          <p className="text-gray-500 dark:text-gray-400">Collection Rate: {Math.round(summary.collectionRate)}%</p>
+          <p className="text-light-primary-500 dark:text-dark-primary-300">Collection Rate: {Math.round(summary.collectionRate)}%</p>
           {summary.lastMonthRevenue > 0 && (
             <div className="flex items-center mt-1">
               {summary.growthRate > 0 ? (
@@ -55,12 +57,12 @@ const PaymentSummaryCards = ({ summary }) => {
       <Card className="p-4">
         <div className="flex justify-between items-center">
           <div>
-            <h4 className="text-sm text-gray-500 dark:text-gray-400 mb-1">Pending Payments</h4>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h4 className="text-sm text-light-primary-500 dark:text-dark-primary-300 mb-1">Pending Payments</h4>
+            <p className="text-2xl font-bold text-light-primary-900 dark:text-white">
               {formatCurrency(summary.pendingTotal)}
             </p>
           </div>
-          <div className="h-10 w-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center">
+          <div className="h-10 w-10 bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
             <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
           </div>
         </div>
@@ -75,16 +77,50 @@ const PaymentSummaryCards = ({ summary }) => {
       <Card className="p-4">
         <div className="flex justify-between items-center">
           <div>
-            <h4 className="text-sm text-gray-500 dark:text-gray-400 mb-1">Net Balance</h4>
+            <h4 className="text-sm text-light-primary-500 dark:text-dark-primary-300 mb-1">Monthly Expenses</h4>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(summary.totalExpenses)}
+            </p>
+          </div>
+          <div className="h-10 w-10 bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <Minus className="h-6 w-6 text-red-600 dark:text-red-400" />
+          </div>
+        </div>
+        <div className="mt-2 text-xs text-light-primary-500 dark:text-dark-primary-300">
+          Operating costs
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h4 className="text-sm text-light-primary-500 dark:text-dark-primary-300 mb-1">Net Revenue</h4>
+            <p className={`text-2xl font-bold ${summary.netRevenue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(summary.netRevenue)}
+            </p>
+          </div>
+          <div className={`h-10 w-10 flex items-center justify-center ${summary.netRevenue >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+            <BarChart3 className={`h-6 w-6 ${summary.netRevenue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
+          </div>
+        </div>
+        <div className="mt-2 text-xs text-light-primary-500 dark:text-dark-primary-300">
+          Profit Margin: {Math.round(summary.profitMargin || 0)}%
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h4 className="text-sm text-light-primary-500 dark:text-dark-primary-300 mb-1">Outstanding Balance</h4>
             <p className="text-2xl font-bold text-red-600 dark:text-red-400">
               {formatCurrency(summary.netBalance)}
             </p>
           </div>
-          <div className="h-10 w-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+          <div className="h-10 w-10 bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
             <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
         </div>
-        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-2 text-xs text-light-primary-500 dark:text-dark-primary-300">
           Total amount owed
         </div>
       </Card>

@@ -111,8 +111,8 @@ export const getPaymentsByTenant = async (tenantId) => {
  */
 export const getPaymentsByProperty = async (propertyId) => {
   try {
-    const response = await api.get(`/payments/property/${propertyId}`);
-    return response.data;
+    const response = await api.get(`/payments/property/${propertyId}?limit=1000`);
+    return response.data.payments || [];
   } catch (error) {
     console.error("Error fetching property payments:", error);
     throw new Error(getErrorMessage(error));

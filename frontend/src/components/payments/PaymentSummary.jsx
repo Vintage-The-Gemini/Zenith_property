@@ -1,7 +1,7 @@
 // frontend/src/components/payments/PaymentSummary.jsx
 import React from "react";
 import {
-  DollarSign,
+  Banknote,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -22,7 +22,7 @@ const PaymentSummary = ({ summary }) => {
             </p>
           </div>
           <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-            <DollarSign className="h-6 w-6 text-green-600" />
+            <Banknote className="h-6 w-6 text-green-600" />
           </div>
         </div>
         <div className="mt-2 flex items-center text-sm">
@@ -70,7 +70,7 @@ const PaymentSummary = ({ summary }) => {
             </p>
           </div>
           <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-            <DollarSign className="h-6 w-6 text-red-600" />
+            <Banknote className="h-6 w-6 text-red-600" />
           </div>
         </div>
         <div className="mt-2 text-sm text-gray-500">

@@ -182,7 +182,7 @@ const TenantReport = ({ dateRange, filters, onError }) => {
                       {tenant.property}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                      KES {tenant.totalPaid.toLocaleString()}
+                      KES {(tenant.totalPaid || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                       {tenant.lastPaymentDate
@@ -199,7 +199,7 @@ const TenantReport = ({ dateRange, filters, onError }) => {
                             : "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300"
                         }`}
                       >
-                        KES {Math.abs(tenant.balance).toLocaleString()}
+                        KES {Math.abs(tenant.balance || 0).toLocaleString()}
                         {tenant.balance > 0
                           ? " Owing"
                           : tenant.balance < 0

@@ -10,7 +10,7 @@ import {
   Phone,
   Home,
   Calendar,
-  DollarSign,
+  Banknote,
   Edit,
   Trash,
 } from "lucide-react";

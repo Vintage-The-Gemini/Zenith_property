@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import Card from "../ui/Card";
-import { DollarSign, BarChart2 } from "lucide-react";
+import { Banknote, BarChart2 } from "lucide-react";
 
 const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {
   const [chartData, setChartData] = useState([]);
@@ -111,7 +111,7 @@ const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-full mr-3">
-              <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <Banknote className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
@@ -125,7 +125,7 @@ const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <div className="flex items-center">
             <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-full mr-3">
-              <DollarSign className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <Banknote className="h-5 w-5 text-red-600 dark:text-red-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Expenses</p>
@@ -139,7 +139,7 @@ const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full mr-3">
-              <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Banknote className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Net Income</p>

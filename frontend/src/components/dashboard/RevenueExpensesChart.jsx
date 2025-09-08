@@ -1,6 +1,6 @@
 // frontend/src/components/dashboard/RevenueExpensesChart.jsx
 import { useState, useEffect } from "react";
-import { TrendingUp, DollarSign } from "lucide-react";
+import { TrendingUp, Banknote } from "lucide-react";
 import Card from "../ui/Card";
 
 const RevenueExpensesChart = ({ payments = [], expenses = [] }) => {

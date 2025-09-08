@@ -1,55 +1,52 @@
 // backend/routes/payments.js
-import express from 'express';
+import express from "express";
 import {
-  createPayment,
   getPayments,
-  getPaymentById,
-  updatePayment,
-  deletePayment,
-  getPaymentAnalytics
-} from '../controllers/paymentController.js';
-import auth from '../middleware/auth.js';
-import { checkPermission } from '../middleware/rbac.js';
+  getPayment,
+  createPayment,
+  updatePaymentStatus,
+  getPaymentsByTenant,
+  getPaymentsByProperty,
+  getPaymentsByUnit,
+  getPaymentSummary,
+  getTenantBalanceSummary,
+  getTenantDetailedBalance,
+} from "../controllers/paymentController.js";
+import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// All routes require authentication
+// Apply authentication middleware to all routes
 router.use(auth);
 
-// GET /api/payments - Get all payments with filtering
-router.get('/', 
-  checkPermission('payments', 'read'),
-  getPayments
-);
+// Get all payments (global admin view)
+router.get("/", getPayments);
 
-// POST /api/payments - Create new payment
-router.post('/', 
-  checkPermission('payments', 'create'),
-  createPayment
-);
+// Get payment summary
+router.get("/summary", getPaymentSummary);
 
-// GET /api/payments/analytics - Get payment analytics
-router.get('/analytics', 
-  checkPermission('payments', 'read'),
-  getPaymentAnalytics
-);
+// Get tenant balance summary (for payment forms)
+router.get("/tenant/:tenantId/balance", getTenantBalanceSummary);
 
-// GET /api/payments/:id - Get single payment
-router.get('/:id', 
-  checkPermission('payments', 'read'),
-  getPaymentById
-);
+// Get tenant detailed balance (with credits and arrears breakdown)
+router.get("/tenant/:tenantId/detailed-balance", getTenantDetailedBalance);
 
-// PUT /api/payments/:id - Update payment
-router.put('/:id', 
-  checkPermission('payments', 'update'),
-  updatePayment
-);
+// Get payment by ID
+router.get("/:id", getPayment);
 
-// DELETE /api/payments/:id - Delete payment
-router.delete('/:id', 
-  checkPermission('payments', 'delete'),
-  deletePayment
-);
+// Create new payment
+router.post("/", createPayment);
+
+// Update payment status
+router.patch("/:id/status", updatePaymentStatus);
+
+// Get payments by tenant
+router.get("/tenant/:tenantId", getPaymentsByTenant);
+
+// Get payments by property (property-specific management)
+router.get("/property/:propertyId", getPaymentsByProperty);
+
+// Get payments by unit
+router.get("/unit/:unitId", getPaymentsByUnit);
 
 export default router;
