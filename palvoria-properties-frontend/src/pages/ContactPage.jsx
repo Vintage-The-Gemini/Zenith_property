@@ -5,7 +5,6 @@ import {
   EnvelopeIcon, 
   MapPinIcon,
   ClockIcon,
-  ChatBubbleLeftRightIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import Header from '../components/Header'
@@ -14,19 +13,19 @@ import Footer from '../components/Footer'
 const contactInfo = [
   {
     name: 'Phone',
-    value: '+1 (555) 123-4567',
+    value: '+254 700 123 456',
     icon: PhoneIcon,
-    href: 'tel:+15551234567'
+    href: 'tel:+254700123456'
   },
   {
     name: 'Email',
-    value: 'hello@palvoriaproperties.com',
+    value: 'hello@palvoriaproperties.co.ke',
     icon: EnvelopeIcon,
-    href: 'mailto:hello@palvoriaproperties.com'
+    href: 'mailto:hello@palvoriaproperties.co.ke'
   },
   {
     name: 'Address',
-    value: '123 Main Street, Suite 456\nCity, State 12345',
+    value: 'Westlands Business District\nNairobi, Kenya\n00100',
     icon: MapPinIcon,
     href: 'https://maps.google.com'
   },
@@ -82,57 +81,88 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="bg-white">
+    <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-primary-600 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              Get In Touch
-            </h1>
-            <p className="mt-4 text-xl text-primary-100">
-              Ready to find your perfect property? We're here to help.
-            </p>
-          </motion.div>
+      <section className="relative pt-16 lg:pt-20 pb-32 overflow-hidden min-h-screen" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        {/* Parallax Background */}
+        <div className="absolute inset-0 z-0">
+          <img
+            className="w-full h-full object-cover opacity-10 parallax"
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80"
+            alt="Nairobi cityscape"
+            style={{ transform: 'scale(1.05)' }}
+          />
+        </div>
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="pt-20 lg:pt-32 text-center">
+            <motion.h1 
+              className="text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold text-black mb-8 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2 }}
+            >
+              LET'S
+            </motion.h1>
+            <motion.h2 
+              className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-black mb-16 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 0.2 }}
+            >
+              CONNECT
+            </motion.h2>
+            
+            <motion.div
+              className="max-w-4xl mx-auto mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <p className="text-lg md:text-xl lg:text-2xl text-black leading-relaxed" style={{ fontWeight: '300' }}>
+                Whether you're seeking that perfect Kilimani residence or envisioning a Karen estate — we're here to curate your extraordinary Nairobi property journey.
+              </p>
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Contact Form & Info */}
-      <section className="py-16">
+      <section className="py-20" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-16">
             {/* Contact Information */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
+                className="bg-black p-8 lg:p-12 text-white h-full"
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-8">
-                  Contact Information
+                <h2 className="text-3xl font-bold mb-8">
+                  Your Nairobi Property <span className="text-amber-400">Squad! 👥</span>
                 </h2>
-                <div className="space-y-6">
+                <p className="text-stone-300 mb-12 text-lg leading-relaxed">
+                  From Westlands to Kileleshwa, we know Nairobi like the back of our hand! Ready to find your perfect spot in the city under the sun? Hit us up - we don't bite, we promise! 😄
+                </p>
+                
+                <div className="space-y-8">
                   {contactInfo.map((info) => (
-                    <div key={info.name} className="flex items-start">
+                    <div key={info.name} className="flex items-start group">
                       <div className="flex-none">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 group-hover:bg-amber-400 transition-colors duration-300">
                           <info.icon className="h-6 w-6 text-white" aria-hidden="true" />
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <dt className="text-sm font-medium text-gray-900">{info.name}</dt>
-                        <dd className="mt-1 text-sm text-gray-600 whitespace-pre-line">
+                      <div className="ml-5">
+                        <dt className="text-sm font-semibold text-amber-400 uppercase tracking-wide">{info.name}</dt>
+                        <dd className="mt-2 text-base whitespace-pre-line text-stone-300">
                           {info.href ? (
                             <a 
                               href={info.href} 
-                              className="hover:text-primary-600 transition-colors"
+                              className="hover:text-amber-400 transition-colors duration-300"
                             >
                               {info.value}
                             </a>
@@ -145,62 +175,60 @@ export default function ContactPage() {
                   ))}
                 </div>
 
-                {/* Quick Contact Cards */}
-                <div className="mt-12 space-y-4">
-                  <div className="bg-primary-50 p-6 rounded-xl">
-                    <div className="flex items-center mb-3">
-                      <ChatBubbleLeftRightIcon className="h-6 w-6 text-primary-600 mr-2" />
-                      <h3 className="font-semibold text-gray-900">Quick Response</h3>
+                {/* Social proof */}
+                <div className="mt-12 pt-8 border-t border-stone-700">
+                  <div className="grid grid-cols-2 gap-6 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-amber-400">500+</div>
+                      <div className="text-sm text-stone-400">Nairobi Families</div>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Need immediate assistance? Call us directly and speak with one of our property experts.
-                    </p>
-                  </div>
-                  
-                  <div className="bg-accent-50 p-6 rounded-xl">
-                    <div className="flex items-center mb-3">
-                      <CheckCircleIcon className="h-6 w-6 text-accent-600 mr-2" />
-                      <h3 className="font-semibold text-gray-900">Free Consultation</h3>
+                    <div>
+                      <div className="text-2xl font-bold text-amber-400">25+</div>
+                      <div className="text-sm text-stone-400">Neighborhoods</div>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Schedule a free consultation to discuss your property needs with no obligation.
-                    </p>
                   </div>
                 </div>
               </motion.div>
             </div>
 
             {/* Contact Form */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-gray-50 p-8 rounded-2xl"
+                className="bg-white p-8 lg:p-12"
               >
-                <h2 className="text-2xl font-bold text-gray-900 mb-8">
-                  Send Us a Message
-                </h2>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-stone-900 mb-4">
+                    Spill the Tea! ☕
+                  </h2>
+                  <p className="text-stone-600 text-lg">
+                    Tell us what's on your mind - whether it's that dream Karen villa or a trendy Westlands apartment. We'll get back to you faster than Nairobi traffic! 😂
+                  </p>
+                </div>
 
                 {isSubmitted ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-12"
+                    className="text-center py-16"
                   >
-                    <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircleIcon className="h-10 w-10 text-amber-600" />
+                    </div>
+                    <h3 className="text-2xl font-semibold mb-4 text-stone-900">
                       Message Sent Successfully!
                     </h3>
-                    <p className="text-gray-600">
-                      Thank you for contacting us. We'll get back to you within 24 hours.
+                    <p className="text-stone-600 text-lg">
+                      Thanks for reaching out. We'll get back to you within 24 hours.
                     </p>
                   </motion.div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="firstName" className="block text-sm font-semibold mb-3 text-stone-700">
                           First Name *
                         </label>
                         <input
@@ -210,11 +238,11 @@ export default function ContactPage() {
                           value={formData.firstName}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900"
                         />
                       </div>
                       <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="lastName" className="block text-sm font-semibold mb-3 text-stone-700">
                           Last Name *
                         </label>
                         <input
@@ -224,14 +252,14 @@ export default function ContactPage() {
                           value={formData.lastName}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="email" className="block text-sm font-semibold mb-3 text-stone-700">
                           Email *
                         </label>
                         <input
@@ -241,11 +269,11 @@ export default function ContactPage() {
                           value={formData.email}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900"
                         />
                       </div>
                       <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="phone" className="block text-sm font-semibold mb-3 text-stone-700">
                           Phone
                         </label>
                         <input
@@ -254,14 +282,14 @@ export default function ContactPage() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                        Subject *
+                      <label htmlFor="subject" className="block text-sm font-semibold mb-3 text-stone-700">
+                        What can we help you with? *
                       </label>
                       <select
                         id="subject"
@@ -269,20 +297,20 @@ export default function ContactPage() {
                         value={formData.subject}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900"
                       >
-                        <option value="general">General Inquiry</option>
-                        <option value="buying">Buying a Property</option>
-                        <option value="selling">Selling a Property</option>
-                        <option value="renting">Renting</option>
-                        <option value="commercial">Commercial Properties</option>
-                        <option value="investment">Investment Opportunities</option>
+                        <option value="general">Just Saying Jambo! 👋</option>
+                        <option value="buying">I Want to Buy in Nairobi</option>
+                        <option value="selling">Time to Sell My Place</option>
+                        <option value="renting">Looking for a Rental</option>
+                        <option value="commercial">Business Property Hunt</option>
+                        <option value="investment">Investment Gold Mine</option>
                       </select>
                     </div>
 
                     <div>
-                      <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                        Message *
+                      <label htmlFor="message" className="block text-sm font-semibold mb-3 text-stone-700">
+                        Tell us more about your requirements *
                       </label>
                       <textarea
                         id="message"
@@ -291,55 +319,32 @@ export default function ContactPage() {
                         onChange={handleInputChange}
                         required
                         rows={6}
-                        placeholder="Tell us about your property needs, budget, preferred locations, or any specific requirements..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="Spill it all! Dream neighborhood (Karen? Westlands? Kilimani?), budget, must-haves, deal-breakers - we're all ears! 👂✨"
+                        className="w-full px-4 py-4 border-2 border-stone-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300 bg-stone-50 text-stone-900 resize-none"
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full btn-primary py-4 text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? 'Sending...' : 'Send Message'}
-                    </button>
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-black text-white py-4 px-8 text-lg font-semibold hover:bg-gray-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            Sending...
+                          </span>
+                        ) : (
+                          'Send Message'
+                        )}
+                      </button>
+                    </div>
                   </form>
                 )}
               </motion.div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Visit Our Office
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Stop by for a consultation or just to say hello
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-gray-300 rounded-2xl h-96 flex items-center justify-center"
-          >
-            <div className="text-center">
-              <MapPinIcon className="h-16 w-16 text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg">Interactive Map Coming Soon</p>
-              <p className="text-gray-500 text-sm mt-2">123 Main Street, Suite 456, City, State 12345</p>
-            </div>
-          </motion.div>
         </div>
       </section>
 

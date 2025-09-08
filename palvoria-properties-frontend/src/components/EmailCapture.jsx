@@ -151,42 +151,69 @@ const EmailCapture = ({
     setIsSubmitting(true)
 
     try {
-      // Simulate email capture API call
+      // Prepare data for backend API
       const leadData = {
         email,
-        preferences,
-        leadScore,
+        name: email.split('@')[0], // Extract name from email for demo
+        phone: '',
         source: trigger,
-        timestamp: new Date().toISOString(),
-        sessionData: {
+        campaign: 'email_capture_modal',
+        preferences,
+        metadata: {
           pageViews: parseInt(localStorage.getItem('pageViews') || '0'),
           timeOnSite: Date.now() - JSON.parse(localStorage.getItem('sessionStart') || Date.now().toString()),
           referrer: document.referrer,
-          userAgent: navigator.userAgent
+          userAgent: navigator.userAgent,
+          leadScore: leadScore
         }
       }
 
-      // In real implementation, this would call your backend API
-      await simulateAPICall(leadData)
+      // Call backend API to capture email and trigger automation
+      const response = await fetch('http://localhost:5001/api/leads/capture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leadData)
+      })
 
-      // Store capture status
-      localStorage.setItem('emailCaptured', 'true')
-      localStorage.setItem('leadData', JSON.stringify(leadData))
-
-      // Trigger automation sequence
-      await triggerEmailAutomation(leadData)
-
-      setIsSuccess(true)
-      
-      // Callback for parent component
-      if (onCapture) {
-        onCapture(leadData)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Auto-close after success
-      setTimeout(() => {
-        handleClose()
-      }, 3000)
+      const result = await response.json()
+
+      if (result.success) {
+        // Store capture status and user ID
+        localStorage.setItem('emailCaptured', 'true')
+        localStorage.setItem('userId', result.data.userId)
+        localStorage.setItem('leadData', JSON.stringify({
+          ...leadData,
+          userId: result.data.userId,
+          leadScore: result.data.leadScore,
+          category: result.data.category
+        }))
+
+        setIsSuccess(true)
+        
+        // Callback for parent component
+        if (onCapture) {
+          onCapture({
+            ...leadData,
+            userId: result.data.userId,
+            leadScore: result.data.leadScore,
+            category: result.data.category
+          })
+        }
+
+        // Auto-close after success
+        setTimeout(() => {
+          handleClose()
+        }, 3000)
+
+      } else {
+        throw new Error(result.message || 'Failed to capture email')
+      }
 
     } catch (error) {
       console.error('Email capture failed:', error)

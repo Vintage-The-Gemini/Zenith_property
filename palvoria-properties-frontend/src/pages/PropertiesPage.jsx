@@ -9,7 +9,7 @@ const mockProperties = [
   {
     id: 1,
     title: 'Modern Westlands Apartment',
-    price: 'KSH 45M',
+    price: 'KSH 12,500,000',
     location: 'Westlands, Nairobi',
     bedrooms: 2,
     bathrooms: 2,
@@ -21,7 +21,7 @@ const mockProperties = [
   {
     id: 2,
     title: 'Luxury Karen Villa',
-    price: 'KSH 85M',
+    price: 'KSH 35,000,000',
     location: 'Karen, Nairobi',
     bedrooms: 4,
     bathrooms: 3,
@@ -33,7 +33,7 @@ const mockProperties = [
   {
     id: 3,
     title: 'CBD Office Space',
-    price: 'KSH 65M',
+    price: 'KSH 18,000,000',
     location: 'CBD, Nairobi',
     bedrooms: 0,
     bathrooms: 2,
@@ -45,7 +45,7 @@ const mockProperties = [
   {
     id: 4,
     title: 'Cozy Kileleshwa Studio',
-    price: 'KSH 28.5M',
+    price: 'KSH 8,500,000',
     location: 'Kileleshwa, Nairobi',
     bedrooms: 1,
     bathrooms: 1,
@@ -57,7 +57,7 @@ const mockProperties = [
   {
     id: 5,
     title: 'Runda Family Home',
-    price: 'KSH 72M',
+    price: 'KSH 25,000,000',
     location: 'Runda, Nairobi',
     bedrooms: 5,
     bathrooms: 3,
@@ -69,7 +69,7 @@ const mockProperties = [
   {
     id: 6,
     title: 'Modern Mombasa Loft',
-    price: 'KSH 53.5M',
+    price: 'KSH 16,500,000',
     location: 'Nyali, Mombasa',
     bedrooms: 2,
     bathrooms: 2,
@@ -94,7 +94,6 @@ export default function PropertiesPage() {
     priceRange: 'All',
     bedrooms: 'All'
   })
-  const [viewMode, setViewMode] = useState('grid')
   const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
@@ -136,78 +135,120 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="bg-gray-50">
+    <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-primary-600 py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              Find Your Perfect Property in Kenya
-            </h1>
-            <p className="mt-4 text-xl text-primary-100">
-              Browse our extensive collection of premium properties across Kenya
-            </p>
-            <div className="mt-6 text-primary-100">
-              Showing {filteredProperties.length} of {properties.length} properties
-            </div>
-          </motion.div>
+      <section className="relative pt-16 lg:pt-20 pb-32 overflow-hidden min-h-screen" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        {/* Parallax Background */}
+        <div className="absolute inset-0 z-0">
+          <img
+            className="w-full h-full object-cover opacity-10 parallax"
+            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80"
+            alt="Nairobi architecture"
+            style={{ transform: 'scale(1.05)' }}
+          />
+        </div>
+        
+        <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="pt-20 lg:pt-32 text-center">
+            <motion.h1 
+              className="text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold text-black mb-8 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2 }}
+            >
+              NAIROBI
+            </motion.h1>
+            <motion.h2 
+              className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-black mb-16 vogue-heading leading-none"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, delay: 0.2 }}
+            >
+              COLLECTION
+            </motion.h2>
+            
+            <motion.div
+              className="max-w-4xl mx-auto mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <p className="text-lg md:text-xl lg:text-2xl text-black leading-relaxed" style={{ fontWeight: '300' }}>
+                Curated properties across Nairobi's most prestigious neighborhoods — each selected for the discerning few who demand nothing but excellence.
+              </p>
+            </motion.div>
+            
+            <motion.div 
+              className="flex items-center justify-center gap-12 mb-20"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              <div className="text-center">
+                <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{properties.length}</div>
+                <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Nairobi Gems</div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{filteredProperties.length}</div>
+                <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Perfect Matches</div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* Filters and View Controls */}
-      <section className="bg-white border-b border-gray-200 sticky top-16 z-40">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
+      <section style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-6">
+          <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+            {/* Left side - Filter button and active filters */}
+            <div className="flex items-center gap-4 flex-wrap">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-all duration-300 uppercase tracking-widest"
               >
                 <FunnelIcon className="h-4 w-4" />
-                Filters
+                Filter Collection
               </button>
-              
-              {/* Quick Filters */}
-              <div className="hidden md:flex items-center gap-2">
-                {Object.entries(selectedFilters).map(([key, value]) => 
-                  value !== 'All' && (
-                    <span
-                      key={key}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
+
+              {/* Active Filters */}
+              {Object.entries(selectedFilters).map(([key, value]) => 
+                value !== 'All' && (
+                  <span
+                    key={key}
+                    className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                  >
+                    {value}
+                    <button
+                      onClick={() => handleFilterChange(key, 'All')}
+                      className="ml-2 text-amber-600 hover:text-amber-800 font-bold"
                     >
-                      {value}
-                      <button
-                        onClick={() => handleFilterChange(key, 'All')}
-                        className="ml-1 text-primary-600 hover:text-primary-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                )}
-              </div>
+                      ×
+                    </button>
+                  </span>
+                )
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-              >
-                <Squares2X2Icon className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-              >
-                <ListBulletIcon className="h-4 w-4" />
-              </button>
+            {/* Right side - Sort and view options */}
+            <div className="flex items-center gap-4">
+              <select className="px-6 py-3 bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-all duration-300 uppercase tracking-widest">
+                <option>Sort: Featured</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Newest First</option>
+              </select>
+              
+              <div className="flex items-center bg-black">
+                <button className="p-3 text-white hover:bg-gray-800 transition-all duration-300">
+                  <Squares2X2Icon className="h-4 w-4" />
+                </button>
+                <button className="p-3 text-white hover:bg-gray-800 transition-all duration-300">
+                  <ListBulletIcon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -217,18 +258,18 @@ export default function PropertiesPage() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-4 p-4 bg-gray-50 rounded-lg"
+              className="mt-6 p-6 bg-stone-50 rounded-xl border border-stone-200"
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Object.entries(filters).map(([filterType, options]) => (
                   <div key={filterType}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                    <label className="block text-sm font-semibold text-stone-700 mb-3 capitalize">
                       {filterType === 'priceRange' ? 'Price Range' : filterType}
                     </label>
                     <select
                       value={selectedFilters[filterType]}
                       onChange={(e) => handleFilterChange(filterType, e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-4 py-3 border border-stone-300 rounded-lg bg-white text-stone-900 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all"
                     >
                       {options.map(option => (
                         <option key={option} value={option}>{option}</option>
@@ -243,37 +284,44 @@ export default function PropertiesPage() {
       </section>
 
       {/* Properties Grid */}
-      <main className="py-8">
+      <main className="py-16">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           {filteredProperties.length === 0 ? (
-            <div className="text-center py-16">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
-              <p className="text-gray-600">Try adjusting your filters to see more results.</p>
+            <div className="text-center py-20">
+              <div className="w-24 h-24 bg-stone-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FunnelIcon className="w-12 h-12 text-stone-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-stone-900">Oops! No matches in Nairobi 😢</h3>
+              <p className="text-stone-600 mb-6 max-w-md mx-auto">Seems like your dream specs are a bit too specific for our current Nairobi collection. Let's try broadening the search!</p>
+              <button 
+                onClick={() => setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All' })}
+                className="bg-amber-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-amber-600 transition-colors"
+              >
+Show Me Everything! 🎉
+              </button>
             </div>
           ) : (
-            <motion.div
-              layout
-              className={viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'
-                : 'space-y-6'
-              }
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
               {filteredProperties.map((property, index) => (
                 <motion.div
                   key={property.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className={viewMode === 'list' ? 'w-full' : ''}
                 >
-                  <PropertyCard 
-                    property={property} 
-                    viewMode={viewMode}
-                  />
+                  <PropertyCard property={property} />
                 </motion.div>
               ))}
-            </motion.div>
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {filteredProperties.length > 0 && (
+            <div className="text-center mt-12">
+              <button className="bg-white text-stone-700 px-8 py-4 rounded-lg font-medium border-2 border-stone-300 hover:border-amber-500 hover:text-amber-600 transition-all">
+More Nairobi Gems! 💎
+              </button>
+            </div>
           )}
         </div>
       </main>

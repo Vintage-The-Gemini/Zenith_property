@@ -3,9 +3,9 @@ import palvoriaLogo from '../assets/palvoria props logo.png'
 
 const navigation = {
   main: [
-    { name: 'About', href: '/about' },
+    // { name: 'About', href: '/about' },
     { name: 'Properties', href: '/properties' },
-    { name: 'Search', href: '/search' },
+    // { name: 'Search', href: '/search' },
     { name: 'Contact', href: '/contact' },
   ],
   services: [
@@ -73,7 +73,7 @@ const navigation = {
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900" aria-labelledby="footer-heading">
+    <footer className="border-t" style={{ backgroundColor: 'var(--black-secondary)', borderColor: 'rgba(255, 215, 0, 0.2)' }} aria-labelledby="footer-heading">
       <h2 id="footer-heading" className="sr-only">
         Footer
       </h2>
@@ -85,12 +85,19 @@ export default function Footer() {
               src={palvoriaLogo}
               alt="Palvoria Properties"
             />
-            <p className="text-sm leading-6 text-gray-300">
-              Your trusted partner in real estate for over 15 years. We help you find the perfect property that matches your dreams and budget.
+            <p className="text-sm leading-6 playful-text">
+              We're not just another property company. We're the ones who actually care about finding you the perfect home in Nairobi.
             </p>
             <div className="flex space-x-6">
               {navigation.social.map((item) => (
-                <a key={item.name} href={item.href} className="text-gray-400 hover:text-gray-300">
+                <a 
+                  key={item.name} 
+                  href={item.href} 
+                  className="transition-colors duration-300 hover:scale-110" 
+                  style={{ color: 'var(--gray-muted)' }}
+                  onMouseEnter={(e) => e.target.style.color = 'var(--gold-primary)'}
+                  onMouseLeave={(e) => e.target.style.color = 'var(--gray-muted)'}
+                >
                   <span className="sr-only">{item.name}</span>
                   <item.icon className="h-6 w-6" aria-hidden="true" />
                 </a>
@@ -100,11 +107,17 @@ export default function Footer() {
           <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-sm font-semibold leading-6 text-white">Navigation</h3>
+                <h3 className="text-sm font-semibold leading-6 gold-text">Navigation</h3>
                 <ul role="list" className="mt-6 space-y-4">
                   {navigation.main.map((item) => (
                     <li key={item.name}>
-                      <Link to={item.href} className="text-sm leading-6 text-gray-300 hover:text-white">
+                      <Link 
+                        to={item.href} 
+                        className="text-sm leading-6 transition-colors duration-300" 
+                        style={{ color: 'var(--white-secondary)' }}
+                        onMouseEnter={(e) => e.target.style.color = 'var(--gold-primary)'}
+                        onMouseLeave={(e) => e.target.style.color = 'var(--white-secondary)'}
+                      >
                         {item.name}
                       </Link>
                     </li>
@@ -112,11 +125,17 @@ export default function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-sm font-semibold leading-6 text-white">Services</h3>
+                <h3 className="text-sm font-semibold leading-6 gold-text">Services</h3>
                 <ul role="list" className="mt-6 space-y-4">
                   {navigation.services.map((item) => (
                     <li key={item.name}>
-                      <a href={item.href} className="text-sm leading-6 text-gray-300 hover:text-white">
+                      <a 
+                        href={item.href} 
+                        className="text-sm leading-6 transition-colors duration-300" 
+                        style={{ color: 'var(--white-secondary)' }}
+                        onMouseEnter={(e) => e.target.style.color = 'var(--gold-primary)'}
+                        onMouseLeave={(e) => e.target.style.color = 'var(--white-secondary)'}
+                      >
                         {item.name}
                       </a>
                     </li>
@@ -126,11 +145,17 @@ export default function Footer() {
             </div>
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
-                <h3 className="text-sm font-semibold leading-6 text-white">Legal</h3>
+                <h3 className="text-sm font-semibold leading-6 gold-text">Legal</h3>
                 <ul role="list" className="mt-6 space-y-4">
                   {navigation.legal.map((item) => (
                     <li key={item.name}>
-                      <a href={item.href} className="text-sm leading-6 text-gray-300 hover:text-white">
+                      <a 
+                        href={item.href} 
+                        className="text-sm leading-6 transition-colors duration-300" 
+                        style={{ color: 'var(--white-secondary)' }}
+                        onMouseEnter={(e) => e.target.style.color = 'var(--gold-primary)'}
+                        onMouseLeave={(e) => e.target.style.color = 'var(--white-secondary)'}
+                      >
                         {item.name}
                       </a>
                     </li>
@@ -138,19 +163,19 @@ export default function Footer() {
                 </ul>
               </div>
               <div className="mt-10 md:mt-0">
-                <h3 className="text-sm font-semibold leading-6 text-white">Contact Info</h3>
+                <h3 className="text-sm font-semibold leading-6 gold-text">Contact Info</h3>
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
-                    <p className="text-sm leading-6 text-gray-300">
-                      123 Real Estate Ave<br />
-                      Business District<br />
-                      City, State 12345
+                    <p className="text-sm leading-6" style={{ color: 'var(--white-secondary)' }}>
+                      Westlands Business District<br />
+                      Nairobi, Kenya<br />
+                      00100
                     </p>
                   </li>
                   <li>
-                    <p className="text-sm leading-6 text-gray-300">
-                      Phone: (555) 123-4567<br />
-                      Email: info@palvoriaproperties.com
+                    <p className="text-sm leading-6" style={{ color: 'var(--white-secondary)' }}>
+                      Phone: +254 700 123 456<br />
+                      Email: info@palvoriaproperties.co.ke
                     </p>
                   </li>
                 </ul>
@@ -158,14 +183,14 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-16 border-t border-white/10 pt-8 sm:mt-20 lg:mt-24">
+        <div className="mt-16 border-t pt-8 sm:mt-20 lg:mt-24" style={{ borderColor: 'rgba(255, 215, 0, 0.2)' }}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <p className="text-xs leading-5 text-gray-400">
+            <p className="text-xs leading-5" style={{ color: 'var(--gray-muted)' }}>
               &copy; 2024 Palvoria Properties. All rights reserved.
             </p>
             <div className="mt-4 md:mt-0">
-              <p className="text-xs leading-5 text-gray-400">
-                Built with ❤️ using modern web technologies
+              <p className="text-xs leading-5" style={{ color: 'var(--gray-muted)' }}>
+                Built with care for Nairobi dreamers ✨
               </p>
             </div>
           </div>

@@ -4,9 +4,10 @@ import { Toaster } from 'react-hot-toast'
 import HomePage from './pages/HomePage'
 import PropertiesPage from './pages/PropertiesPage'
 import PropertyDetailPage from './pages/PropertyDetailPage'
-import AboutPage from './pages/AboutPage'
+// import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
-import SearchPage from './pages/SearchPage'
+// import SearchPage from './pages/SearchPage'
+import AdminDashboard from './pages/AdminDashboard'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,14 +22,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen" style={{ backgroundColor: 'var(--black-primary)', backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.03) 0%, transparent 50%)' }}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/properties" element={<PropertiesPage />} />
             <Route path="/properties/:id" element={<PropertyDetailPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/about" element={<AboutPage />} />
+            {/* <Route path="/search" element={<SearchPage />} /> */}
+            {/* <Route path="/about" element={<AboutPage />} /> */}
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
           <Toaster 
             position="top-right"
