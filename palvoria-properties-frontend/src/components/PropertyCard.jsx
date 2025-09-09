@@ -43,7 +43,7 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
       "value": area
     },
     "image": image,
-    "url": `https://palvoriaproperties.co.ke/properties/${id}`
+    "url": `https://www.palvoria.com/properties/${id}`
   };
 
   return (

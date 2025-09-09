@@ -20,7 +20,7 @@ Allow: /sitemap.xml
 Allow: /robots.txt
 
 # Sitemap location
-Sitemap: https://palvoriaproperties.co.ke/sitemap.xml
+Sitemap: https://www.palvoria.com/sitemap.xml
 
 # Crawl delay (optional - be respectful to server)
 Crawl-delay: 1

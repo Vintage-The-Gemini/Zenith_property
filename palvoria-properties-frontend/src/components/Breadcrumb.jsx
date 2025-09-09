@@ -46,13 +46,13 @@ const Breadcrumb = ({ items }) => {
               "@type": "ListItem",
               "position": 1,
               "name": "Home",
-              "item": "https://palvoriaproperties.co.ke/"
+              "item": "https://www.palvoria.com/"
             },
             ...items.map((item, index) => ({
               "@type": "ListItem",
               "position": index + 2,
               "name": item.name,
-              "item": item.href ? `https://palvoriaproperties.co.ke${item.href}` : undefined
+              "item": item.href ? `https://www.palvoria.com${item.href}` : undefined
             }))
           ]
         })}

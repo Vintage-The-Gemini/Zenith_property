@@ -4,7 +4,7 @@
   
   <!-- Homepage -->
   <url>
-    <loc>https://palvoriaproperties.co.ke/</loc>
+    <loc>https://www.palvoria.com/</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -12,7 +12,7 @@
   
   <!-- Properties Page -->
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties</loc>
+    <loc>https://www.palvoria.com/properties</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -20,7 +20,7 @@
   
   <!-- Contact Page -->
   <url>
-    <loc>https://palvoriaproperties.co.ke/contact</loc>
+    <loc>https://www.palvoria.com/contact</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -28,7 +28,7 @@
   
   <!-- About Page -->
   <url>
-    <loc>https://palvoriaproperties.co.ke/about</loc>
+    <loc>https://www.palvoria.com/about</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -36,7 +36,7 @@
 
   <!-- Sample Property URLs - Update with actual property IDs -->
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/1</loc>
+    <loc>https://www.palvoria.com/properties/1</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -48,7 +48,7 @@
   </url>
   
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/2</loc>
+    <loc>https://www.palvoria.com/properties/2</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -60,7 +60,7 @@
   </url>
   
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/3</loc>
+    <loc>https://www.palvoria.com/properties/3</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -72,21 +72,21 @@
   </url>
 
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/4</loc>
+    <loc>https://www.palvoria.com/properties/4</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/5</loc>
+    <loc>https://www.palvoria.com/properties/5</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://palvoriaproperties.co.ke/properties/6</loc>
+    <loc>https://www.palvoria.com/properties/6</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
