@@ -1,7 +1,7 @@
-// Service Worker for Palvoria Properties PWA
-const CACHE_NAME = 'palvoria-properties-v1'
-const STATIC_CACHE_NAME = 'palvoria-static-v1'
-const DYNAMIC_CACHE_NAME = 'palvoria-dynamic-v1'
+// Cache busting service worker
+const CACHE_NAME = 'palvoria-v' + Date.now();
+const STATIC_CACHE_NAME = CACHE_NAME + '-static';
+const DYNAMIC_CACHE_NAME = CACHE_NAME + '-dynamic';
 
 // Critical resources to cache immediately
 const STATIC_ASSETS = [
