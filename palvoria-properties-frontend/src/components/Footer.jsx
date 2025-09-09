@@ -167,7 +167,7 @@ export default function Footer() {
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
                     <p className="text-sm leading-6" style={{ color: 'var(--white-secondary)' }}>
-                      Westlands Business District<br />
+                      Kileleshwa<br />
                       Nairobi, Kenya<br />
                       00100
                     </p>

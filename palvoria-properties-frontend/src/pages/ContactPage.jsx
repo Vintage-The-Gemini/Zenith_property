@@ -25,7 +25,7 @@ const contactInfo = [
   },
   {
     name: 'Address',
-    value: 'Westlands Business District\nNairobi, Kenya\n00100',
+    value: 'Kileleshwa\nNairobi, Kenya\n00100',
     icon: MapPinIcon,
     href: 'https://maps.google.com'
   },

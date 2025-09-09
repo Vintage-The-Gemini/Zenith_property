@@ -87,7 +87,7 @@ const propertyData = {
     propertyId: 'PV-KR-002',
     agent: {
       name: 'Michael Ochieng',
-      phone: '+254 722 345 678',
+      phone: '+254 757 880 789',
       email: 'michael@palvoriaproperties.co.ke',
       image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80'
     }
@@ -121,7 +121,7 @@ const propertyData = {
     propertyId: 'PV-CBD-003',
     agent: {
       name: 'Emily Mwangi',
-      phone: '+254 733 456 789',
+      phone: '+254 757 880 789',
       email: 'emily@palvoriaproperties.co.ke',
       image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=256&q=80'
     }

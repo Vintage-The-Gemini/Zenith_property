@@ -23,15 +23,9 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
+      className="rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
+      style={{ backgroundColor: '#FFEAD4' }}
     >
-      {featured && (
-        <div className="absolute top-4 left-4 z-10">
-          <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-            Featured
-          </span>
-        </div>
-      )}
       
       <div className="relative overflow-hidden">
         <img
@@ -67,7 +61,8 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
         
         <Link
           to={`/properties/${id}`}
-          className="w-full bg-amber-500 hover:bg-amber-600 text-white text-center py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+          className="w-full bg-black hover:bg-gray-800 text-center py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+          style={{ color: '#D4721A' }}
         >
           View Details
         </Link>
