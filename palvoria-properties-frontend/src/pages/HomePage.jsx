@@ -129,7 +129,7 @@ export default function HomePage() {
             transition={{ duration: 1, delay: 0.8 }}
           >
             {featuredProperties.slice(0, 3).map((property, index) => (
-              <div key={property.id} className="group cursor-pointer">
+              <Link key={property.id} to={`/properties/${property.id}`} className="group cursor-pointer">
                 <div className="relative overflow-hidden mb-4">
                   <img
                     className="w-full h-64 lg:h-80 object-cover transition-transform duration-700 group-hover:scale-105"
@@ -146,7 +146,7 @@ export default function HomePage() {
                     {property.price}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </motion.div>
         </div>

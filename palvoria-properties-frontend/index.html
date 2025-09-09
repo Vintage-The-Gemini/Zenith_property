@@ -18,9 +18,16 @@
     <meta name="keywords" content="kenya real estate, properties kenya, homes kenya, apartments nairobi, commercial properties kenya, palvoria, kenya property, nairobi real estate, mombasa properties" />
     <meta name="author" content="Palvoria Properties Kenya" />
     
+    <!-- Performance Optimizations -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://images.unsplash.com">
+    <link rel="dns-prefetch" href="https://www.google-analytics.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Resource Hints -->
+    <link rel="preload" href="/palvoria-logo.png" as="image" type="image/png">
+    <meta http-equiv="x-dns-prefetch-control" content="on">
     
     <!-- Roboto Font Styling -->
     <style>
@@ -66,6 +73,99 @@
     <meta property="twitter:image" content="/palvoria-logo.png" />
 
     <title>Palvoria Properties Kenya - Premium Real Estate in Kenya</title>
+    
+    <!-- Structured Data - Local Business Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "RealEstateAgent",
+      "name": "Palvoria Properties Kenya",
+      "image": "https://palvoriaproperties.co.ke/palvoria-logo.png",
+      "description": "Find your perfect property in Kenya with our expert real estate services. Over 15 years of excellence in Kenyan residential and commercial properties.",
+      "url": "https://palvoriaproperties.co.ke",
+      "telephone": "+254757880789",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Kileleshwa",
+        "addressLocality": "Nairobi",
+        "addressRegion": "Nairobi County",
+        "postalCode": "00100",
+        "addressCountry": "KE"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -1.2743394,
+        "longitude": 36.7834516
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday", 
+          "Wednesday",
+          "Thursday",
+          "Friday"
+        ],
+        "opens": "08:00",
+        "closes": "18:00"
+      },
+      "sameAs": [
+        "https://facebook.com/palvoriaproperties",
+        "https://twitter.com/palvoriaproperties",
+        "https://instagram.com/palvoriaproperties",
+        "https://linkedin.com/company/palvoriaproperties"
+      ],
+      "areaServed": [
+        {
+          "@type": "City",
+          "name": "Nairobi"
+        },
+        {
+          "@type": "City", 
+          "name": "Mombasa"
+        },
+        {
+          "@type": "City",
+          "name": "Kisumu"
+        }
+      ],
+      "makesOffer": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Property Sales",
+            "description": "Residential and commercial property sales in Kenya"
+          }
+        },
+        {
+          "@type": "Offer", 
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Property Rental",
+            "description": "Property rental and leasing services"
+          }
+        },
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service", 
+            "name": "Property Management",
+            "description": "Professional property management services"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NEG3FDTHEX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-NEG3FDTHEX');
+    </script>
   </head>
   <body>
     <div id="root"></div>

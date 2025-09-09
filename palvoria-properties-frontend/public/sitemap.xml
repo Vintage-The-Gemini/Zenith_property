@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://palvoriaproperties.co.ke/</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Properties Page -->
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Contact Page -->
+  <url>
+    <loc>https://palvoriaproperties.co.ke/contact</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- About Page -->
+  <url>
+    <loc>https://palvoriaproperties.co.ke/about</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Sample Property URLs - Update with actual property IDs -->
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/1</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1512917774080-9991f1c4c750</image:loc>
+      <image:caption>Modern Apartment in Westlands, Nairobi</image:caption>
+      <image:title>3 Bedroom Modern Apartment</image:title>
+    </image:image>
+  </url>
+  
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/2</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1448630360428-65456885c650</image:loc>
+      <image:caption>Luxury Villa in Karen, Nairobi</image:caption>
+      <image:title>5 Bedroom Luxury Villa</image:title>
+    </image:image>
+  </url>
+  
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/3</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1505843513577-22bb7d21e455</image:loc>
+      <image:caption>Executive Townhouse in Kilimani</image:caption>
+      <image:title>4 Bedroom Executive Townhouse</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/4</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/5</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://palvoriaproperties.co.ke/properties/6</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>

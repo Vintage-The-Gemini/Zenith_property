@@ -4,6 +4,7 @@ import { FunnelIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import PropertyCard from '../components/PropertyCard'
+import Breadcrumb from '../components/Breadcrumb'
 
 const mockProperties = [
   {
@@ -137,6 +138,9 @@ export default function PropertiesPage() {
   return (
     <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
       <Header />
+      
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb items={[{ name: 'Properties' }]} />
       
       {/* Hero Section */}
       <section className="relative pt-16 lg:pt-20 pb-32 overflow-hidden min-h-screen" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>

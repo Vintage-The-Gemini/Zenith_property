@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Allow: /properties
+Allow: /contact
+Allow: /about
+
+# Block admin areas
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+
+# Block development files
+Disallow: /*.json$
+Disallow: /src/
+Disallow: /node_modules/
+Disallow: /backend/
+
+# Allow important SEO files
+Allow: /sitemap.xml
+Allow: /robots.txt
+
+# Sitemap location
+Sitemap: https://palvoriaproperties.co.ke/sitemap.xml
+
+# Crawl delay (optional - be respectful to server)
+Crawl-delay: 1

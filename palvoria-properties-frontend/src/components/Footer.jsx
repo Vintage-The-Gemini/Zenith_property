@@ -9,10 +9,10 @@ const navigation = {
     { name: 'Contact', href: '/contact' },
   ],
   services: [
-    { name: 'Property Management', href: '#' },
-    { name: 'Real Estate Investment', href: '#' },
-    { name: 'Property Valuation', href: '#' },
-    { name: 'Rental Services', href: '#' },
+    { name: 'Property Management', href: '/contact' },
+    { name: 'Real Estate Investment', href: '/properties' },
+    { name: 'Property Valuation', href: '/contact' },
+    { name: 'Rental Services', href: '/properties' },
   ],
   legal: [
     { name: 'Privacy Policy', href: '#' },
@@ -129,15 +129,15 @@ export default function Footer() {
                 <ul role="list" className="mt-6 space-y-4">
                   {navigation.services.map((item) => (
                     <li key={item.name}>
-                      <a 
-                        href={item.href} 
+                      <Link 
+                        to={item.href} 
                         className="text-sm leading-6 transition-colors duration-300" 
                         style={{ color: 'var(--white-secondary)' }}
                         onMouseEnter={(e) => e.target.style.color = 'var(--gold-primary)'}
                         onMouseLeave={(e) => e.target.style.color = 'var(--white-secondary)'}
                       >
                         {item.name}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ul>

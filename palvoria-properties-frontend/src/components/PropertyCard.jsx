@@ -20,7 +20,37 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
     featured
   } = property
 
+  // Property Schema Markup
+  const propertySchema = {
+    "@context": "https://schema.org",
+    "@type": "RealEstate",
+    "name": title,
+    "description": `${bedrooms} bedroom property in ${location}`,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": location,
+      "addressCountry": "KE"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": price,
+      "priceCurrency": "KES"
+    },
+    "numberOfBedrooms": bedrooms,
+    "numberOfBathroomsTotal": bathrooms,
+    "floorSize": {
+      "@type": "QuantitativeValue",
+      "value": area
+    },
+    "image": image,
+    "url": `https://palvoriaproperties.co.ke/properties/${id}`
+  };
+
   return (
+    <>
+      <script type="application/ld+json">
+        {JSON.stringify(propertySchema)}
+      </script>
     <motion.div
       whileHover={{ y: -2 }}
       className="rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group"
@@ -30,7 +60,7 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
       <div className="relative overflow-hidden">
         <img
           src={image}
-          alt={title}
+          alt={`${title} - ${bedrooms} bedroom property for ${price} in ${location}, Kenya. Professional property photos by Palvoria Properties.`}
           className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         <div className="absolute top-4 right-4">
@@ -68,6 +98,7 @@ const PropertyCard = ({ property, viewMode = 'grid' }) => {
         </Link>
       </div>
     </motion.div>
+    </>
   )
 }
 
