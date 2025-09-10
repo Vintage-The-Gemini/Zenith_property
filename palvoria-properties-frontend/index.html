@@ -7,11 +7,11 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/palvoria-logo.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/palvoria-logo.png" />
-    <link rel="apple-touch-icon" href="/palvoria-logo.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- Favicon with cache busting -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/palvoria-logo.png?v=1726003800" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/palvoria-logo.png?v=1726003800" />
+    <link rel="apple-touch-icon" href="/palvoria-logo.png?v=1726003800" />
+    <link rel="manifest" href="/site.webmanifest?v=1726003800" />
     <meta name="theme-color" content="#0284c7" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Palvoria Properties Kenya - Find your perfect property in Kenya with our expert real estate services. Over 15 years of excellence in Kenyan residential and commercial properties in Nairobi, Mombasa, Kisumu and beyond." />
@@ -25,8 +25,8 @@
     <link rel="dns-prefetch" href="https://www.google-analytics.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Resource Hints -->
-    <link rel="preload" href="/palvoria-logo.png" as="image" type="image/png">
+    <!-- Resource Hints with cache busting -->
+    <link rel="preload" href="/palvoria-logo.png?v=1726003800" as="image" type="image/png">
     <meta http-equiv="x-dns-prefetch-control" content="on">
     
     <!-- Roboto Font Styling -->
@@ -169,6 +169,41 @@
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Cache busting script -->
+    <script>
+      // Force reload and clear cache on development
+      if (window.location.hostname === 'localhost') {
+        // Clear all caches
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+        
+        // Unregister service workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(registration => registration.unregister());
+          });
+        }
+        
+        // Clear localStorage/sessionStorage
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch(e) {}
+        
+        // Force favicon reload
+        const favicon = document.querySelector('link[rel="icon"]');
+        if (favicon) {
+          const newFavicon = favicon.cloneNode(true);
+          newFavicon.href = favicon.href.split('?')[0] + '?v=' + Date.now();
+          favicon.parentNode.replaceChild(newFavicon, favicon);
+        }
+      }
+    </script>
+    
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clear-cache": "node clear-cache.js",
+    "dev:fresh": "npm run clear-cache && vite"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

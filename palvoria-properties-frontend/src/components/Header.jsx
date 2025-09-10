@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
-import palvoriaLogo from '../assets/palvoria props logo.png'
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -29,7 +28,7 @@ export default function Header() {
           <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-3">
             <span className="sr-only">Palvoria Properties - Nairobi's Premier Real Estate</span>
             <img 
-              src={palvoriaLogo} 
+              src="/palvoria-logo.png" 
               alt="Palvoria Properties Logo" 
               className="h-6 md:h-8 lg:h-10 w-auto"
             />
@@ -99,7 +98,7 @@ export default function Header() {
                 <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                   <span className="sr-only">Palvoria Properties - Nairobi's Premier Real Estate</span>
                   <img 
-                    src={palvoriaLogo} 
+                    src="/palvoria-logo.png" 
                     alt="Palvoria Properties Logo" 
                     className="h-8 w-auto"
                   />

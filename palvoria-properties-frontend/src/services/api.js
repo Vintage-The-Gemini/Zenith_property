@@ -11,16 +11,28 @@ class ApiService {
       ...options
     }
 
+    console.log('🔗 API Request:', { url, config })
+
     try {
       const response = await fetch(url, config)
       
+      console.log('📡 API Response:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text()
+        console.error('❌ API Error Response:', errorText)
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
       }
       
-      return await response.json()
+      const data = await response.json()
+      console.log('✅ API Success:', { endpoint, dataLength: data?.data?.length })
+      return data
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error)
+      console.error(`❌ API request failed: ${endpoint}`, error)
       throw error
     }
   }
@@ -36,23 +48,65 @@ class ApiService {
     return this.request(`/properties/${id}`)
   }
 
-  async createProperty(propertyData) {
+  async createProperty(propertyData, images = []) {
+    console.log('API Service - Creating property with data:', propertyData)
+    
+    // For now, filter out blob URLs as they are not real files
+    const cleanPropertyData = {
+      ...propertyData,
+      images: [] // Remove blob URLs for now
+    }
+    
+    console.log('API Service - Clean property data:', cleanPropertyData)
+    
     return this.request('/properties', {
       method: 'POST',
-      body: JSON.stringify(propertyData)
+      body: JSON.stringify(cleanPropertyData)
     })
   }
 
-  async updateProperty(id, propertyData) {
+  async updateProperty(id, propertyData, images = []) {
+    const formData = new FormData()
+    
+    // Add property data
+    Object.keys(propertyData).forEach(key => {
+      if (key !== 'images') {
+        if (typeof propertyData[key] === 'object') {
+          formData.append(key, JSON.stringify(propertyData[key]))
+        } else {
+          formData.append(key, propertyData[key])
+        }
+      }
+    })
+    
+    // Add new images
+    images.forEach((image, index) => {
+      formData.append('images', image)
+    })
+    
     return this.request(`/properties/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(propertyData)
+      body: formData,
+      headers: {} // Don't set Content-Type, let browser set it with boundary
     })
   }
 
   async deleteProperty(id) {
     return this.request(`/properties/${id}`, {
       method: 'DELETE'
+    })
+  }
+
+  // Image management for properties
+  async deletePropertyImage(propertyId, imageId) {
+    return this.request(`/properties/${propertyId}/images/${imageId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async setPrimaryImage(propertyId, imageId) {
+    return this.request(`/properties/${propertyId}/images/${imageId}/primary`, {
+      method: 'PUT'
     })
   }
 

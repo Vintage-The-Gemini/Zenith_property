@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import palvoriaLogo from '../assets/palvoria props logo.png'
 
 const navigation = {
   main: [
@@ -82,7 +81,7 @@ export default function Footer() {
           <div className="space-y-8">
             <img
               className="h-12 w-auto"
-              src={palvoriaLogo}
+              src="/palvoria-logo.png"
               alt="Palvoria Properties"
             />
             <p className="text-sm leading-6 playful-text">
