@@ -16,54 +16,13 @@ import PropertyCard from '../components/PropertyCard'
 import SEOHead from '../components/SEOHead'
 import apiService from '../services/api'
 
-const featuredProperties = [
-  {
-    id: 1,
-    title: 'Modern Westlands Apartment',
-    price: 'KSH 12,500,000',
-    location: 'Westlands, Nairobi',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '1,200 sq ft',
-    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
-    type: 'Apartment',
-    featured: true
-  },
-  {
-    id: 7,
-    title: 'Elegant Loresho Villa',
-    price: 'KSH 42,000,000',
-    location: 'Loresho, Nairobi',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: '3,500 sq ft',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80',
-    type: 'House',
-    featured: true
-  },
-  {
-    id: 3,
-    title: 'CBD Office Space',
-    price: 'KSH 18,000,000',
-    location: 'CBD, Nairobi',
-    bedrooms: 0,
-    bathrooms: 2,
-    area: '1,800 sq ft',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80',
-    type: 'Commercial',
-    featured: true
-  },
-]
 
 export default function HomePage() {
-  const [featuredProps, setFeaturedProps] = useState(featuredProperties)
-  const [loading, setLoading] = useState(true)
+  const [featuredProps, setFeaturedProps] = useState([])
 
   useEffect(() => {
     const fetchFeaturedProperties = async () => {
       try {
-        setLoading(true)
-        
         // Fetch from Palvoria's own database
         const response = await apiService.getProperties({ status: 'active', limit: 3 })
         console.log('Fetched featured properties:', response)
@@ -89,9 +48,6 @@ export default function HomePage() {
         }
       } catch (err) {
         console.error('Error fetching featured properties:', err)
-        // Keep using mock data on error
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -178,18 +134,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.8 }}
           >
-            {loading ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-300 h-64 lg:h-80 mb-4 rounded"></div>
-                  <div className="text-center">
-                    <div className="bg-gray-300 h-6 w-32 mx-auto mb-2 rounded"></div>
-                    <div className="bg-gray-300 h-4 w-24 mx-auto rounded"></div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              featuredProps.slice(0, 3).map((property, index) => (
+            {featuredProps.slice(0, 3).map((property, index) => (
                 <div key={property.id} className="group">
                   <div className="relative overflow-hidden mb-4">
                     <img
@@ -208,8 +153,7 @@ export default function HomePage() {
                     </p>
                   </div>
                 </div>
-              ))
-            )}
+            ))
           </motion.div>
         </div>
       </section>

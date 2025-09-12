@@ -16,92 +16,6 @@ import SEOHead from '../components/SEOHead'
 import EnhancedLocationFilter from '../components/EnhancedLocationFilter'
 import apiService from '../services/api'
 
-const mockProperties = [
-  {
-    id: 1,
-    title: 'Modern Westlands Apartment',
-    price: 'KSH 12,500,000',
-    location: 'Westlands, Nairobi',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '1,200 sq ft',
-    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
-    type: 'Apartment',
-    featured: true
-  },
-  {
-    id: 2,
-    title: 'Luxury Karen Villa',
-    price: 'KSH 35,000,000',
-    location: 'Karen, Nairobi',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: '2,800 sq ft',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80',
-    type: 'House',
-    featured: false
-  },
-  {
-    id: 3,
-    title: 'CBD Office Space',
-    price: 'KSH 18,000,000',
-    location: 'CBD, Nairobi',
-    bedrooms: 0,
-    bathrooms: 2,
-    area: '1,800 sq ft',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80',
-    type: 'Commercial',
-    featured: false
-  },
-  {
-    id: 4,
-    title: 'Cozy Kileleshwa Studio',
-    price: 'KSH 8,500,000',
-    location: 'Kileleshwa, Nairobi',
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '650 sq ft',
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
-    type: 'Apartment',
-    featured: false
-  },
-  {
-    id: 5,
-    title: 'Runda Family Home',
-    price: 'KSH 25,000,000',
-    location: 'Runda, Nairobi',
-    bedrooms: 5,
-    bathrooms: 3,
-    area: '3,200 sq ft',
-    image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&auto=format&fit=crop&w=2065&q=80',
-    type: 'House',
-    featured: false
-  },
-  {
-    id: 6,
-    title: 'Modern Mombasa Loft',
-    price: 'KSH 16,500,000',
-    location: 'Nyali, Mombasa',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '1,450 sq ft',
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&auto=format&fit=crop&w=2080&q=80',
-    type: 'Loft',
-    featured: false
-  },
-  {
-    id: 7,
-    title: 'Elegant Loresho Villa',
-    price: 'KSH 42,000,000',
-    location: 'Loresho, Nairobi',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: '3,500 sq ft',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80',
-    type: 'House',
-    featured: true
-  }
-]
 
 const filters = {
   type: ['All', 'Apartment', 'House', 'Villa', 'Townhouse', 'Commercial', 'Office', 'Shop', 'Land'],
@@ -124,14 +38,13 @@ export default function PropertiesPage() {
   const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
   const [sortBy, setSortBy] = useState('featured')
   const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   // Fetch properties from admin panel on component mount
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        setLoading(true)
         setError(null)
         
         // Fetch from Palvoria's own database
@@ -162,19 +75,15 @@ export default function PropertiesPage() {
           setProperties(transformedProperties)
           setFilteredProperties(transformedProperties)
         } else {
-          // Fallback to mock data if API fails
-          console.warn('API returned no data, using mock data')
-          setProperties(mockProperties)
-          setFilteredProperties(mockProperties)
+          console.warn('API returned no data')
+          setProperties([])
+          setFilteredProperties([])
         }
       } catch (err) {
         console.error('Error fetching properties:', err)
         setError('Failed to load properties')
-        // Fallback to mock data
-        setProperties(mockProperties)
-        setFilteredProperties(mockProperties)
-      } finally {
-        setLoading(false)
+        setProperties([])
+        setFilteredProperties([])
       }
     }
 
@@ -614,13 +523,7 @@ export default function PropertiesPage() {
         </div>
 
         {/* Properties Grid/List */}
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-500 mx-auto mb-6"></div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Loading Properties...</h3>
-            <p className="text-gray-600">Finding the perfect matches for you</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <span className="text-red-600 text-2xl">⚠️</span>
