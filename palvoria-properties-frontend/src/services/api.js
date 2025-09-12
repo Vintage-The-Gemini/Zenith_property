@@ -3,16 +3,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 class ApiService {
   async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`
+    // Add timestamp for cache busting
+    const separator = endpoint.includes('?') ? '&' : '?'
+    const url = `${API_BASE_URL}${endpoint}${separator}_t=${Date.now()}`
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
         ...options.headers
       },
-      cache: 'no-store',
+      cache: 'no-store', // Browser-level cache control
       ...options
     }
 
