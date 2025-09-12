@@ -42,7 +42,8 @@ export default defineConfig({
   define: {
     // Force rebuild by changing this value
     __CACHE_BUST__: `"${Date.now()}"`,
-    __BUILD_VERSION__: `"${Date.now()}"`
+    __BUILD_VERSION__: `"${Date.now()}"`,
+    __NO_MOCK_DATA__: `"${Date.now()}"`
   },
   build: {
     rollupOptions: {

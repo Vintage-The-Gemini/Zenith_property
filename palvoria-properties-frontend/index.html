@@ -236,11 +236,25 @@
         window.location.reload(true);
       };
 
-      // Simple development cache clearing only
+      // Force cache clear on production for fresh deploys
+      const currentVersion = '1757676750000'; // Update this timestamp
+      const lastVersion = localStorage.getItem('app_version');
+      
+      if (lastVersion !== currentVersion) {
+        console.log('🔄 New version detected - clearing all caches');
+        clearCaches();
+        localStorage.setItem('app_version', currentVersion);
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+          localStorage.setItem('app_version', currentVersion);
+        } catch(e) {}
+      }
+      
+      // Simple development cache clearing
       if (window.location.hostname === 'localhost') {
         console.log('🔄 Development mode - clearing caches');
         clearCaches();
-        // Clear localStorage/sessionStorage on dev
         try {
           localStorage.clear();
           sessionStorage.clear();
