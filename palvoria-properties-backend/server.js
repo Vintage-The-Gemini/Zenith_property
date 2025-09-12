@@ -235,6 +235,7 @@ const startServer = async () => {
       );
       logger.info(`🌐 Server: http://localhost:${PORT}`);
       logger.info(`📚 API Documentation: http://localhost:${PORT}/`);
+      logger.info(`🗄️ Database: ${process.env.MONGODB_URI ? process.env.MONGODB_URI.split('@')[1].split('?')[0] : 'Not configured'}`);
       logger.info(`⚡ WebSocket: ws://localhost:${PORT}/socket.io/`);
 
       const separator = "=".repeat(60);
