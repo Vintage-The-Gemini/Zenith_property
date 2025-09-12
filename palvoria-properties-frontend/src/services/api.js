@@ -1,6 +1,6 @@
 // Palvoria API - uses its own database
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.PROD ? 'https://palvoria-properties-api.onrender.com/api' : 'http://localhost:5000/api')
+  (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : 'https://palvoria-properties-api.onrender.com/api')
 
 // Debug logging
 console.log('🔧 API Configuration:', {

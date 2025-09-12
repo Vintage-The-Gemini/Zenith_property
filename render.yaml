@@ -1,0 +1,42 @@
+services:
+  # Frontend Static Site
+  - type: web
+    name: palvoria-properties-frontend
+    env: static
+    buildCommand: cd palvoria-properties-frontend && npm install && npm run build
+    staticPublishPath: ./palvoria-properties-frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        headers:
+          Cache-Control: no-cache, no-store, must-revalidate
+          Pragma: no-cache
+          Expires: '0'
+
+  # Backend API Service  
+  - type: web
+    name: palvoria-properties-api
+    env: node
+    buildCommand: cd palvoria-properties-backend && npm install
+    startCommand: cd palvoria-properties-backend && npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        value: mongodb+srv://admin:admin123@cluster0.qteiz.mongodb.net/palvoria-properties?retryWrites=true&w=majority&appName=Cluster0
+      - key: JWT_SECRET
+        value: palvoria-super-secret-jwt-key-2024-change-in-production
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: CLOUDINARY_CLOUD_NAME
+        value: di2fwzczc
+      - key: CLOUDINARY_API_KEY
+        value: '642418543299886'
+      - key: CLOUDINARY_API_SECRET
+        value: yX10IUqeqXzYECggxlsPF6zlCS8
+      - key: FRONTEND_URL
+        value: https://www.palvoria.com
