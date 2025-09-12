@@ -17,7 +17,8 @@
       "Bash(git add:*)",
       "Bash(git reset:*)",
       "Bash(PORT=5000 npm run dev)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

@@ -21,6 +21,14 @@ export default defineConfig({
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': '0'
+    },
+    // Proxy API calls to backend
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   // Disable cache for development

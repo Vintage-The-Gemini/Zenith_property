@@ -5,14 +5,19 @@ import {
   getProperty, 
   createProperty, 
   updateProperty, 
-  deleteProperty 
+  deleteProperty,
+  getPublicProperties 
 } from '../controllers/propertyController.js';
 import auth from '../middleware/auth.js';
 import { checkRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.use(auth); // Apply authentication to all routes
+// Public routes (no authentication required)
+router.get('/public', getPublicProperties);
+
+// Protected routes (authentication required)
+router.use(auth); // Apply authentication to all routes below
 
 router.get('/', getProperties);
 router.get('/:id', getProperty);

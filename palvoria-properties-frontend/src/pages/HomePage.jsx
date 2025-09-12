@@ -13,6 +13,8 @@ import {
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import PropertyCard from '../components/PropertyCard'
+import SEOHead from '../components/SEOHead'
+import apiService from '../services/api'
 
 const featuredProperties = [
   {
@@ -28,14 +30,14 @@ const featuredProperties = [
     featured: true
   },
   {
-    id: 2,
-    title: 'Luxury Karen Villa',
-    price: 'KSH 35,000,000',
-    location: 'Karen, Nairobi',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: '2,800 sq ft',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2075&q=80',
+    id: 7,
+    title: 'Elegant Loresho Villa',
+    price: 'KSH 42,000,000',
+    location: 'Loresho, Nairobi',
+    bedrooms: 5,
+    bathrooms: 4,
+    area: '3,500 sq ft',
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80',
     type: 'House',
     featured: true
   },
@@ -54,8 +56,56 @@ const featuredProperties = [
 ]
 
 export default function HomePage() {
+  const [featuredProps, setFeaturedProps] = useState(featuredProperties)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchFeaturedProperties = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch from Palvoria's own database
+        const response = await apiService.getProperties({ status: 'active', limit: 3 })
+        console.log('Fetched featured properties:', response)
+        
+        if (response.success && response.data && response.data.length > 0) {
+          // Transform Palvoria backend data to match frontend format
+          const transformedProperties = response.data.slice(0, 3).map(property => ({
+            id: property._id,
+            title: property.title,
+            price: `KSH ${property.price?.amount?.toLocaleString() || 'Price on Request'}`,
+            location: `${property.location?.city || ''}, ${property.location?.county || 'Kenya'}`,
+            bedrooms: property.features?.bedrooms || 0,
+            bathrooms: property.features?.bathrooms || 0,
+            area: property.features?.area ? `${property.features.area.size} ${property.features.area.unit}` : 'N/A',
+            image: property.images && property.images.length > 0 ? 
+              (property.images.find(img => img.isPrimary) || property.images[0]).url : 
+              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
+            type: property.propertyType?.charAt(0).toUpperCase() + property.propertyType?.slice(1) || 'Property',
+            featured: true
+          }))
+          
+          setFeaturedProps(transformedProperties)
+        }
+      } catch (err) {
+        console.error('Error fetching featured properties:', err)
+        // Keep using mock data on error
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFeaturedProperties()
+  }, [])
+
   return (
     <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
+      <SEOHead 
+        customTitle="Palvoria Properties - Premium Real Estate in Kenya"
+        customDescription="Discover luxury properties in Nairobi's prime locations. Houses, apartments, and commercial spaces in Westlands, Karen, Kilimani, and more premium areas."
+        customKeywords={['real estate kenya', 'properties nairobi', 'houses for sale', 'apartments rent', 'luxury properties', 'westlands karen kilimani']}
+        pageType="homepage"
+      />
       <Header />
       
       {/* Hero Section */}
@@ -63,7 +113,7 @@ export default function HomePage() {
         {/* Parallax Background */}
         <div className="absolute inset-0 z-0">
           <img
-            className="w-full h-full object-cover opacity-10 parallax"
+            className="w-full h-full object-cover opacity-25 parallax"
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80"
             alt="Nairobi architecture"
             style={{ transform: 'scale(1.05)' }}
@@ -128,26 +178,38 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.8 }}
           >
-            {featuredProperties.slice(0, 3).map((property, index) => (
-              <Link key={property.id} to={`/properties/${property.id}`} className="group cursor-pointer">
-                <div className="relative overflow-hidden mb-4">
-                  <img
-                    className="w-full h-64 lg:h-80 object-cover transition-transform duration-700 group-hover:scale-105"
-                    src={property.image}
-                    alt={property.title}
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-gray-300 h-64 lg:h-80 mb-4 rounded"></div>
+                  <div className="text-center">
+                    <div className="bg-gray-300 h-6 w-32 mx-auto mb-2 rounded"></div>
+                    <div className="bg-gray-300 h-4 w-24 mx-auto rounded"></div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <h3 className="text-xl lg:text-2xl font-bold text-black mb-2 vogue-heading">
-                    {property.location.split(',')[0].toUpperCase()}
-                  </h3>
-                  <p className="text-black text-sm lg:text-base" style={{ fontWeight: '300' }}>
-                    {property.price}
-                  </p>
+              ))
+            ) : (
+              featuredProps.slice(0, 3).map((property, index) => (
+                <div key={property.id} className="group">
+                  <div className="relative overflow-hidden mb-4">
+                    <img
+                      className="w-full h-64 lg:h-80 object-cover transition-transform duration-700 group-hover:scale-105"
+                      src={property.image}
+                      alt={property.title}
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-xl lg:text-2xl font-bold text-black mb-2 vogue-heading">
+                      {property.location.split(',')[0].toUpperCase()}
+                    </h3>
+                    <p className="text-black text-sm lg:text-base" style={{ fontWeight: '300' }}>
+                      {property.price}
+                    </p>
+                  </div>
                 </div>
-              </Link>
-            ))}
+              ))
+            )}
           </motion.div>
         </div>
       </section>
@@ -282,6 +344,12 @@ export default function HomePage() {
                 </p>
               </div>
               <div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">KILELESHWA</h3>
+                <p className="text-lg text-black leading-relaxed" style={{ fontWeight: '300' }}>
+                  Vibrant urban living with excellent connectivity. A dynamic neighborhood perfect for young professionals.
+                </p>
+              </div>
+              <div>
                 <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">KAREN</h3>
                 <p className="text-lg text-black leading-relaxed" style={{ fontWeight: '300' }}>
                   Expansive estates and verdant landscapes. The epitome of refined living away from the city's pulse.
@@ -290,9 +358,15 @@ export default function HomePage() {
             </div>
             <div className="space-y-12">
               <div>
-                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">KILIMANI</h3>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">LORESHO</h3>
                 <p className="text-lg text-black leading-relaxed" style={{ fontWeight: '300' }}>
-                  Contemporary living for the modern professional. Sleek apartments with unparalleled city views.
+                  Exclusive residential enclave offering privacy and prestige. Where luxury villas meet serene tranquility.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-black mb-4 vogue-heading">RUNDA</h3>
+                <p className="text-lg text-black leading-relaxed" style={{ fontWeight: '300' }}>
+                  Premium family estates in a secure, gated community. The perfect blend of luxury and family-friendly living.
                 </p>
               </div>
               <div>

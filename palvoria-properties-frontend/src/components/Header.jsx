@@ -23,7 +23,7 @@ export default function Header() {
 
   return (
     <header className="fixed top-3 left-3 right-3 md:top-6 md:left-6 md:right-6 z-50">
-      <nav className="flex items-center justify-between px-4 md:px-6 lg:px-12 py-3 md:py-4 bg-black mx-auto max-w-6xl" aria-label="Global">
+      <nav className="flex items-center justify-between px-4 md:px-6 lg:px-12 py-3 md:py-4 bg-black mx-auto max-w-4xl" aria-label="Global">
         <div className="flex lg:flex-1">
           <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-3">
             <span className="sr-only">Palvoria Properties - Nairobi's Premier Real Estate</span>

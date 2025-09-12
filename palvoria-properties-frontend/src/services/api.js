@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:5000/api'
+// Palvoria API - uses its own database
+const API_BASE_URL = 'http://localhost:5001/api'
 
 class ApiService {
   async request(endpoint, options = {}) {
@@ -37,7 +38,7 @@ class ApiService {
     }
   }
 
-  // Property Management Operations
+  // Property Operations - all use Palvoria's own database
   async getProperties(params = {}) {
     const queryString = new URLSearchParams(params).toString()
     const endpoint = queryString ? `/properties?${queryString}` : '/properties'
@@ -50,22 +51,8 @@ class ApiService {
 
   async createProperty(propertyData, images = []) {
     console.log('API Service - Creating property with data:', propertyData)
+    console.log('API Service - Creating property with images:', images)
     
-    // For now, filter out blob URLs as they are not real files
-    const cleanPropertyData = {
-      ...propertyData,
-      images: [] // Remove blob URLs for now
-    }
-    
-    console.log('API Service - Clean property data:', cleanPropertyData)
-    
-    return this.request('/properties', {
-      method: 'POST',
-      body: JSON.stringify(cleanPropertyData)
-    })
-  }
-
-  async updateProperty(id, propertyData, images = []) {
     const formData = new FormData()
     
     // Add property data
@@ -79,8 +66,47 @@ class ApiService {
       }
     })
     
-    // Add new images
+    // Add images
     images.forEach((image, index) => {
+      formData.append('images', image)
+    })
+    
+    console.log('API Service - FormData prepared for create')
+    
+    return this.request('/properties', {
+      method: 'POST',
+      body: formData,
+      headers: {} // Don't set Content-Type, let browser set it with boundary
+    })
+  }
+
+  async updateProperty(id, propertyData, images = []) {
+    const formData = new FormData()
+    
+    // Add property data
+    Object.keys(propertyData).forEach(key => {
+      if (key !== 'newImages' && key !== 'existingImages') {
+        if (typeof propertyData[key] === 'object') {
+          formData.append(key, JSON.stringify(propertyData[key]))
+        } else {
+          formData.append(key, propertyData[key])
+        }
+      }
+    })
+    
+    // Add existing images data
+    if (propertyData.existingImages) {
+      formData.append('existingImages', JSON.stringify(propertyData.existingImages))
+    }
+    
+    // Add primary image index
+    if (propertyData.primaryImageIndex !== undefined) {
+      formData.append('primaryImageIndex', propertyData.primaryImageIndex)
+    }
+    
+    // Add new images files (use newImages from propertyData if provided, otherwise use images parameter)
+    const imagesToUpload = propertyData.newImages || images
+    imagesToUpload.forEach((image, index) => {
       formData.append('images', image)
     })
     
@@ -107,6 +133,16 @@ class ApiService {
   async setPrimaryImage(propertyId, imageId) {
     return this.request(`/properties/${propertyId}/images/${imageId}/primary`, {
       method: 'PUT'
+    })
+  }
+
+  async reorderPropertyImages(propertyId, imageOrder, primaryImageIndex) {
+    return this.request(`/properties/${propertyId}/images/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        imageOrder,
+        primaryImageIndex
+      })
     })
   }
 

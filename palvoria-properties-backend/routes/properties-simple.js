@@ -204,23 +204,33 @@ export const createProperty = async (req, res) => {
 
     // Handle image uploads if present
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(async (file, index) => {
-        const result = await uploadPropertyGalleryImage(
-          file.buffer, 
-          file.originalname, 
-          property._id.toString()
-        );
-        
-        return {
-          url: result.secure_url,
-          publicId: result.public_id,
-          caption: '',
-          isPrimary: index === 0
-        };
-      });
+      try {
+        console.log(`📸 Uploading ${req.files.length} images for property ${property._id}`);
+        const primaryImageIndex = parseInt(req.body.primaryImageIndex) || 0;
+        const uploadPromises = req.files.map(async (file, index) => {
+          const result = await uploadPropertyGalleryImage(
+            file.buffer, 
+            file.originalname, 
+            property._id.toString()
+          );
+          
+          return {
+            url: result.secure_url,
+            publicId: result.public_id,
+            caption: '',
+            isPrimary: index === primaryImageIndex,
+            order: index // Add order field to maintain sequence
+          };
+        });
 
-      property.images = await Promise.all(uploadPromises);
-      await property.save({ session });
+        property.images = await Promise.all(uploadPromises);
+        await property.save({ session });
+        console.log(`✅ Successfully uploaded ${property.images.length} images`);
+      } catch (imageError) {
+        console.error('Image upload error:', imageError);
+        // Continue without images rather than failing the entire property creation
+        console.log('⚠️ Property created without images due to upload error');
+      }
     }
 
     await session.commitTransaction();
@@ -272,7 +282,7 @@ export const updateProperty = async (req, res) => {
 
     // Parse JSON fields that come as strings from FormData
     const updateData = { ...req.body };
-    ['location', 'features', 'amenities', 'price'].forEach(field => {
+    ['location', 'features', 'amenities', 'price', 'seo'].forEach(field => {
       if (typeof updateData[field] === 'string') {
         try {
           updateData[field] = JSON.parse(updateData[field]);
@@ -282,12 +292,33 @@ export const updateProperty = async (req, res) => {
       }
     });
 
-    // Update property data
-    Object.assign(property, updateData);
+    // Remove undefined or problematic fields
+    if (updateData.images === undefined || updateData.images === 'undefined') {
+      delete updateData.images;
+    }
+    if (updateData.primaryImageIndex === undefined || updateData.primaryImageIndex === 'undefined') {
+      delete updateData.primaryImageIndex;
+    }
 
-    // Handle new image uploads if present
+    // Update property data (excluding images which will be handled separately)
+    Object.keys(updateData).forEach(key => {
+      if (key !== 'images' && key !== 'primaryImageIndex') {
+        property[key] = updateData[key];
+      }
+    });
+
+    // Handle image updates
+    const existingImagesData = updateData.existingImages ? JSON.parse(updateData.existingImages) : [];
+    const primaryImageIndex = parseInt(updateData.primaryImageIndex) || 0;
+    
+    // Start with existing images that were kept
+    let finalImages = [...existingImagesData];
+    
+    // Upload new images if present
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(async (file) => {
+      console.log(`📸 Uploading ${req.files.length} new images for property ${property._id}`);
+      
+      const uploadPromises = req.files.map(async (file, index) => {
         const result = await uploadPropertyGalleryImage(
           file.buffer, 
           file.originalname, 
@@ -298,13 +329,42 @@ export const updateProperty = async (req, res) => {
           url: result.secure_url,
           publicId: result.public_id,
           caption: '',
-          isPrimary: property.images.length === 0 // First image is primary if no images exist
+          isPrimary: false, // Will be set below based on overall index
+          order: existingImagesData.length + index
         };
       });
 
-      const newImages = await Promise.all(uploadPromises);
-      property.images.push(...newImages);
+      const newUploadedImages = await Promise.all(uploadPromises);
+      finalImages = [...finalImages, ...newUploadedImages];
+      console.log(`✅ Successfully uploaded ${newUploadedImages.length} new images`);
     }
+    
+    // Set primary image based on overall index
+    finalImages = finalImages.map((img, index) => ({
+      ...img,
+      isPrimary: index === primaryImageIndex,
+      order: index
+    }));
+    
+    // Delete removed images from Cloudinary
+    if (property.images && property.images.length > 0) {
+      const keptImageIds = finalImages.map(img => img.publicId).filter(Boolean);
+      const imagesToDelete = property.images.filter(img => img.publicId && !keptImageIds.includes(img.publicId));
+      
+      if (imagesToDelete.length > 0) {
+        console.log(`🗑️ Deleting ${imagesToDelete.length} removed images from Cloudinary`);
+        const deletePromises = imagesToDelete.map(async (image) => {
+          try {
+            await deletePropertyAsset(image.publicId);
+          } catch (error) {
+            console.warn('Failed to delete image:', image.publicId, error.message);
+          }
+        });
+        await Promise.allSettled(deletePromises);
+      }
+    }
+    
+    property.images = finalImages;
 
     await property.save({ session });
     await session.commitTransaction();
@@ -361,8 +421,13 @@ export const deleteProperty = async (req, res) => {
       });
     }
 
-    // Delete all Cloudinary assets for this property
-    await deletePropertyFolder(property._id.toString());
+    // Delete all Cloudinary assets for this property (if any exist)
+    try {
+      await deletePropertyFolder(property._id.toString());
+    } catch (cloudinaryError) {
+      console.warn('Cloudinary cleanup failed (property may have no images):', cloudinaryError.message);
+      // Continue with deletion even if Cloudinary cleanup fails
+    }
 
     // Delete the property
     await Property.findByIdAndDelete(req.params.id, { session });
@@ -394,11 +459,66 @@ export const deleteProperty = async (req, res) => {
   }
 };
 
+// @desc    Update property image order and primary selection
+// @route   PUT /api/properties/:id/images/reorder
+// @access  Public (simplified for now)
+export const reorderPropertyImages = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: 'Property not found'
+      });
+    }
+
+    const { imageOrder, primaryImageIndex } = req.body;
+
+    if (imageOrder && Array.isArray(imageOrder)) {
+      // Reorder images based on the provided order
+      const reorderedImages = imageOrder.map((originalIndex, newIndex) => {
+        const image = property.images[originalIndex];
+        if (image) {
+          return {
+            ...image.toObject(),
+            order: newIndex,
+            isPrimary: newIndex === primaryImageIndex
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      property.images = reorderedImages;
+      await property.save();
+
+      res.json({
+        success: true,
+        data: property,
+        message: 'Image order updated successfully'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid image order data'
+      });
+    }
+
+  } catch (error) {
+    console.error('Reorder images error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while reordering images'
+    });
+  }
+};
+
 // Routes
 router.get('/', getProperties);
 router.get('/:id', getProperty);
-router.post('/', upload.array('images', 10), createProperty);
-router.put('/:id', upload.array('images', 10), updateProperty);
+router.post('/', upload.array('images'), createProperty); // No image limit
+router.put('/:id', upload.array('images'), updateProperty); // No image limit
+router.put('/:id/images/reorder', reorderPropertyImages); // Reorder images without upload
 router.delete('/:id', deleteProperty);
 
 export default router;

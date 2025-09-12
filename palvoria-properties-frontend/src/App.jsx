@@ -8,6 +8,8 @@ import PropertyDetailPage from './pages/PropertyDetailPage'
 import ContactPage from './pages/ContactPage'
 // import SearchPage from './pages/SearchPage'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminAuth from './components/admin/AdminAuth'
+import ProtectedRoute from './components/admin/ProtectedRoute'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +32,11 @@ function App() {
             {/* <Route path="/search" element={<SearchPage />} /> */}
             {/* <Route path="/about" element={<AboutPage />} /> */}
             <Route path="/contact" element={<ContactPage />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/palvadp" element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
           </Routes>
           <Toaster 
             position="top-right"

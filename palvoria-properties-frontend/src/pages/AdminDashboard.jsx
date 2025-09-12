@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   PlusIcon,
@@ -17,11 +18,15 @@ import {
   StarIcon,
   CheckCircleIcon,
   XCircleIcon,
+  XMarkIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MagnifyingGlassCircleIcon
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolid,
@@ -30,9 +35,12 @@ import {
 } from '@heroicons/react/24/solid'
 import apiService from '../services/api'
 import PropertyForm from '../components/PropertyForm'
+import AnalyticsDashboard from '../components/admin/AnalyticsDashboard'
+import SEOManager from '../components/admin/SEOManager'
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'properties')
   const [properties, setProperties] = useState([])
   const [filteredProperties, setFilteredProperties] = useState([])
   const [users, setUsers] = useState([])
@@ -48,6 +56,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false)
   const [showPropertyForm, setShowPropertyForm] = useState(false)
   const [editingProperty, setEditingProperty] = useState(null)
+  const [showPropertyDetails, setShowPropertyDetails] = useState(false)
+  const [selectedProperty, setSelectedProperty] = useState(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -64,8 +75,8 @@ const AdminDashboard = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(property =>
-        property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.location.toLowerCase().includes(searchTerm.toLowerCase())
+        property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.location?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -99,18 +110,29 @@ const AdminDashboard = () => {
         id: property._id,
         title: property.title,
         description: property.description,
-        location: `${property.location?.city || ''}, ${property.location?.state || ''}`.replace(/^,\s*|,\s*$/g, '') || property.location?.address || 'Location not specified',
+        location: `${property.location?.city || ''}, ${property.location?.county || ''}`.replace(/^,\s*|,\s*$/g, '') || property.location?.address || 'Location not specified',
         price: `KSH ${property.price?.amount?.toLocaleString() || 'Price on request'}`,
         type: property.propertyType || property.category || 'Property',
         bedrooms: property.features?.bedrooms || 0,
         bathrooms: property.features?.bathrooms || 0,
-        area: property.features?.area ? `${property.features.area} sq ft` : 'Area not specified',
-        status: property.status || 'Available',
+        area: property.features?.area?.size ? `${property.features.area.size} ${property.features.area.unit || 'sq ft'}` : 'Area not specified',
+        status: property.status === 'active' ? 'Available' : property.status || 'Available',
         featured: property.featured || false,
         views: property.views || 0,
-        inquiries: property.inquiries || 0,
+        inquiries: property.inquiries?.length || 0,
         dateAdded: property.createdAt || property.dateAdded || new Date().toISOString(),
-        images: property.images?.map(img => img.url) || []
+        images: property.images ? 
+          property.images
+            .sort((a, b) => {
+              // Sort by order first, then by isPrimary (primary first), then by upload date
+              if (a.isPrimary && !b.isPrimary) return -1;
+              if (!a.isPrimary && b.isPrimary) return 1;
+              return (a.order || 0) - (b.order || 0);
+            })
+            .map(img => img.url) 
+          : [],
+        // Store original property data for editing
+        originalData: property
       }))
 
       setProperties(transformedProperties)
@@ -146,8 +168,22 @@ const AdminDashboard = () => {
   }
 
   const handleEditProperty = (property) => {
-    setEditingProperty(property)
+    // Use original backend data for editing to preserve correct field values
+    const editData = property.originalData || property
+    console.log('✏️ Admin Dashboard: Editing property:', editData)
+    setEditingProperty(editData)
     setShowPropertyForm(true)
+  }
+
+  const handleViewProperty = (property) => {
+    setSelectedProperty(property)
+    setCurrentImageIndex(0) // Reset to first image
+    setShowPropertyDetails(true)
+  }
+
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName)
+    setSearchParams({ tab: tabName })
   }
 
   const handleDeleteProperty = async (propertyId) => {
@@ -165,18 +201,37 @@ const AdminDashboard = () => {
 
   const handleSaveProperty = async (propertyData) => {
     try {
+      console.log('💾 Admin Dashboard: Saving property with data:', propertyData)
+      
+      // Extract images from property data - check both images and newImages
+      const images = propertyData.newImages || propertyData.images || []
+      const cleanPropertyData = { ...propertyData }
+      delete cleanPropertyData.images // Remove images from main data as they're handled separately
+      delete cleanPropertyData.newImages // Remove newImages from main data as they're handled separately
+      
+      console.log('📷 Admin Dashboard: Images to upload:', images)
+      console.log('📋 Admin Dashboard: Clean property data:', cleanPropertyData)
+      
       if (editingProperty) {
         // Update existing property
-        await apiService.updateProperty(editingProperty.id, propertyData)
+        const propertyId = editingProperty._id || editingProperty.id
+        console.log('🔄 Admin Dashboard: Updating property with ID:', propertyId)
+        await apiService.updateProperty(propertyId, cleanPropertyData, images)
       } else {
         // Create new property
-        await apiService.createProperty(propertyData)
+        await apiService.createProperty(cleanPropertyData, images)
       }
+      
+      // Only close form and reload data on successful save
       setShowPropertyForm(false)
+      setEditingProperty(null)
       loadDashboardData() // Refresh all data
+      
     } catch (error) {
       console.error('Error saving property:', error)
       setError('Failed to save property')
+      // Don't close the form - let user fix the issues and try again
+      throw error // Re-throw so PropertyForm can handle it
     }
   }
 
@@ -199,6 +254,7 @@ const AdminDashboard = () => {
   const sidebarItems = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon, count: null },
     { id: 'properties', name: 'Properties', icon: HomeIcon, count: analytics.totalProperties },
+    { id: 'seo', name: 'SEO Management', icon: MagnifyingGlassCircleIcon, count: null },
     { id: 'users', name: 'Users', icon: UsersIcon, count: 0 },
     { id: 'analytics', name: 'Analytics', icon: ChartBarIcon, count: null },
     { id: 'settings', name: 'Settings', icon: Cog6ToothIcon, count: null }
@@ -319,7 +375,7 @@ const AdminDashboard = () => {
               <motion.button
                 key={item.id}
                 whileHover={{ x: 4 }}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleTabChange(item.id)}
                 className={`w-full flex items-center justify-between px-4 py-3 mb-2 rounded-xl text-left transition-all ${
                   activeTab === item.id
                     ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black shadow-lg'
@@ -352,6 +408,7 @@ const AdminDashboard = () => {
                 <p className="text-gray-400 mt-1">
                   {activeTab === 'overview' && 'Welcome back, manage your properties efficiently'}
                   {activeTab === 'properties' && `Manage your ${analytics.totalProperties} properties`}
+                  {activeTab === 'seo' && 'Optimize SEO for all your properties'}
                   {activeTab === 'users' && 'User management and permissions'}
                   {activeTab === 'analytics' && 'Performance metrics and insights'}
                   {activeTab === 'settings' && 'System configuration and preferences'}
@@ -642,7 +699,10 @@ const AdminDashboard = () => {
                             </motion.button>
                           </div>
                           
-                          <button className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm">
+                          <button 
+                            onClick={() => handleViewProperty(property)}
+                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                          >
                             View Details
                           </button>
                         </div>
@@ -672,12 +732,71 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {/* SEO Management Tab */}
+            {activeTab === 'seo' && (
+              <div className="space-y-6">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-700">
+                  <h2 className="text-xl font-bold text-white mb-4">SEO Management</h2>
+                  <p className="text-gray-400 mb-6">
+                    Auto-generate and optimize SEO for all your properties. Select a property to manage its SEO settings.
+                  </p>
+                  
+                  {properties.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {properties.slice(0, 6).map((property) => (
+                        <motion.div
+                          key={property._id}
+                          whileHover={{ scale: 1.02 }}
+                          className="bg-gray-800 rounded-lg p-4 border border-gray-600 hover:border-yellow-500 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedProperty(property)
+                            setShowPropertyDetails(true)
+                          }}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                              <MagnifyingGlassCircleIcon className="w-6 h-6 text-yellow-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-white font-medium truncate">{property.title}</h3>
+                              <p className="text-gray-400 text-sm truncate">{property.location?.area || 'No area'}, {property.location?.city}</p>
+                              <div className="flex items-center space-x-2 mt-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                  property.seo?.metaTitle 
+                                    ? 'bg-green-900 text-green-300' 
+                                    : 'bg-red-900 text-red-300'
+                                }`}>
+                                  {property.seo?.metaTitle ? 'SEO Ready' : 'Needs SEO'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MagnifyingGlassCircleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-300 mb-2">No Properties Found</h3>
+                      <p className="text-gray-500">Create some properties first to manage their SEO</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Analytics Tab */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <AnalyticsDashboard />
+              </div>
+            )}
+
             {/* Other tabs placeholder */}
-            {(activeTab === 'users' || activeTab === 'analytics' || activeTab === 'settings') && (
+            {(activeTab === 'users' || activeTab === 'settings') && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                   {activeTab === 'users' && <UsersIcon className="w-8 h-8 text-gray-400" />}
-                  {activeTab === 'analytics' && <ChartBarIcon className="w-8 h-8 text-gray-400" />}
                   {activeTab === 'settings' && <Cog6ToothIcon className="w-8 h-8 text-gray-400" />}
                 </div>
                 <h3 className="text-lg font-medium text-gray-300 mb-2 capitalize">{activeTab} Coming Soon</h3>
@@ -687,6 +806,256 @@ const AdminDashboard = () => {
           </main>
         </div>
       </div>
+
+      {/* Property Form Modal */}
+      {showPropertyForm && (
+        <PropertyForm
+          property={editingProperty}
+          onSave={handleSaveProperty}
+          onCancel={() => setShowPropertyForm(false)}
+        />
+      )}
+
+      {/* Property Details Modal */}
+      {showPropertyDetails && selectedProperty && (
+        <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black bg-opacity-80 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50" 
+            onClick={() => setShowPropertyDetails(false)}
+          ></div>
+            
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-5xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden z-10 max-h-[90vh] overflow-y-auto"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <div>
+                <h3 className="text-2xl font-bold text-white">{selectedProperty.title}</h3>
+                <p className="text-gray-400 mt-1">{selectedProperty.location}</p>
+              </div>
+              <button
+                onClick={() => setShowPropertyDetails(false)}
+                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-700"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Image and Basic Info */}
+                <div>
+                  {/* Image Gallery */}
+                  <div className="relative mb-4">
+                    {selectedProperty.images && selectedProperty.images.length > 0 ? (
+                      <>
+                        {/* Main Image */}
+                        <div className="relative">
+                          <img
+                            src={selectedProperty.images[currentImageIndex]?.url || selectedProperty.images[currentImageIndex]}
+                            alt={`${selectedProperty.title} - Image ${currentImageIndex + 1}`}
+                            className="w-full h-64 object-cover rounded-lg shadow-lg"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&h=400&fit=crop'
+                            }}
+                          />
+                          
+                          {/* Navigation arrows - only show if more than 1 image */}
+                          {selectedProperty.images.length > 1 && (
+                            <>
+                              <button
+                                onClick={() => setCurrentImageIndex(prev => 
+                                  prev === 0 ? selectedProperty.images.length - 1 : prev - 1
+                                )}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                              >
+                                <ChevronLeftIcon className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => setCurrentImageIndex(prev => 
+                                  prev === selectedProperty.images.length - 1 ? 0 : prev + 1
+                                )}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                              >
+                                <ChevronRightIcon className="w-5 h-5" />
+                              </button>
+                            </>
+                          )}
+
+                          {/* Image counter */}
+                          {selectedProperty.images.length > 1 && (
+                            <div className="absolute bottom-3 left-3 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
+                              {currentImageIndex + 1} / {selectedProperty.images.length}
+                            </div>
+                          )}
+
+                          {/* Featured badge */}
+                          {selectedProperty.featured && (
+                            <div className="absolute top-3 right-3 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-medium">
+                              Featured
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Thumbnail navigation - only show if more than 1 image */}
+                        {selectedProperty.images.length > 1 && (
+                          <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                            {selectedProperty.images.map((image, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                                  currentImageIndex === index 
+                                    ? 'border-yellow-500 ring-2 ring-yellow-500 ring-opacity-50' 
+                                    : 'border-gray-300 hover:border-gray-400'
+                                }`}
+                              >
+                                <img
+                                  src={image?.url || image}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=64&h=64&fit=crop'
+                                  }}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* Fallback image when no images available */
+                      <div className="relative">
+                        <img
+                          src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&h=400&fit=crop"
+                          alt={selectedProperty.title}
+                          className="w-full h-64 object-cover rounded-lg shadow-lg"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center rounded-lg">
+                          <div className="text-white text-center">
+                            <PhotoIcon className="w-12 h-12 mx-auto mb-2 opacity-70" />
+                            <p className="text-sm opacity-90">No images uploaded</p>
+                          </div>
+                        </div>
+                        {selectedProperty.featured && (
+                          <div className="absolute top-3 right-3 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-medium">
+                            Featured
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="bg-gray-900 rounded-lg p-4 mb-4">
+                    <h4 className="text-lg font-semibold text-white mb-3">Property Details</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-400">Type</p>
+                        <p className="text-white font-medium capitalize">{selectedProperty.type}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Status</p>
+                        <p className={`font-medium ${selectedProperty.status === 'Available' ? 'text-green-400' : 'text-blue-400'}`}>
+                          {selectedProperty.status}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Bedrooms</p>
+                        <p className="text-white font-medium">{selectedProperty.bedrooms}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Bathrooms</p>
+                        <p className="text-white font-medium">{selectedProperty.bathrooms}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Area</p>
+                        <p className="text-white font-medium">{selectedProperty.area}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Price</p>
+                        <p className="text-yellow-400 font-bold">{selectedProperty.price}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-white mb-3">Statistics</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <EyeIcon className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-400">Views:</span>
+                        <span className="text-white font-medium">{selectedProperty.views}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UsersIcon className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-400">Inquiries:</span>
+                        <span className="text-white font-medium">{selectedProperty.inquiries}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StarIcon className={`w-4 h-4 ${selectedProperty.featured ? 'text-yellow-400' : 'text-gray-400'}`} />
+                        <span className="text-gray-400">Featured:</span>
+                        <span className="text-white font-medium">{selectedProperty.featured ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ClockIcon className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-400">Added:</span>
+                        <span className="text-white font-medium text-xs">
+                          {new Date(selectedProperty.dateAdded).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Description and Amenities */}
+                <div>
+                  <div className="bg-gray-900 rounded-lg p-4 mb-4">
+                    <h4 className="text-lg font-semibold text-white mb-3">Description</h4>
+                    <p className="text-gray-300 leading-relaxed">
+                      {selectedProperty.description}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-white mb-3">Location</h4>
+                    <div className="flex items-start gap-2 text-gray-300">
+                      <MapIcon className="w-5 h-5 mt-1 text-gray-400" />
+                      <div>
+                        <p>{selectedProperty.location}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-700 bg-gray-900">
+              <button
+                onClick={() => {
+                  setShowPropertyDetails(false)
+                  handleEditProperty(selectedProperty)
+                }}
+                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
+              >
+                <PencilIcon className="w-4 h-4" />
+                Edit Property
+              </button>
+              <button
+                onClick={() => setShowPropertyDetails(false)}
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

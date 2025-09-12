@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { 
   XMarkIcon, 
   EnvelopeIcon,
@@ -217,7 +218,7 @@ const EmailCapture = ({
 
     } catch (error) {
       console.error('Email capture failed:', error)
-      alert('Something went wrong. Please try again.')
+      toast.error('Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

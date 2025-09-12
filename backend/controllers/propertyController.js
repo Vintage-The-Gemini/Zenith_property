@@ -14,6 +14,54 @@ export const getProperties = async (req, res) => {
   }
 };
 
+// Public endpoint to get properties for the website
+export const getPublicProperties = async (req, res) => {
+  try {
+    const { status, limit, propertyType, city } = req.query;
+    
+    // Build filter object for public properties
+    const filter = {};
+    
+    // Only show active properties publicly
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = 'active';
+    }
+    
+    if (propertyType) {
+      filter.propertyType = propertyType;
+    }
+    
+    if (city) {
+      filter['address.city'] = new RegExp(city, 'i');
+    }
+    
+    let query = Property.find(filter)
+      .populate("units")
+      .select('-owner -managers -internalNotes -documents') // Hide sensitive data
+      .sort({ createdAt: -1 });
+    
+    if (limit) {
+      query = query.limit(parseInt(limit));
+    }
+    
+    const properties = await query;
+    
+    res.json({
+      success: true,
+      data: properties,
+      count: properties.length
+    });
+  } catch (error) {
+    console.error('Error fetching public properties:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
 export const getProperty = async (req, res) => {
   try {
     const property = await Property.findOne({
