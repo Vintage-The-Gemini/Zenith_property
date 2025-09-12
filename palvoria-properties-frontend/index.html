@@ -171,8 +171,8 @@
     
     <!-- Cache busting script -->
     <script>
-      // Force reload and clear cache on development
-      if (window.location.hostname === 'localhost') {
+      // Force reload and clear cache for fresh data
+      const clearCaches = () => {
         // Clear all caches
         if ('caches' in window) {
           caches.keys().then(names => {
@@ -187,12 +187,6 @@
           });
         }
         
-        // Clear localStorage/sessionStorage
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-        } catch(e) {}
-        
         // Force favicon reload
         const favicon = document.querySelector('link[rel="icon"]');
         if (favicon) {
@@ -200,7 +194,47 @@
           newFavicon.href = favicon.href.split('?')[0] + '?v=' + Date.now();
           favicon.parentNode.replaceChild(newFavicon, favicon);
         }
+      };
+
+      // Clear caches on development
+      if (window.location.hostname === 'localhost') {
+        clearCaches();
+        // Clear localStorage/sessionStorage on dev
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch(e) {}
       }
+
+      // Add force refresh functionality for production
+      window.forceClearCache = () => {
+        clearCaches();
+        // Clear API-related storage
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes('api') || key.includes('properties') || key.includes('palvoria')) {
+              localStorage.removeItem(key);
+            }
+          });
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.includes('api') || key.includes('properties') || key.includes('palvoria')) {
+              sessionStorage.removeItem(key);
+            }
+          });
+        } catch(e) {}
+        
+        // Force page reload
+        window.location.reload(true);
+      };
+
+      // Check for API switch (from mock to live data) and clear relevant caches
+      const lastApiUrl = localStorage.getItem('lastApiUrl');
+      const currentApiUrl = 'https://palvoria-properties-api.onrender.com/api';
+      if (lastApiUrl && lastApiUrl !== currentApiUrl) {
+        console.log('🔄 API URL changed, clearing caches...');
+        clearCaches();
+      }
+      localStorage.setItem('lastApiUrl', currentApiUrl);
     </script>
     
     <script type="module" src="/src/main.jsx"></script>
