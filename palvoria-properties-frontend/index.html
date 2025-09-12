@@ -2,11 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Aggressive Cache Control -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <meta name="cache-bust" content="${Date.now()}" />
     
     <!-- Favicon with cache busting -->
     <link rel="icon" type="image/png" sizes="32x32" href="/palvoria-logo.png?v=1726003800" />
@@ -237,29 +236,15 @@
         window.location.reload(true);
       };
 
-      // FORCE CACHE CLEAR ON EVERY FRESH DEPLOY
-      const deployVersion = Date.now().toString(); // This changes with each build
-      const lastVersion = localStorage.getItem('deployVersion');
-      
-      if (!lastVersion || lastVersion !== deployVersion) {
-        console.log('🔥 NEW DEPLOY DETECTED - CLEARING ALL CACHES');
+      // Simple development cache clearing only
+      if (window.location.hostname === 'localhost') {
+        console.log('🔄 Development mode - clearing caches');
         clearCaches();
-        
-        // Clear ALL storage
+        // Clear localStorage/sessionStorage on dev
         try {
           localStorage.clear();
           sessionStorage.clear();
-          console.log('🗑️ All storage cleared for fresh deploy');
         } catch(e) {}
-        
-        // Set new version
-        localStorage.setItem('deployVersion', deployVersion);
-        localStorage.setItem('lastApiUrl', 'https://palvoria-properties-api.onrender.com/api');
-        
-        // Force reload to ensure fresh start
-        setTimeout(() => {
-          window.location.reload(true);
-        }, 100);
       }
     </script>
     
