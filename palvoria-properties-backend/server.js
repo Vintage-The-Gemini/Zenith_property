@@ -13,6 +13,7 @@ import { fileURLToPath } from "url";
 // Import services and utilities
 import connectDB from "./config/database.js";
 import logger from "./utils/logger.js";
+import "./utils/keepAlive.js";
 
 // Import routes
 import authRoutes from "./routes/auth.js";
@@ -144,6 +145,21 @@ app.get("/api/health", (req, res) => {
     database:
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   });
+});
+
+// Sitemap endpoint
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const { default: SitemapGenerator } = await import('./utils/sitemapGenerator.js');
+    const generator = new SitemapGenerator();
+    const sitemap = await generator.generateSitemap();
+
+    res.set('Content-Type', 'application/xml');
+    res.send(sitemap);
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    res.status(500).send('Error generating sitemap');
+  }
 });
 
 // Root endpoint
