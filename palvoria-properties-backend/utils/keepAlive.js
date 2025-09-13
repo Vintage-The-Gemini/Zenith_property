@@ -1,4 +1,4 @@
-const https = require('https');
+import https from 'https';
 
 class KeepAliveService {
   constructor(url, interval = 14 * 60 * 1000) { // 14 minutes
@@ -58,4 +58,4 @@ if (process.env.KEEP_ALIVE_URL) {
   }
 }
 
-module.exports = KeepAliveService;
+export default KeepAliveService;

@@ -22,8 +22,8 @@ import dashboardRoutes from "./routes/dashboard.js";
 import paymentRoutes from "./routes/payments.js";
 import maintenanceRoutes from "./routes/maintenance.js";
 import floorRoutes from "./routes/floors.js";
-import reportRoutes from './routes/reports.js';
-import settingsRoutes from './routes/settings.js';
+import reportRoutes from "./routes/reports.js";
+import settingsRoutes from "./routes/settings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,9 +94,8 @@ app.use("/api/units", unitRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/settings', settingsRoutes);
-
+app.use("/api/reports", reportRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

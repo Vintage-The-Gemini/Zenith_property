@@ -1,4 +1,4 @@
-const Property = require('../models/Property');
+import Property from '../models/Property.js';
 
 class SitemapGenerator {
   constructor(baseUrl = 'https://www.palvoria.com') {
@@ -60,4 +60,4 @@ class SitemapGenerator {
   }
 }
 
-module.exports = SitemapGenerator;
+export default SitemapGenerator;

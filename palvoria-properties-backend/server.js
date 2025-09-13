@@ -150,7 +150,7 @@ app.get("/api/health", (req, res) => {
 // Sitemap endpoint
 app.get("/sitemap.xml", async (req, res) => {
   try {
-    const { default: SitemapGenerator } = await import('./utils/sitemapGenerator.js');
+    const SitemapGenerator = (await import('./utils/sitemapGenerator.js')).default;
     const generator = new SitemapGenerator();
     const sitemap = await generator.generateSitemap();
 
