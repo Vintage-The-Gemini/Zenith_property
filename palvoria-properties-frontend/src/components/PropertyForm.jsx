@@ -12,26 +12,53 @@ import {
   StarIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  Bars3Icon
+  Bars3Icon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid'
 import SEOManager from './admin/SEOManager'
 import GoogleSearchPreview from './admin/GoogleSearchPreview'
 
 const PropertyForm = ({ property = null, onSave, onCancel }) => {
+  // Load saved form data from localStorage if no property is being edited
+  const loadSavedFormData = () => {
+    if (property) return {}; // Don't load saved data when editing existing property
+
+    try {
+      const savedData = localStorage.getItem('palvoria_property_form_draft');
+      return savedData ? JSON.parse(savedData) : {};
+    } catch (error) {
+      console.error('Error loading saved form data:', error);
+      return {};
+    }
+  };
+
+  const savedData = loadSavedFormData();
+
   const [formData, setFormData] = useState({
-    title: property?.title || '',
-    description: property?.description || '',
-    address: property?.location?.address || '',
-    city: property?.location?.city || 'Nairobi',
-    county: property?.location?.county || 'Nairobi',
-    area: property?.location?.area || '',
-    customArea: property?.location?.customArea || '',
-    neighborhood: property?.location?.neighborhood || '',
-    price: property?.price?.amount || '',
-    currency: property?.price?.currency || 'KES',
-    propertyType: property?.propertyType || 'apartment',
-    category: property?.category || 'sale',
+    title: property?.title || savedData.title || '',
+    description: property?.description || savedData.description || '',
+    address: property?.location?.address || savedData.address || '',
+    city: property?.location?.city || savedData.city || 'Nairobi',
+    county: property?.location?.county || savedData.county || 'Nairobi',
+    area: property?.location?.area || savedData.area || '',
+    customArea: property?.location?.customArea || savedData.customArea || '',
+    neighborhood: property?.location?.neighborhood || savedData.neighborhood || '',
+    price: property?.price?.amount || savedData.price || '',
+    currency: property?.price?.currency || savedData.currency || 'KES',
+    propertyType: property?.propertyType || savedData.propertyType || 'apartment',
+    category: property?.category || savedData.category || 'sale',
+    // Off-plan fields
+    isOffPlan: property?.isOffPlan || savedData.isOffPlan || false,
+    completionDate: property?.offPlanDetails?.completionDate ? new Date(property.offPlanDetails.completionDate).toISOString().split('T')[0] : (savedData.completionDate || ''),
+    constructionProgress: property?.offPlanDetails?.constructionProgress || savedData.constructionProgress || 0,
+    developerName: property?.offPlanDetails?.developer?.name || savedData.developerName || '',
+    developerCompany: property?.offPlanDetails?.developer?.company || savedData.developerCompany || '',
+    developerPhone: property?.offPlanDetails?.developer?.contact?.phone || savedData.developerPhone || '',
+    developerEmail: property?.offPlanDetails?.developer?.contact?.email || savedData.developerEmail || '',
+    projectName: property?.offPlanDetails?.projectDetails?.projectName || savedData.projectName || '',
+    totalUnits: property?.offPlanDetails?.projectDetails?.totalUnits || savedData.totalUnits || '',
+    paymentPlan: property?.offPlanDetails?.paymentPlan || savedData.paymentPlan || [],
     bedrooms: property?.features?.bedrooms || 1,
     bathrooms: property?.features?.bathrooms || 1,
     areaSize: property?.features?.area?.size || '',
@@ -272,276 +299,136 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
   ]
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [field]: value
-    }))
-    
+    };
+
+    setFormData(newFormData);
+
+    // Save form data to localStorage for persistence (only if not editing existing property)
+    if (!property) {
+      try {
+        localStorage.setItem('palvoria_property_form_draft', JSON.stringify(newFormData));
+      } catch (error) {
+        console.error('Error saving form data:', error);
+      }
+    }
+
     // Auto-generate SEO when key fields change and auto-generation is enabled
     if (formData.autoGenerateSEO && ['title', 'area', 'propertyType', 'category', 'price', 'bedrooms'].includes(field)) {
       setTimeout(() => generateSEO(), 100) // Small delay to ensure state is updated
     }
   }
 
-  // EXTENSIVE AI-POWERED SEO GENERATION
+  // Clear saved draft data
+  const clearSavedDraft = () => {
+    localStorage.removeItem('palvoria_property_form_draft');
+    toast.success('Draft cleared');
+  }
+
+  // Enhanced SEO generation with proper area handling
   const generateSEO = () => {
     const currentData = { ...formData }
-    
-    // Smart category and area detection
-    const categoryText = currentData.category === 'sale' ? 'For Sale' : currentData.category === 'rent' ? 'For Rent' : 'For Lease'
-    const areaText = currentData.area === 'Other' ? currentData.customArea || currentData.city : currentData.area
-    const propertyTypeFormatted = currentData.propertyType.charAt(0).toUpperCase() + currentData.propertyType.slice(1)
+
+    // Proper area text handling
+    const getAreaText = () => {
+      // Handle custom area case
+      if (currentData.area === 'Other' && currentData.customArea) {
+        return currentData.customArea
+      }
+
+      // Return area if it's a valid string
+      if (currentData.area && currentData.area !== 'Other') {
+        return currentData.area
+      }
+
+      // Fallback to city
+      return currentData.city || 'Nairobi'
+    }
+
+    // Basic data formatting
+    const categoryText = currentData.category === 'sale' ? 'Sale' : currentData.category === 'rent' ? 'Rent' : 'Lease'
+    const areaText = getAreaText()
+    const propertyType = currentData.propertyType.charAt(0).toUpperCase() + currentData.propertyType.slice(1)
     const priceFormatted = parseInt(currentData.price || 0).toLocaleString()
-    
-    // AI-POWERED SEO TITLE GENERATION (Multiple variations)
-    const titleVariations = [
-      `${currentData.bedrooms}BR ${propertyTypeFormatted} ${categoryText} ${areaText} - KES ${priceFormatted}`,
-      `Stunning ${currentData.bedrooms}-Bedroom ${propertyTypeFormatted} in ${areaText} | KES ${priceFormatted}`,
-      `Premium ${propertyTypeFormatted} ${categoryText} in ${areaText} - ${currentData.bedrooms} Bedrooms`,
-      `${areaText} ${propertyTypeFormatted}: ${currentData.bedrooms}BR ${categoryText} - Best Price KES ${priceFormatted}`,
-      `Luxury ${currentData.bedrooms}-Bed ${propertyTypeFormatted} ${categoryText} | Prime ${areaText} Location`
-    ]
-    const seoTitle = titleVariations.find(title => title.length <= 60) || titleVariations[0].substring(0, 57) + '...'
-    
-    // AI-POWERED META DESCRIPTION (Compelling and conversion-focused)
-    const amenitiesText = currentData.amenities.slice(0, 4).map(a => a.name || a).join(', ')
-    const descriptionVariations = [
-      `Discover this exceptional ${currentData.bedrooms}-bedroom ${currentData.propertyType} ${categoryText.toLowerCase()} in ${areaText}, Nairobi. ${amenitiesText ? `Premium features: ${amenitiesText}. ` : ''}Prime location, competitive pricing. Schedule viewing today!`,
-      `Exclusive ${currentData.bedrooms}BR ${currentData.propertyType} in ${areaText}! ${amenitiesText ? `Includes ${amenitiesText}. ` : ''}Perfect for families. KES ${priceFormatted}. Contact our agents now for instant viewing!`,
-      `${areaText}'s finest ${currentData.propertyType}! ${currentData.bedrooms} spacious bedrooms, ${amenitiesText ? `${amenitiesText}, ` : ''}modern amenities. Priced at KES ${priceFormatted}. Don't miss out!`
-    ]
-    const seoDescription = descriptionVariations.find(desc => desc.length <= 160) || descriptionVariations[0].substring(0, 157) + '...'
-    
-    // EXTENSIVE KEYWORD RESEARCH & GENERATION
-    const primaryKeywords = [
+    const areaSize = currentData.areaSize ? `${currentData.areaSize}${currentData.areaUnit}` : ''
+
+    // Enhanced SEO title with more detail
+    const titleParts = [
+      `${currentData.bedrooms}BR ${propertyType}`,
+      `for ${categoryText}`,
+      `in ${areaText}`,
+      areaSize ? `(${areaSize})` : '',
+      `KES ${priceFormatted}`
+    ].filter(Boolean)
+
+    const seoTitle = titleParts.join(' ').replace(/\s+/g, ' ').trim()
+
+    // Enhanced meta description with more useful information
+    const amenitiesText = currentData.amenities.slice(0, 3).map(a => a.name || a).join(', ')
+    const locationDetails = `${areaText}, ${currentData.city || 'Nairobi'}`
+    const offPlanText = currentData.isOffPlan ? 'Off-plan property. ' : ''
+
+    const descriptionParts = [
+      `${currentData.bedrooms}-bedroom ${currentData.propertyType}`,
+      `for ${categoryText.toLowerCase()}`,
+      `in ${locationDetails}.`,
+      offPlanText,
+      areaSize ? `Size: ${areaSize}. ` : '',
+      amenitiesText ? `Features: ${amenitiesText}. ` : '',
+      `Starting from KES ${priceFormatted}.`,
+      'Contact us for viewing.'
+    ].filter(Boolean)
+
+    const seoDescription = descriptionParts.join(' ').replace(/\s+/g, ' ').trim()
+
+    // Enhanced keyword list
+    const keywords = [
       currentData.propertyType,
       `${currentData.bedrooms} bedroom ${currentData.propertyType}`,
-      `${currentData.propertyType} ${areaText}`,
-      `${currentData.propertyType} ${categoryText.toLowerCase()}`
-    ]
-    
-    const locationKeywords = [
       areaText,
+      `${currentData.propertyType} ${areaText}`,
+      `${currentData.propertyType} for ${categoryText.toLowerCase()}`,
       `${areaText} property`,
-      `${areaText} real estate`,
-      `properties in ${areaText}`,
-      `${areaText} ${currentData.propertyType}s`,
-      `${areaText} housing`
-    ]
-    
-    const intentKeywords = [
-      `${currentData.propertyType} ${categoryText.toLowerCase()}`,
-      `buy ${currentData.propertyType} ${areaText}`,
-      `rent ${currentData.propertyType} ${areaText}`,
-      `${currentData.propertyType} prices ${areaText}`,
-      `affordable ${currentData.propertyType} ${areaText}`,
-      `luxury ${currentData.propertyType} ${areaText}`
-    ]
-    
-    const longTailKeywords = [
-      `${currentData.bedrooms} bedroom ${currentData.propertyType} ${categoryText.toLowerCase()} ${areaText}`,
-      `best ${currentData.propertyType} deals ${areaText} Nairobi`,
-      `${currentData.propertyType} with ${currentData.amenities.slice(0,2).map(a => a.name || a).join(' and ')} ${areaText}`,
-      `family ${currentData.propertyType} ${areaText} Kenya`,
-      `modern ${currentData.propertyType} ${areaText} ${new Date().getFullYear()}`
-    ]
-    
-    const allKeywords = [...primaryKeywords, ...locationKeywords, ...intentKeywords, ...longTailKeywords]
+      `${currentData.city || 'Nairobi'} real estate`,
+      currentData.isOffPlan ? 'off plan property' : '',
+      areaSize ? `${areaSize} ${currentData.propertyType}` : '',
+      amenitiesText.split(', ')[0] ? amenitiesText.split(', ')[0].toLowerCase() : ''
+    ].filter(Boolean)
+
+    // Focus keyword
     const focusKeyword = `${currentData.bedrooms} bedroom ${currentData.propertyType} ${areaText}`
-    
-    // ADVANCED URL SLUG GENERATION
-    const slugBase = `${currentData.propertyType}-${categoryText.replace(/\s+/g, '-')}-${areaText}-${currentData.bedrooms}bedroom`
-    const slug = slugBase.toLowerCase()
-      .replace(/[^a-z0-9-]/g, '')
+
+    // Clean URL slug with proper area
+    const slugParts = [
+      currentData.propertyType,
+      categoryText.toLowerCase(),
+      areaText.replace(/\s+/g, '-'),
+      `${currentData.bedrooms}br`
+    ]
+    const slug = slugParts.join('-')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
-    
-    // OPEN GRAPH OPTIMIZATION
-    const ogTitle = `${propertyTypeFormatted} ${categoryText} in ${areaText} - KES ${priceFormatted}`
-    const ogDescription = `${currentData.bedrooms}-bedroom ${currentData.propertyType} in prime ${areaText} location. ${amenitiesText ? `Features: ${amenitiesText}. ` : ''}Contact us for viewing!`
-    
-    // TWITTER CARD OPTIMIZATION
-    const twitterTitle = `🏠 ${currentData.bedrooms}BR ${propertyTypeFormatted} ${categoryText} | ${areaText}`
-    const twitterDescription = `Premium ${currentData.propertyType} in ${areaText}! KES ${priceFormatted}. ${amenitiesText ? `✨ ${amenitiesText.replace(',', ' ✨')} ` : ''}📞 Contact us!`
-    
-    // CANONICAL URL
-    const canonicalUrl = `https://www.palvoria.com/properties/${slug}`
-    
-    // PRICE RANGE FOR SCHEMA
-    const priceAmount = parseInt(currentData.price || 0)
-    const priceRangeValue = priceAmount > 50000000 ? 'Luxury' : 
-                           priceAmount > 30000000 ? 'High-end' : 
-                           priceAmount > 15000000 ? 'Mid-range' : 'Affordable'
-    
-    // GENERATE SCHEMA MARKUP DATA
-    generateSchemaMarkup(currentData, slug, amenitiesText)
-    
-    // SEO ANALYSIS & SCORING
-    const seoAnalysis = analyzeSEO({
-      title: seoTitle,
-      description: seoDescription,
-      keywords: allKeywords,
-      focusKeyword,
-      content: currentData.description,
-      images: existingImages.length + newImages.length
-    })
-    
+
+    // Update form data with enhanced SEO
     setFormData(prev => ({
       ...prev,
-      seoTitle,
-      seoDescription,
-      seoKeywords: allKeywords.join(', '),
+      seoTitle: seoTitle.length > 60 ? seoTitle.substring(0, 57) + '...' : seoTitle,
+      seoDescription: seoDescription.length > 160 ? seoDescription.substring(0, 157) + '...' : seoDescription,
+      seoKeywords: keywords.join(', '),
       focusKeyword,
       seoSlug: slug,
-      canonicalUrl,
-      ogTitle,
-      ogDescription,
-      twitterTitle,
-      twitterDescription,
-      priceRange: priceRangeValue,
-      seoScore: seoAnalysis.score,
-      seoIssues: seoAnalysis.issues,
-      seoSuggestions: seoAnalysis.suggestions
+      canonicalUrl: `https://www.palvoria.com/properties/${slug}`,
+      ogTitle: seoTitle,
+      ogDescription: seoDescription
     }))
+
+    toast.success('Enhanced SEO generated successfully!')
   }
 
-  // ADVANCED SCHEMA MARKUP GENERATION
-  const generateSchemaMarkup = (data, slug, amenities) => {
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "RealEstateListing",
-      "name": data.title,
-      "description": data.description,
-      "url": `https://www.palvoria.com/properties/${slug}`,
-      "image": existingImages.length > 0 ? existingImages.map(img => img.url) : [],
-      "offers": {
-        "@type": "Offer",
-        "price": data.price,
-        "priceCurrency": data.currency || "KES",
-        "availability": "InStock",
-        "priceValidUntil": new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": data.address,
-        "addressLocality": data.area === 'Other' ? data.customArea : data.area,
-        "addressRegion": data.county,
-        "addressCountry": "KE"
-      },
-      "geo": data.coordinates.lat && data.coordinates.lng ? {
-        "@type": "GeoCoordinates",
-        "latitude": data.coordinates.lat,
-        "longitude": data.coordinates.lng
-      } : undefined,
-      "floorSize": {
-        "@type": "QuantitativeValue",
-        "value": data.areaSize,
-        "unitText": data.areaUnit
-      },
-      "numberOfRooms": data.bedrooms,
-      "numberOfBathroomsTotal": data.bathrooms,
-      "yearBuilt": data.yearBuilt,
-      "amenityFeature": data.amenities.map(amenity => ({
-        "@type": "LocationFeatureSpecification",
-        "name": amenity.name || amenity
-      }))
-    }
-    
-    // Store schema in form data for backend
-    setFormData(prev => ({
-      ...prev,
-      schemaMarkup: JSON.stringify(schema, null, 2)
-    }))
-  }
-
-  // ADVANCED SEO ANALYSIS ENGINE
-  const analyzeSEO = ({ title, description, keywords, focusKeyword, content, images }) => {
-    let score = 0
-    const issues = []
-    const suggestions = []
-    
-    // Title Analysis
-    if (title.length >= 30 && title.length <= 60) {
-      score += 15
-    } else if (title.length < 30) {
-      issues.push('Title too short')
-      suggestions.push('Expand title to 30-60 characters for better SEO')
-    } else {
-      issues.push('Title too long')
-      suggestions.push('Shorten title to under 60 characters')
-    }
-    
-    // Description Analysis
-    if (description.length >= 120 && description.length <= 160) {
-      score += 15
-    } else if (description.length < 120) {
-      issues.push('Description too short')
-      suggestions.push('Expand description to 120-160 characters')
-    } else {
-      issues.push('Description too long')
-      suggestions.push('Shorten description to under 160 characters')
-    }
-    
-    // Focus Keyword Analysis
-    const titleHasFocusKeyword = title.toLowerCase().includes(focusKeyword.toLowerCase())
-    const descHasFocusKeyword = description.toLowerCase().includes(focusKeyword.toLowerCase())
-    
-    if (titleHasFocusKeyword) score += 10
-    else suggestions.push('Include focus keyword in title')
-    
-    if (descHasFocusKeyword) score += 10
-    else suggestions.push('Include focus keyword in description')
-    
-    // Content Analysis
-    if (content && content.length > 300) {
-      score += 15
-      const keywordDensity = (content.toLowerCase().split(focusKeyword.toLowerCase()).length - 1) / content.split(' ').length * 100
-      if (keywordDensity >= 0.5 && keywordDensity <= 2.5) {
-        score += 10
-      } else if (keywordDensity < 0.5) {
-        suggestions.push('Increase keyword density in content (aim for 0.5-2.5%)')
-      } else {
-        suggestions.push('Reduce keyword density to avoid over-optimization')
-      }
-    } else {
-      issues.push('Content too short')
-      suggestions.push('Add detailed property description (300+ words)')
-    }
-    
-    // Images Analysis
-    if (images > 0) {
-      score += 10
-      if (images >= 5) score += 5
-    } else {
-      issues.push('No images')
-      suggestions.push('Add high-quality property images')
-    }
-    
-    // Keywords Analysis
-    if (keywords.length >= 8) {
-      score += 10
-    } else {
-      suggestions.push('Add more relevant keywords')
-    }
-    
-    // Readability bonus
-    if (content && content.split(' ').length > 150) {
-      const sentences = content.split(/[.!?]+/).length - 1
-      const avgWordsPerSentence = content.split(' ').length / sentences
-      if (avgWordsPerSentence <= 20) {
-        score += 10
-        suggestions.push('Great readability score!')
-      } else {
-        suggestions.push('Improve readability by using shorter sentences')
-      }
-    }
-    
-    return {
-      score: Math.min(100, score),
-      issues,
-      suggestions
-    }
-  }
 
   const handleSEOToggle = () => {
     const newAutoGenerate = !formData.autoGenerateSEO
@@ -780,6 +667,18 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
         return
       }
 
+      // Additional validation for off-plan properties
+      if (formData.isOffPlan) {
+        if (!formData.completionDate) {
+          toast.error('Completion date is required for off-plan properties')
+          return
+        }
+        if (!formData.developerName) {
+          toast.error('Developer name is required for off-plan properties')
+          return
+        }
+      }
+
       // Transform data to match backend schema
       const transformedData = {
         title: formData.title,
@@ -815,6 +714,31 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
         status: formData.status,
         featured: formData.featured,
         ...(formData.yearBuilt && formData.yearBuilt !== '' ? { yearBuilt: parseInt(formData.yearBuilt) } : {}),
+        // Off-plan data
+        isOffPlan: formData.isOffPlan,
+        ...(formData.isOffPlan ? {
+          offPlanDetails: {
+            completionDate: new Date(formData.completionDate),
+            constructionProgress: formData.constructionProgress || 0,
+            developer: {
+              name: formData.developerName,
+              ...(formData.developerCompany ? { company: formData.developerCompany } : {}),
+              ...(formData.developerPhone || formData.developerEmail ? {
+                contact: {
+                  ...(formData.developerPhone ? { phone: formData.developerPhone } : {}),
+                  ...(formData.developerEmail ? { email: formData.developerEmail } : {})
+                }
+              } : {})
+            },
+            ...(formData.projectName || formData.totalUnits ? {
+              projectDetails: {
+                ...(formData.projectName ? { projectName: formData.projectName } : {}),
+                ...(formData.totalUnits ? { totalUnits: parseInt(formData.totalUnits) } : {})
+              }
+            } : {}),
+            ...(formData.paymentPlan && formData.paymentPlan.length > 0 ? { paymentPlan: formData.paymentPlan } : {})
+          }
+        } : {}),
         // SEO Data - use new SEO manager data if available, fallback to form data
         seo: seoData || {
           metaTitle: formData.seoTitle,
@@ -847,7 +771,12 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
 
       await onSave(transformedData)
       toast.success(property ? 'Property updated successfully!' : 'Property created successfully!')
-      
+
+      // Clear saved draft data on successful save
+      if (!property) {
+        localStorage.removeItem('palvoria_property_form_draft');
+      }
+
       // Only close form on successful save - onCancel will be called by parent component
       
     } catch (error) {
@@ -886,9 +815,26 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
-          <h2 className="text-2xl font-bold text-white">
-            {property ? 'Edit Property' : 'Add New Property'}
-          </h2>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-2xl font-bold text-white">
+              {property ? 'Edit Property' : 'Add New Property'}
+            </h2>
+            {!property && (
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center text-sm text-green-400">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                  Auto-saving draft
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSavedDraft}
+                  className="text-xs text-gray-500 hover:text-gray-300 underline"
+                >
+                  Clear Draft
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-200"
@@ -961,6 +907,27 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
                       <option key={status.value} value={status.value}>{status.label}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Off-Plan Toggle */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isOffPlan"
+                      checked={formData.isOffPlan}
+                      onChange={(e) => handleInputChange('isOffPlan', e.target.checked)}
+                      className="h-4 w-4 text-yellow-400 focus:ring-yellow-400 border-gray-600 bg-gray-800 rounded"
+                    />
+                    <label htmlFor="isOffPlan" className="ml-2 block text-sm text-gray-300">
+                      🏗️ This is an Off-Plan Property (Under Construction)
+                    </label>
+                  </div>
+                  {formData.isOffPlan && (
+                    <p className="mt-2 text-sm text-yellow-400">
+                      Additional off-plan details will be required below.
+                    </p>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -1118,8 +1085,8 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
                   </label>
                   <input
                     type="number"
-                    value={formData.area}
-                    onChange={(e) => handleInputChange('area', e.target.value)}
+                    value={formData.areaSize}
+                    onChange={(e) => handleInputChange('areaSize', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
                     placeholder="e.g., 2500"
                   />
@@ -1237,6 +1204,167 @@ const PropertyForm = ({ property = null, onSave, onCancel }) => {
                 </button>
               </div>
             </div>
+
+            {/* Off-Plan Details */}
+            {formData.isOffPlan && (
+              <div className="border-t border-gray-700 pt-8">
+                <h3 className="text-lg font-medium text-white mb-4">🏗️ Off-Plan Development Details</h3>
+
+                {/* Project Information */}
+                <div className="mb-6">
+                  <h4 className="text-md font-medium text-gray-300 mb-4">Project Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.projectName}
+                        onChange={(e) => handleInputChange('projectName', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="e.g., Skyline Residences Phase 1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Completion Date *
+                      </label>
+                      <input
+                        type="date"
+                        required={formData.isOffPlan}
+                        value={formData.completionDate}
+                        onChange={(e) => handleInputChange('completionDate', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Construction Progress (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.constructionProgress}
+                        onChange={(e) => handleInputChange('constructionProgress', parseInt(e.target.value) || 0)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="e.g., 25"
+                      />
+                      <div className="mt-2 bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${formData.constructionProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Total Units in Project
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.totalUnits}
+                        onChange={(e) => handleInputChange('totalUnits', parseInt(e.target.value) || '')}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="e.g., 120"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Developer Information */}
+                <div className="mb-6">
+                  <h4 className="text-md font-medium text-gray-300 mb-4">Developer Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Developer Name *
+                      </label>
+                      <input
+                        type="text"
+                        required={formData.isOffPlan}
+                        value={formData.developerName}
+                        onChange={(e) => handleInputChange('developerName', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="e.g., John Mwangi"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Developer Company
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.developerCompany}
+                        onChange={(e) => handleInputChange('developerCompany', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="e.g., Skyline Developments Ltd"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Developer Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.developerPhone}
+                        onChange={(e) => handleInputChange('developerPhone', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="+254-700-123-456"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Developer Email
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.developerEmail}
+                        onChange={(e) => handleInputChange('developerEmail', e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white placeholder-gray-400"
+                        placeholder="info@skylinedevelopments.co.ke"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Plan */}
+                <div className="mb-6">
+                  <h4 className="text-md font-medium text-gray-300 mb-4">Payment Plan</h4>
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    {formData.paymentPlan.length > 0 ? (
+                      <div className="space-y-3">
+                        {formData.paymentPlan.map((payment, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-700 rounded-lg p-3">
+                            <div>
+                              <span className="text-white font-medium">{payment.stageName || payment.stage}</span>
+                              <span className="text-gray-400 ml-2">({payment.percentage}%)</span>
+                            </div>
+                            <div className="text-yellow-400 font-medium">
+                              KSH {(formData.price * (payment.percentage / 100)).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-400">
+                        <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No payment plan configured yet.</p>
+                        <p className="text-sm mt-2">Payment plans can be detailed in the property description for now.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Images */}
             <div>

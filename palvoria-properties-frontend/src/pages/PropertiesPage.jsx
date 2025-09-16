@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  FunnelIcon, 
-  Squares2X2Icon, 
-  ListBulletIcon, 
+import {
+  FunnelIcon,
+  Squares2X2Icon,
   AdjustmentsHorizontalIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
@@ -21,17 +21,22 @@ const filters = {
   type: ['All', 'Apartment', 'House', 'Villa', 'Townhouse', 'Commercial', 'Office', 'Shop', 'Land'],
   priceRange: ['All', 'Under KSH 10M', 'KSH 10M - 20M', 'KSH 20M - 30M', 'KSH 30M - 50M', 'Over KSH 50M'],
   bedrooms: ['All', '1+', '2+', '3+', '4+', '5+'],
-  area: ['All', 'Westlands', 'Karen', 'Kileleshwa', 'Lavington', 'Kilimani', 'Upperhill', 'Runda', 'Muthaiga', 'CBD', 'Parklands', 'Hurlingham', 'South C', 'South B', 'Garden Estate', 'Kasarani', 'Other Areas']
+  area: ['All', 'Westlands', 'Karen', 'Kileleshwa', 'Lavington', 'Kilimani', 'Upperhill', 'Runda', 'Muthaiga', 'CBD', 'Parklands', 'Hurlingham', 'South C', 'South B', 'Garden Estate', 'Kasarani', 'Other Areas'],
+  offPlan: ['All', 'Ready to Move', 'Off-Plan Only']
 }
 
 export default function PropertiesPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
   const [properties, setProperties] = useState([])
   const [filteredProperties, setFilteredProperties] = useState([])
   const [selectedFilters, setSelectedFilters] = useState({
     type: 'All',
     priceRange: 'All',
     bedrooms: 'All',
-    area: 'All'
+    area: 'All',
+    offPlan: 'All'
   })
   const [customArea, setCustomArea] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -41,17 +46,31 @@ export default function PropertiesPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Handle URL parameters on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search)
+    const areaParam = urlParams.get('area')
+
+    if (areaParam && filters.area.includes(areaParam)) {
+      setSelectedFilters(prev => ({
+        ...prev,
+        area: areaParam
+      }))
+    }
+  }, [location.search])
+
   // Fetch properties from admin panel on component mount
   useEffect(() => {
     const fetchProperties = async () => {
       try {
         setError(null)
         
-        // Fetch from Palvoria's own database
-        const response = await apiService.getProperties({ status: 'active' })
+        // Fetch all properties from Palvoria's own database
+        const response = await apiService.getProperties({})
         console.log('Fetched properties:', response)
         
         if (response.success && response.data) {
+          console.log('Raw API response - total properties:', response.data.length)
           // Transform Palvoria backend data to match frontend format
           const transformedProperties = response.data.map(property => ({
             id: property._id,
@@ -63,15 +82,18 @@ export default function PropertiesPage() {
             bedrooms: property.features?.bedrooms || 0,
             bathrooms: property.features?.bathrooms || 0,
             area: property.features?.area ? `${property.features.area.size} ${property.features.area.unit}` : 'N/A',
-            image: property.images && property.images.length > 0 ? 
-              (property.images.find(img => img.isPrimary) || property.images[0]).url : 
+            image: property.images && property.images.length > 0 ?
+              (property.images.find(img => img.isPrimary) || property.images[0]).url :
               'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80',
             type: property.propertyType?.charAt(0).toUpperCase() + property.propertyType?.slice(1) || 'Property',
             featured: property.featured || false,
             description: property.description,
-            amenities: property.amenities || []
+            amenities: property.amenities || [],
+            isOffPlan: property.isOffPlan || false
           }))
-          
+
+          console.log('Transformed properties:', transformedProperties.length)
+          console.log('First few properties:', transformedProperties.slice(0, 3))
           setProperties(transformedProperties)
           setFilteredProperties(transformedProperties)
         } else {
@@ -148,6 +170,15 @@ export default function PropertiesPage() {
       filtered = filtered.filter(property => property.bedrooms >= minBedrooms)
     }
 
+    // Filter by off-plan status
+    if (selectedFilters.offPlan !== 'All') {
+      if (selectedFilters.offPlan === 'Off-Plan Only') {
+        filtered = filtered.filter(property => property.isOffPlan === true)
+      } else if (selectedFilters.offPlan === 'Ready to Move') {
+        filtered = filtered.filter(property => property.isOffPlan === false)
+      }
+    }
+
     // Sort properties
     filtered = [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -163,6 +194,13 @@ export default function PropertiesPage() {
         default:
           return b.featured ? 1 : -1
       }
+    })
+
+    console.log('Filtering results:', {
+      originalCount: properties.length,
+      filteredCount: filtered.length,
+      filters: selectedFilters,
+      searchQuery
     })
 
     setFilteredProperties(filtered)
@@ -188,305 +226,237 @@ export default function PropertiesPage() {
 
   return (
     <div style={{ backgroundColor: 'rgb(252, 224, 177)', minHeight: '100vh' }}>
-      <SEOHead 
+      <SEOHead
         customTitle="Properties for Sale & Rent in Nairobi | Palvoria Properties"
         customDescription="Browse premium properties for sale and rent in Nairobi. Find your perfect home in Westlands, Karen, Kilimani, CBD and other prime locations across Kenya."
         customKeywords={['properties for sale nairobi', 'apartments for rent', 'houses for sale kenya', 'nairobi real estate', 'westlands properties', 'karen properties', 'kilimani apartments']}
         pageType="listings"
       />
       <Header />
-      
-      {/* Hero Section - NAIROBI COLLECTION */}
-      <section className="relative pt-16 lg:pt-20 pb-16 overflow-hidden" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
-        {/* Parallax Background */}
-        <div className="absolute inset-0 z-0">
-          <img
-            className="w-full h-full object-cover opacity-10 parallax"
-            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2075&q=80"
-            alt="Nairobi architecture"
-            style={{ transform: 'scale(1.05)' }}
-          />
-        </div>
-        
-        <div className="relative z-10 mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="pt-16 lg:pt-24 text-center">
-            <motion.h1 
-              className="text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold text-black mb-6 vogue-heading leading-none"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1.2 }}
-            >
-              NAIROBI
-            </motion.h1>
-            <motion.h2 
-              className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-black mb-12 vogue-heading leading-none"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1.2, delay: 0.2 }}
-            >
-              COLLECTION
-            </motion.h2>
-            
-            <motion.div
-              className="max-w-4xl mx-auto mb-12"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              <p className="text-lg md:text-xl lg:text-2xl text-black leading-relaxed" style={{ fontWeight: '300' }}>
-                Curated properties across Nairobi's most prestigious neighborhoods — each selected for the discerning few who demand nothing but excellence.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="flex items-center justify-center gap-12 mb-12"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              <div className="text-center">
-                <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{properties.length}</div>
-                <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Nairobi Gems</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl lg:text-5xl font-bold text-black mb-2 vogue-heading">{filteredProperties.length}</div>
-                <div className="text-sm text-black uppercase tracking-widest" style={{ fontWeight: '300' }}>Perfect Matches</div>
-              </div>
-            </motion.div>
+
+      {/* Compact Header */}
+      <section className="pt-20 lg:pt-24 pb-8" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-6xl font-bold text-black mb-4 vogue-heading leading-none">
+              NAIROBI PROPERTIES
+            </h1>
+            <div className="flex items-center justify-center gap-8 text-sm text-black/70 font-light">
+              <span>{properties.length} Available</span>
+              <div className="w-px h-4 bg-black/20"></div>
+              <span>{filteredProperties.length} Matches</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-8">
-        
-        {/* Filters and Controls Bar - Compact */}
-        <div className="bg-black shadow-xl border-2 border-amber-600 mb-8">
-          <div className="p-4">
-            
-            {/* Mobile-First Compact Controls */}
-            <div className="space-y-4">
-              
-              {/* Mobile: Filter Toggle + Clear All */}
-              <div className="flex items-center justify-between lg:hidden">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="inline-flex items-center px-4 py-2 border-2 border-amber-600 text-sm font-medium text-amber-600 hover:bg-amber-600 hover:text-black transition-colors"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                >
-                  <AdjustmentsHorizontalIcon className="h-4 w-4 mr-2" />
-                  Filters ({Object.values(selectedFilters).filter(val => val !== 'All').length})
-                </button>
-                
-                {(Object.values(selectedFilters).some(val => val !== 'All') || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All' })
-                      setCustomArea('')
-                      setSearchQuery('')
-                    }}
-                    className="text-sm text-amber-400 hover:text-amber-300 underline font-medium"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {/* Mobile: Search Bar (Full Width) */}
-              <div className="lg:hidden">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-amber-600" />
+      {/* Elegant Filters Section */}
+      <section className="pb-12" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+          {/* Desktop Filters - Elegant Card Layout */}
+          <motion.div
+            className="hidden lg:block mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="bg-black p-8 shadow-2xl">
+              {/* Search Bar - Full Width */}
+              <div className="mb-8">
+                <div className="relative max-w-2xl mx-auto">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-amber-400" />
                   <input
                     type="text"
-                    placeholder="Search properties..."
-                    className="w-full pl-10 pr-4 py-3 text-sm border-2 border-amber-600 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-black font-medium"
-                    style={{ backgroundColor: 'rgb(252, 224, 177)' }}
+                    placeholder="Search properties by name, location, or type..."
+                    className="w-full pl-12 pr-6 py-4 bg-white/10 backdrop-blur-sm border border-amber-400/30 focus:border-amber-400 focus:outline-none text-white placeholder-white/60 font-light text-lg transition-all duration-300"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
 
-              {/* Mobile: Sort + View Toggle */}
-              <div className="flex items-center justify-between lg:hidden">
-                <select 
-                  className="flex-1 px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 mr-3"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="featured">Featured First</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="bedrooms">Most Bedrooms</option>
-                  <option value="area">By Location</option>
-                </select>
-                
-                <div className="flex items-center border-2 border-amber-600">
-                  <button 
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-amber-600 text-black' : 'text-amber-600 hover:bg-amber-600 hover:text-black'}`}
-                    style={{ backgroundColor: viewMode === 'grid' ? '#D97706' : 'rgb(252, 224, 177)' }}
-                  >
-                    <Squares2X2Icon className="h-4 w-4" />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 border-l-2 border-amber-600 transition-colors ${viewMode === 'list' ? 'bg-amber-600 text-black' : 'text-amber-600 hover:bg-amber-600 hover:text-black'}`}
-                    style={{ backgroundColor: viewMode === 'list' ? '#D97706' : 'rgb(252, 224, 177)' }}
-                  >
-                    <ListBulletIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Desktop: All in one row */}
-              <div className="hidden lg:flex lg:items-center lg:justify-between">
-                
-                {/* Left: Active Filters */}
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(selectedFilters).map(([key, value]) => 
-                      value !== 'All' && (
-                        <span
-                          key={key}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-600 text-black"
-                        >
-                          {value}
-                          <button
-                            onClick={() => handleFilterChange(key, 'All')}
-                            className="ml-1 text-black hover:text-white"
-                          >
-                            <XMarkIcon className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )
-                    )}
-                    {(Object.values(selectedFilters).some(val => val !== 'All') || searchQuery) && (
-                      <button
-                        onClick={() => {
-                          setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All' })
-                          setCustomArea('')
-                          setSearchQuery('')
-                        }}
-                        className="text-xs text-amber-400 hover:text-amber-300 underline font-medium"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Search + Sort + View Toggle */}
-                <div className="flex items-center gap-3">
+              {/* Filter Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6 mb-8">
+                {/* Area Filter Card */}
+                <div className="group">
+                  <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Location</label>
                   <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-amber-600" />
-                    <input
-                      type="text"
-                      placeholder="Search properties..."
-                      className="pl-10 pr-4 py-2 text-sm border-2 border-amber-600 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-black font-medium w-48"
-                      style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                    <select
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                      value={selectedFilters.area}
+                      onChange={(e) => handleFilterChange('area', e.target.value)}
+                    >
+                      <option value="All" className="text-black">All Areas</option>
+                      {filters.area.slice(1).map(area => (
+                        <option key={area} value={area} className="text-black">{area}</option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
                   </div>
+                </div>
 
-                  <select 
-                    className="px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                  >
-                    <option value="featured">Featured First</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="bedrooms">Most Bedrooms</option>
-                    <option value="area">By Location</option>
-                  </select>
-                  
-                  <div className="flex items-center border-2 border-amber-600">
-                    <button 
-                      onClick={() => setViewMode('grid')}
-                      className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-amber-600 text-black' : 'text-amber-600 hover:bg-amber-600 hover:text-black'}`}
-                      style={{ backgroundColor: viewMode === 'grid' ? '#D97706' : 'rgb(252, 224, 177)' }}
+                {/* Type Filter Card */}
+                <div className="group">
+                  <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Property Type</label>
+                  <div className="relative">
+                    <select
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                      value={selectedFilters.type}
+                      onChange={(e) => handleFilterChange('type', e.target.value)}
                     >
-                      <Squares2X2Icon className="h-4 w-4" />
-                    </button>
-                    <button 
-                      onClick={() => setViewMode('list')}
-                      className={`p-2 border-l-2 border-amber-600 transition-colors ${viewMode === 'list' ? 'bg-amber-600 text-black' : 'text-amber-600 hover:bg-amber-600 hover:text-black'}`}
-                      style={{ backgroundColor: viewMode === 'list' ? '#D97706' : 'rgb(252, 224, 177)' }}
+                      {filters.type.map(type => (
+                        <option key={type} value={type} className="text-black">{type === 'All' ? 'All Types' : type}</option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Price Filter Card */}
+                <div className="group">
+                  <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Price Range</label>
+                  <div className="relative">
+                    <select
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                      value={selectedFilters.priceRange}
+                      onChange={(e) => handleFilterChange('priceRange', e.target.value)}
                     >
-                      <ListBulletIcon className="h-4 w-4" />
-                    </button>
+                      {filters.priceRange.map(range => (
+                        <option key={range} value={range} className="text-black">{range === 'All' ? 'Any Price' : range}</option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Bedrooms Filter Card */}
+                <div className="group">
+                  <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Bedrooms</label>
+                  <div className="relative">
+                    <select
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                      value={selectedFilters.bedrooms}
+                      onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
+                    >
+                      {filters.bedrooms.map(bedroom => (
+                        <option key={bedroom} value={bedroom} className="text-black">{bedroom === 'All' ? 'Any Beds' : bedroom}</option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Off-plan Filter Card */}
+                <div className="group">
+                  <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Availability</label>
+                  <div className="relative">
+                    <select
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                      value={selectedFilters.offPlan}
+                      onChange={(e) => handleFilterChange('offPlan', e.target.value)}
+                    >
+                      {filters.offPlan.map(option => (
+                        <option key={option} value={option} className="text-black">{option}</option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Desktop Filter Bar */}
-            <div className="hidden lg:grid lg:grid-cols-4 gap-3">
-              {/* Location Filter */}
-              <div className="relative">
-                <select 
-                  className="w-full px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                  value={selectedFilters.area}
-                  onChange={(e) => handleFilterChange('area', e.target.value)}
-                >
-                  <option value="All">All Areas</option>
-                  {filters.area.slice(1).map(area => (
-                    <option key={area} value={area}>{area}</option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black pointer-events-none" />
-              </div>
+              {/* Sort and Actions */}
+              <div className="flex items-center justify-between pt-6 border-t border-white/20">
+                <div className="flex items-center gap-6">
+                  <div>
+                    <label className="block text-amber-400 text-sm font-semibold mb-2 uppercase tracking-wider">Sort By</label>
+                    <div className="relative">
+                      <select
+                        className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300 hover:bg-white/20"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                      >
+                        <option value="featured" className="text-black">Featured First</option>
+                        <option value="price-low" className="text-black">Price: Low to High</option>
+                        <option value="price-high" className="text-black">Price: High to Low</option>
+                        <option value="bedrooms" className="text-black">Most Bedrooms</option>
+                        <option value="area" className="text-black">By Location</option>
+                      </select>
+                      <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
 
-              {/* Property Type Filter */}
-              <div className="relative">
-                <select 
-                  className="w-full px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                  value={selectedFilters.type}
-                  onChange={(e) => handleFilterChange('type', e.target.value)}
-                >
-                  {filters.type.map(type => (
-                    <option key={type} value={type}>{type === 'All' ? 'All Types' : type}</option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black pointer-events-none" />
-              </div>
+                {/* Properties Count and Clear Filters */}
+                <div className="flex items-center justify-between w-full">
+                  <div className="text-white/80 font-light">
+                    <span className="text-amber-400 font-semibold">{filteredProperties.length}</span> properties found
+                  </div>
 
-              {/* Price Range Filter */}
-              <div className="relative">
-                <select 
-                  className="w-full px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                  value={selectedFilters.priceRange}
-                  onChange={(e) => handleFilterChange('priceRange', e.target.value)}
-                >
-                  {filters.priceRange.map(range => (
-                    <option key={range} value={range}>{range === 'All' ? 'Any Price' : range}</option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black pointer-events-none" />
-              </div>
-
-              {/* Bedrooms Filter */}
-              <div className="relative">
-                <select 
-                  className="w-full px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none"
-                  style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                  value={selectedFilters.bedrooms}
-                  onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
-                >
-                  {filters.bedrooms.map(bedroom => (
-                    <option key={bedroom} value={bedroom}>{bedroom === 'All' ? 'Any Beds' : bedroom}</option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black pointer-events-none" />
+                  {(Object.values(selectedFilters).some(val => val !== 'All') || searchQuery) && (
+                    <button
+                      onClick={() => {
+                        setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All', offPlan: 'All' })
+                        setCustomArea('')
+                        setSearchQuery('')
+                      }}
+                      className="px-4 py-2 bg-amber-400 text-black font-semibold hover:bg-amber-500 transition-all duration-300"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          </motion.div>
+
+          {/* Mobile Filters */}
+          <div className="lg:hidden mb-8">
+            {/* Mobile Search Bar - Always Visible */}
+            <div className="mb-4">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-amber-400" />
+                <input
+                  type="text"
+                  placeholder="Search properties..."
+                  className="w-full pl-12 pr-6 py-4 bg-black text-white border border-amber-400/30 focus:border-amber-400 focus:outline-none placeholder-white/60 font-light transition-all duration-300"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Mobile Filter Toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-3 bg-black px-6 py-3 hover:bg-gray-800 transition-all duration-300"
+              >
+                <AdjustmentsHorizontalIcon className="h-5 w-5 text-amber-400" />
+                <span className="text-sm font-semibold tracking-wider uppercase text-white">
+                  Filters ({Object.values(selectedFilters).filter(val => val !== 'All').length})
+                </span>
+              </button>
+
+              <div className="text-white/80 font-light text-sm">
+                <span className="text-amber-400 font-semibold">{filteredProperties.length}</span> found
+              </div>
+            </div>
+
+            {/* Clear All Button - Mobile */}
+            {(Object.values(selectedFilters).some(val => val !== 'All') || searchQuery) && (
+              <div className="mb-4">
+                <button
+                  onClick={() => {
+                    setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All', offPlan: 'All' })
+                    setCustomArea('')
+                    setSearchQuery('')
+                  }}
+                  className="w-full py-3 bg-amber-400 text-black font-semibold hover:bg-amber-500 transition-all duration-300"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
 
             {/* Mobile Filters Dropdown */}
             <AnimatePresence>
@@ -495,26 +465,113 @@ export default function PropertiesPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="sm:hidden mt-4 pt-4 border-t-2 border-amber-600"
+                  className="bg-black p-6 shadow-2xl"
                 >
-                  <div className="grid grid-cols-1 gap-4">
-                    {Object.entries(filters).map(([filterType, options]) => (
-                      <div key={filterType}>
-                        <label className="block text-sm font-medium text-amber-400 mb-2 capitalize">
-                          {filterType === 'priceRange' ? 'Price Range' : filterType}
-                        </label>
-                        <select 
-                          className="w-full px-3 py-2 border-2 border-amber-600 text-sm font-medium text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                          style={{ backgroundColor: 'rgb(252, 224, 177)' }}
-                          value={selectedFilters[filterType]}
-                          onChange={(e) => handleFilterChange(filterType, e.target.value)}
+                  <div className="space-y-6">
+                    {/* Location */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Location</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={selectedFilters.area}
+                          onChange={(e) => handleFilterChange('area', e.target.value)}
                         >
-                          {options.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          <option value="All" className="text-black">All Areas</option>
+                          {filters.area.slice(1).map(area => (
+                            <option key={area} value={area} className="text-black">{area}</option>
                           ))}
                         </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Property Type */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Property Type</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={selectedFilters.type}
+                          onChange={(e) => handleFilterChange('type', e.target.value)}
+                        >
+                          {filters.type.map(type => (
+                            <option key={type} value={type} className="text-black">{type === 'All' ? 'All Types' : type}</option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Price Range */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Price Range</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={selectedFilters.priceRange}
+                          onChange={(e) => handleFilterChange('priceRange', e.target.value)}
+                        >
+                          {filters.priceRange.map(range => (
+                            <option key={range} value={range} className="text-black">{range === 'All' ? 'Any Price' : range}</option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Bedrooms */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Bedrooms</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={selectedFilters.bedrooms}
+                          onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
+                        >
+                          {filters.bedrooms.map(bedroom => (
+                            <option key={bedroom} value={bedroom} className="text-black">{bedroom === 'All' ? 'Any Beds' : bedroom}</option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Availability */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Availability</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={selectedFilters.offPlan}
+                          onChange={(e) => handleFilterChange('offPlan', e.target.value)}
+                        >
+                          {filters.offPlan.map(option => (
+                            <option key={option} value={option} className="text-black">{option}</option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Sort By */}
+                    <div>
+                      <label className="block text-amber-400 text-sm font-semibold mb-3 uppercase tracking-wider">Sort By</label>
+                      <div className="relative">
+                        <select
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 focus:border-amber-400 focus:outline-none text-white font-light appearance-none transition-all duration-300"
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                        >
+                          <option value="featured" className="text-black">Featured First</option>
+                          <option value="price-low" className="text-black">Price: Low to High</option>
+                          <option value="price-high" className="text-black">Price: High to Low</option>
+                          <option value="bedrooms" className="text-black">Most Bedrooms</option>
+                          <option value="area" className="text-black">By Location</option>
+                        </select>
+                        <ChevronDownIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -522,60 +579,139 @@ export default function PropertiesPage() {
           </div>
         </div>
 
-        {/* Properties Grid/List */}
+        {/* Background Decorative Elements */}
+        <div className="absolute top-20 left-8 w-1 h-24 bg-black/10"></div>
+        <div className="absolute bottom-20 right-8 w-24 h-1 bg-black/10"></div>
+      </section>
+
+      {/* Properties Grid/List */}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+
+
+        {/* Properties Display */}
         {error ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-red-600 text-2xl">⚠️</span>
+          <motion.div
+            className="text-center py-32"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="bg-white/20 backdrop-blur-sm p-12 max-w-2xl mx-auto"
+                 style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0 100%)' }}>
+              <div className="border-l-4 border-black pl-6">
+                <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <span className="text-black text-2xl">⚠️</span>
+                </div>
+                <h3 className="text-2xl font-bold text-black mb-6 vogue-heading">Connection Issue</h3>
+                <p className="text-black/70 font-light mb-8 leading-relaxed">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-black text-white px-8 py-3 font-medium tracking-wider uppercase hover:bg-black/90 transition-all duration-300"
+                >
+                  Reload Page
+                </button>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">Error Loading Properties</h3>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-amber-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-amber-600 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
+          </motion.div>
         ) : filteredProperties.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FunnelIcon className="w-8 h-8 text-gray-400" />
+          <motion.div
+            className="text-center py-32"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="bg-white/20 backdrop-blur-sm p-12 max-w-2xl mx-auto"
+                 style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 100%, 0 100%)' }}>
+              <div className="border-l-4 border-black pl-6">
+                <div className="w-20 h-20 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <FunnelIcon className="w-10 h-10 text-black/60" />
+                </div>
+                <h3 className="text-2xl font-bold text-black mb-6 vogue-heading">No Matches Found</h3>
+                <p className="text-black/70 font-light mb-8 leading-relaxed max-w-md mx-auto">
+                  We couldn't find any properties matching your refined criteria.
+                  Perhaps expand your search parameters to discover more opportunities.
+                </p>
+                <button
+                  onClick={() => {
+                    setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All' })
+                    setCustomArea('')
+                    setSearchQuery('')
+                  }}
+                  className="bg-black text-white px-8 py-3 font-medium tracking-wider uppercase hover:bg-black/90 transition-all duration-300"
+                >
+                  Show All Properties
+                </button>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-900">No Properties Found</h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              We couldn't find any properties matching your criteria. Try adjusting your filters.
-            </p>
-            <button 
-              onClick={() => {
-                setSelectedFilters({ type: 'All', priceRange: 'All', bedrooms: 'All', area: 'All' })
-                setCustomArea('')
-                setSearchQuery('')
-              }}
-              className="bg-amber-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-amber-600 transition-colors"
-            >
-              Show All Properties
-            </button>
-          </div>
+          </motion.div>
         ) : (
-          <div className={
-            viewMode === 'grid' 
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8"
-              : "space-y-6"
-          }>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12"
+          >
             {filteredProperties.map((property, index) => (
               <motion.div
                 key={property.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ y: -5 }}
+                className="group"
               >
-                <PropertyCard property={property} viewMode={viewMode} />
+                <div className="bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-700 overflow-hidden"
+                     style={{
+                       clipPath: index % 3 === 0 ? 'polygon(0 0, 90% 0, 100% 100%, 0 100%)' :
+                                index % 3 === 1 ? 'polygon(10% 0, 100% 0, 100% 100%, 0 100%)' :
+                                'polygon(5% 0, 95% 0, 100% 100%, 0 100%)'
+                     }}>
+                  <PropertyCard property={property} viewMode="grid" />
+                </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
+
+      {/* Call to Action Section */}
+      {filteredProperties.length > 0 && (
+        <section className="py-32 relative overflow-hidden" style={{ backgroundColor: 'rgb(252, 224, 177)' }}>
+          <div className="max-w-7xl mx-auto px-4 lg:px-8">
+            <motion.div
+              className="text-center"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="inline-block border-l-4 border-black pl-6 mb-8">
+                <span className="text-sm font-light tracking-[0.3em] text-black/70 uppercase">Found What You Need?</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-bold text-black mb-8 vogue-heading leading-none">
+                SCHEDULE A
+                <br />
+                <span className="italic font-light text-3xl md:text-5xl">Private Viewing</span>
+              </h2>
+              <p className="text-lg text-black/80 max-w-2xl mx-auto leading-relaxed font-light mb-12">
+                Experience these exceptional properties in person. Our team will arrange exclusive viewings
+                at your convenience.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                <button className="bg-black text-white px-12 py-4 font-medium tracking-wider uppercase hover:bg-black/90 transition-all duration-300">
+                  Contact Our Team
+                </button>
+                <button className="border-2 border-black text-black px-12 py-4 font-medium tracking-wider uppercase hover:bg-black hover:text-white transition-all duration-300">
+                  Schedule Viewing
+                </button>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Background Art */}
+          <div className="absolute top-32 right-16 w-32 h-32 border-4 border-black/5 rotate-12"></div>
+          <div className="absolute bottom-32 left-16 w-2 h-40 bg-black/5 rotate-45"></div>
+        </section>
+      )}
 
       <Footer />
     </div>

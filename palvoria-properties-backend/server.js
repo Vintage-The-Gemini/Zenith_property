@@ -26,6 +26,7 @@ import analyticsRoutes from "./routes/analytics.js";
 import mortgageRoutes from "./routes/mortgage.js";
 import neighborhoodRoutes from "./routes/neighborhoods.js";
 import uploadRoutes from "./routes/uploads.js";
+import contactRoutes from "./routes/contacts.js";
 
 // Load environment variables
 dotenv.config();
@@ -132,6 +133,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/mortgage", mortgageRoutes);
 app.use("/api/neighborhoods", neighborhoodRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/contacts", contactRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -180,6 +182,7 @@ app.get("/", (req, res) => {
       mortgage: "/api/mortgage",
       neighborhoods: "/api/neighborhoods",
       uploads: "/api/uploads",
+      contacts: "/api/contacts",
       health: "/api/health",
     },
     features: [
@@ -232,6 +235,7 @@ app.use("*", (req, res) => {
       "/api/mortgage",
       "/api/neighborhoods",
       "/api/uploads",
+      "/api/contacts",
     ],
   });
 });

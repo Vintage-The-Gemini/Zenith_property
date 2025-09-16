@@ -19,7 +19,7 @@ export const uploadPropertyImage = async (fileBuffer, fileName, propertyId, imag
       cloudinary.uploader.upload_stream(
         {
           folder: folderPath,
-          public_id: `${imageType}-${Date.now()}-${fileName.replace(/\.[^/.]+$/, "")}`,
+          public_id: `${imageType}-${Date.now()}-${fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, '_')}`,
           resource_type: 'auto',
           transformation: [
             { width: 1200, height: 800, crop: 'limit' },
@@ -61,7 +61,7 @@ export const uploadPropertyDocument = async (fileBuffer, fileName, propertyId) =
       cloudinary.uploader.upload_stream(
         {
           folder: folderPath,
-          public_id: `doc-${Date.now()}-${fileName.replace(/\.[^/.]+$/, "")}`,
+          public_id: `doc-${Date.now()}-${fileName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, '_')}`,
           resource_type: 'auto'
         },
         (error, result) => {

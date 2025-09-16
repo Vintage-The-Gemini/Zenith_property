@@ -199,6 +199,123 @@ const propertySchema = new mongoose.Schema({
     availableFrom: Date,
     reason: String
   },
+
+  // Off-Plan Properties
+  isOffPlan: {
+    type: Boolean,
+    default: false
+  },
+  offPlanDetails: {
+    completionDate: {
+      type: Date,
+      required: false
+    },
+    estimatedCompletionDate: {
+      type: Date
+    },
+    constructionStartDate: {
+      type: Date
+    },
+    constructionProgress: {
+      type: Number,
+      min: [0, 'Construction progress cannot be negative'],
+      max: [100, 'Construction progress cannot exceed 100%'],
+      default: 0
+    },
+    paymentPlan: [{
+      stage: {
+        type: String,
+        enum: ['deposit', 'foundation', 'roofing', 'plumbing', 'finishing', 'completion'],
+        required: true
+      },
+      stageName: {
+        type: String,
+        required: true
+      },
+      percentage: {
+        type: Number,
+        min: [0, 'Payment percentage cannot be negative'],
+        max: [100, 'Payment percentage cannot exceed 100%'],
+        required: true
+      },
+      amount: {
+        type: Number,
+        min: [0, 'Payment amount cannot be negative']
+      },
+      dueDate: Date,
+      description: String
+    }],
+    developer: {
+      name: {
+        type: String,
+        required: false
+      },
+      company: String,
+      contact: {
+        phone: String,
+        email: String
+      },
+      license: String,
+      website: String,
+      description: String,
+      established: Number,
+      completedProjects: Number,
+      logo: String
+    },
+    projectDetails: {
+      projectName: String,
+      totalUnits: Number,
+      availableUnits: Number,
+      projectType: {
+        type: String,
+        enum: ['residential', 'commercial', 'mixed-use', 'industrial']
+      },
+      amenitiesIncluded: [String],
+      constructionMaterials: [String],
+      architects: String,
+      contractors: String,
+      approvals: [{
+        type: {
+          type: String,
+          enum: ['building_permit', 'environmental', 'water', 'electricity', 'sewerage', 'nca_approval']
+        },
+        number: String,
+        issuedBy: String,
+        issuedDate: Date,
+        expiryDate: Date,
+        document: {
+          url: String,
+          publicId: String
+        }
+      }]
+    },
+    financingOptions: {
+      mortgagePartners: [String],
+      minimumDeposit: {
+        percentage: Number,
+        amount: Number
+      },
+      maxFinancingPeriod: Number, // in months
+      interestRates: {
+        min: Number,
+        max: Number
+      }
+    },
+    updates: [{
+      date: {
+        type: Date,
+        default: Date.now
+      },
+      title: String,
+      description: String,
+      images: [String],
+      progressPercentage: Number,
+      milestone: {
+        type: String,
+        enum: ['groundbreaking', 'foundation', 'structure', 'roofing', 'electrical', 'plumbing', 'finishing', 'landscaping', 'completion']
+      }
+    }]
+  },
   
   // SEO and Marketing
   seo: {
@@ -460,10 +577,23 @@ propertySchema.virtual('primaryImage').get(function() {
 
 // Pre-save middleware to ensure only one primary image and proper ordering
 propertySchema.pre('save', function(next) {
+  // Validate off-plan details if isOffPlan is true
+  if (this.isOffPlan) {
+    console.log('DEBUG: isOffPlan is true, validating offPlanDetails:', this.offPlanDetails);
+    if (!this.offPlanDetails || !this.offPlanDetails.completionDate) {
+      console.log('DEBUG: Missing completion date:', this.offPlanDetails?.completionDate);
+      return next(new Error('Completion date is required for off-plan properties'));
+    }
+    if (!this.offPlanDetails.developer || !this.offPlanDetails.developer.name) {
+      console.log('DEBUG: Missing developer name:', this.offPlanDetails?.developer?.name);
+      return next(new Error('Developer name is required for off-plan properties'));
+    }
+  }
+
   if (this.images && this.images.length > 0) {
     // Sort images by order field
     this.images.sort((a, b) => (a.order || 0) - (b.order || 0));
-    
+
     const primaryImages = this.images.filter(img => img.isPrimary);
     if (primaryImages.length === 0) {
       // Set first image as primary if none is set
@@ -479,7 +609,7 @@ propertySchema.pre('save', function(next) {
         }
       });
     }
-    
+
     // Ensure order values are sequential
     this.images.forEach((img, index) => {
       if (img.order === undefined || img.order === null) {

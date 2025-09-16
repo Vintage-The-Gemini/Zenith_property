@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react'
 import AdminAuth from './AdminAuth'
+import { getAuthToken, verifyToken } from '../../utils/auth'
 
 const ProtectedRoute = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if admin is authenticated
-    const token = localStorage.getItem('palvoria_admin_token')
-    setIsAuthenticated(!!token)
-    setIsLoading(false)
+    const checkAuth = async () => {
+      // Check if admin is authenticated using new auth utilities
+      const token = getAuthToken()
+      if (token) {
+        // Verify token is still valid
+        const isValid = await verifyToken()
+        setIsAuthenticated(isValid)
+      } else {
+        setIsAuthenticated(false)
+      }
+      setIsLoading(false)
+    }
+
+    checkAuth()
   }, [])
 
   const handleAuthSuccess = () => {

@@ -34,7 +34,7 @@ const upload = multer({
 export const getProperties = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 100; // Increased from 10 to 100 for admin access
     const skip = (page - 1) * limit;
 
     // Build filter object
@@ -53,6 +53,11 @@ export const getProperties = async (req, res) => {
     // Category filter
     if (req.query.category) {
       filter.category = req.query.category;
+    }
+
+    // Off-plan filter
+    if (req.query.isOffPlan) {
+      filter.isOffPlan = req.query.isOffPlan === 'true';
     }
 
     // Location filters
@@ -188,7 +193,7 @@ export const createProperty = async (req, res) => {
     console.log('Backend - Property data before parsing:', propertyData);
 
     // Parse JSON fields that come as strings from FormData
-    ['location', 'features', 'amenities', 'price'].forEach(field => {
+    ['location', 'features', 'amenities', 'price', 'offPlanDetails', 'seo'].forEach(field => {
       if (typeof propertyData[field] === 'string') {
         try {
           propertyData[field] = JSON.parse(propertyData[field]);
@@ -282,7 +287,7 @@ export const updateProperty = async (req, res) => {
 
     // Parse JSON fields that come as strings from FormData
     const updateData = { ...req.body };
-    ['location', 'features', 'amenities', 'price', 'seo'].forEach(field => {
+    ['location', 'features', 'amenities', 'price', 'seo', 'offPlanDetails'].forEach(field => {
       if (typeof updateData[field] === 'string') {
         try {
           updateData[field] = JSON.parse(updateData[field]);

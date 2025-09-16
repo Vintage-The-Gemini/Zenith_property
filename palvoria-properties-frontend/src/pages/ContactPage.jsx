@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  PhoneIcon, 
-  EnvelopeIcon, 
+import {
+  PhoneIcon,
+  EnvelopeIcon,
   MapPinIcon,
   ClockIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import apiService from '../services/api'
 
 const contactInfo = [
   {
@@ -48,6 +49,7 @@ export default function ContactPage() {
   })
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   const handleInputChange = (e) => {
     setFormData({
@@ -59,25 +61,34 @@ export default function ContactPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setIsSubmitted(true)
-    setIsSubmitting(false)
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false)
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        subject: 'general',
-        message: ''
-      })
-    }, 3000)
+    setSubmitError(null)
+
+    try {
+      const response = await apiService.submitContact(formData)
+
+      if (response.success) {
+        setIsSubmitted(true)
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setIsSubmitted(false)
+          setFormData({
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            subject: 'general',
+            message: ''
+          })
+        }, 3000)
+      } else {
+        throw new Error(response.message || 'Failed to submit contact form')
+      }
+    } catch (error) {
+      console.error('Contact form submission error:', error)
+      setSubmitError(error.message || 'Failed to submit contact form. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -226,6 +237,17 @@ export default function ContactPage() {
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-8">
+                    {submitError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6"
+                      >
+                        <div className="flex items-center">
+                          <div className="text-red-600 text-sm">{submitError}</div>
+                        </div>
+                      </motion.div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
                         <label htmlFor="firstName" className="block text-sm font-semibold mb-3 text-stone-700">

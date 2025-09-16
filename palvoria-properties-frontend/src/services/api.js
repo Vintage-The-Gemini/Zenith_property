@@ -174,6 +174,14 @@ class ApiService {
     return this.request(endpoint)
   }
 
+  // Contact form submission
+  async submitContact(contactData) {
+    return this.request('/contacts', {
+      method: 'POST',
+      body: JSON.stringify(contactData)
+    })
+  }
+
   // Health check
   async healthCheck() {
     return this.request('/health')

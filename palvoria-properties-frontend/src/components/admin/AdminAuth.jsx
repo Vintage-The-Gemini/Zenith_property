@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { setAuthData } from '../../utils/auth'
 
 const AdminAuth = ({ onAuthSuccess }) => {
   const [credentials, setCredentials] = useState({
@@ -32,8 +33,9 @@ const AdminAuth = ({ onAuthSuccess }) => {
       const data = await response.json()
 
       if (data.success) {
-        localStorage.setItem('palvoria_admin_token', data.token)
-        localStorage.setItem('palvoria_admin_user', JSON.stringify(data.user))
+        // Store auth data using utility function
+        setAuthData(data.token, data.user)
+
         toast.success(`Welcome back, ${data.user.name}!`)
         if (onAuthSuccess) {
           onAuthSuccess()
